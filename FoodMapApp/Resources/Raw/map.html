@@ -1,38 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Restaurant Map</title>
 
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-    <style>
-        #map {
-            height: 100vh;
-            width: 100%;
-        }
-    </style>
-
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 </head>
 
 <body>
 
+    <div class="map-header">
+        <svg fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
+        Discover Places
+    </div>
+
     <div id="map"></div>
 
-    <script>
+    <!-- Bottom Sheet -->
+    <div id="bottom-sheet" class="bottom-sheet hidden">
+        <div class="sheet-drag-handle" id="drag-handle">
+            <div class="drag-bar"></div>
+        </div>
+        <div class="sheet-content">
+            <div id="sheet-header">
+                <h2 id="sheet-title">Loading...</h2>
+                <div class="sheet-meta">
+                    <span id="sheet-visitors">0 visits</span>
+                </div>
+            </div>
 
-        var map = L.map('map').setView([10.767174, 106.693120], 18);
+            <!-- Images Carousel -->
+            <div class="sheet-images" id="sheet-images">
+                <!-- Generated dynamically -->
+            </div>
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19
-        }).addTo(map);
+            <!-- Details -->
+            <div class="sheet-info">
+                <div class="info-row">
+                    <svg class="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span id="sheet-address"></span>
+                </div>
+                <div class="info-row">
+                    <svg class="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span id="sheet-time"></span>
+                </div>
+            </div>
 
-        L.marker([10.767174, 106.693120])
-            .addTo(map)
-            .bindPopup("Ph? B�i Vi?n - Qu?n 1")
-            .openPopup();
+            <!-- Reviews Section -->
+            <div class="sheet-reviews-section">
+                <h3>Reviews</h3>
+                <div id="sheet-reviews-list"></div>
 
-    </script>
+                <div class="review-form">
+                    <textarea id="review-comment" class="review-input" placeholder="Share your experience..." autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                    <button id="submit-review-btn" class="resto-btn">Submit Review</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- Custom JS -->
+    <script src="script.js"></script>
 </body>
 </html>
