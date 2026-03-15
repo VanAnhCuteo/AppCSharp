@@ -503,6 +503,7 @@ body, html {
     outline: none;
 }
 
+
     .review-input:focus {
         border-color: var(--primary-pink);
     }
