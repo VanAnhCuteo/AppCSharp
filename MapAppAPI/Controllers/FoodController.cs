@@ -227,6 +227,7 @@ namespace FoodMapAPI.Controllers
                                     poi_id = Convert.ToInt32(reader["poi_id"]),
                                     title = reader["title"].ToString(),
                                     description = reader["description"].ToString(),
+                                    language = reader["language"].ToString(),
                                 };
                             }
                         }

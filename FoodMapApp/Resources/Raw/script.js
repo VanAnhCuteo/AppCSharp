@@ -177,6 +177,9 @@ async function openDetails(foodId) {
     sheet.classList.add('open');
     sheet.style.transform = 'translateY(-80vh)';
 
+    const audioBtn = document.getElementById('sheet-audio-btn');
+    if (audioBtn) audioBtn.style.display = 'none';
+
     // Load data
     try {
         const detailsRes = await fetch(`${platformApiBase}/${foodId}`);
@@ -215,6 +218,15 @@ async function openDetails(foodId) {
         }
 
         loadReviews(foodId);
+
+        // Fetch guide for manual play
+        const guideRes = await fetch(`${platformApiBase}/${foodId}/guide`);
+        if (guideRes.ok) {
+            currentAudioGuide = await guideRes.json();
+            if (audioBtn) audioBtn.style.display = 'inline-flex';
+        } else {
+            currentAudioGuide = null;
+        }
 
     } catch (e) {
         console.error("Error fetching details", e);
@@ -271,6 +283,14 @@ document.getElementById('submit-review-btn').onclick = async () => {
 
 // ---------------- GEOFENCING LOGIC ----------------
 
+// Fake GPS Simulation settings
+const SIMULATE_GPS = true; // Set to true to override geolocation with Bùi Viện Walk
+let simulatedLat = 10.7672;
+let simulatedLon = 106.6931;
+
+let currentAudioGuide = null;
+let poiTimers = {}; // { foodId: timeoutId }
+
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371e3; // metres
     const phi1 = lat1 * Math.PI / 180;
@@ -288,26 +308,54 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
 let lastGeofenceTime = 0;
 function startGeofencing() {
+    if (SIMULATE_GPS) {
+        // Simulate walking around Bui Vien
+        setInterval(() => {
+            const position = { coords: { latitude: simulatedLat, longitude: simulatedLon } };
+            processLocation(position);
+            // Move longitude slightly to simulate walking
+            simulatedLon += 0.0001;
+        }, 3000);
+        return;
+    }
+
     if ("geolocation" in navigator) {
         navigator.geolocation.watchPosition((position) => {
-            const now = Date.now();
-            if (now - lastGeofenceTime < 5000) return; // Throttle to every 5s
-            lastGeofenceTime = now;
-
-            const userLat = position.coords.latitude;
-            const userLon = position.coords.longitude;
-
-            allFoodsData.forEach(food => {
-                if (!visitedFoods.has(food.id)) {
-                    const d = calculateDistance(userLat, userLon, food.latitude, food.longitude);
-                    if (d <= 50) { // within 50 meters
-                        visitedFoods.add(food.id);
-                        handleVisit(food.id);
-                    }
-                }
-            });
+            processLocation(position);
         }, (err) => console.log(err), { enableHighAccuracy: true });
     }
+}
+
+function processLocation(position) {
+    const now = Date.now();
+    if (now - lastGeofenceTime < 3000) return; // 3s throttle
+    lastGeofenceTime = now;
+
+    const userLat = position.coords.latitude;
+    const userLon = position.coords.longitude;
+
+    allFoodsData.forEach(food => {
+        if (!visitedFoods.has(food.id)) {
+            const d = calculateDistance(userLat, userLon, food.latitude, food.longitude);
+            if (d <= 50) { // within 50 meters
+                if (!poiTimers[food.id]) {
+                    console.log(`Entered radius of ${food.name}. Starting 8s timer.`);
+                    poiTimers[food.id] = setTimeout(() => {
+                        console.log(`Stayed 8s at ${food.name}. Triggering audio guide.`);
+                        visitedFoods.add(food.id);
+                        handleVisit(food.id);
+                        delete poiTimers[food.id];
+                    }, 8000);
+                }
+            } else {
+                if (poiTimers[food.id]) {
+                    console.log(`Exited radius of ${food.name} before 8s. Cancelling timer.`);
+                    clearTimeout(poiTimers[food.id]);
+                    delete poiTimers[food.id];
+                }
+            }
+        }
+    });
 }
 
 async function handleVisit(foodId) {
@@ -323,17 +371,26 @@ async function handleVisit(foodId) {
         const guideRes = await fetch(`${platformApiBase}/${foodId}/guide`);
         if (guideRes.ok) {
             const guide = await guideRes.json();
-            playAudioGuide(guide.title);
+            const textToSpeech = `${guide.title}. ${guide.description || ''}`;
+            playAudioGuide(textToSpeech, guide.language);
         }
     } catch (e) {
         console.error("Geofence error", e);
     }
 }
 
-function playAudioGuide(text) {
+function playCurrentAudio() {
+    if (currentAudioGuide) {
+        const textToSpeech = `${currentAudioGuide.title}. ${currentAudioGuide.description || ''}`;
+        playAudioGuide(textToSpeech, currentAudioGuide.language);
+    }
+}
+
+function playAudioGuide(text, language = 'vi-VN') {
     if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
         const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = 'vi-VN';
+        msg.lang = language || 'vi-VN';
         window.speechSynthesis.speak(msg);
     }
 }
