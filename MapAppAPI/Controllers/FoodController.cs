@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using FoodMapAPI.Models;
+using FoodMapAPI.Services;
 
 namespace FoodMapAPI.Controllers
 {
@@ -9,117 +10,158 @@ namespace FoodMapAPI.Controllers
     public class FoodController : ControllerBase
     {
         private readonly IConfiguration _configuration;
+        private readonly TranslationService _translator;
 
-        public FoodController(IConfiguration configuration)
+        public FoodController(IConfiguration configuration, TranslationService translator)
         {
             _configuration = configuration;
+            _translator = translator;
         }
 
         [HttpGet]
-        public List<Food> GetFoods()
+        public async Task<List<Food>> GetFoods([FromQuery] string lang = "vi")
         {
             List<Food> foods = new List<Food>();
-
             string connStr = _configuration.GetConnectionString("DefaultConnection");
 
-            using (MySqlConnection conn = new MySqlConnection(connStr))
+            try
             {
-                conn.Open();
-
-                string query = "SELECT * FROM pois";
-
-                MySqlCommand cmd = new MySqlCommand(query, conn);
-
-                MySqlDataReader reader = cmd.ExecuteReader();
-
-                while (reader.Read())
+                using (MySqlConnection conn = new MySqlConnection(connStr))
                 {
-                    Food food = new Food
-                    {
-                        id = Convert.ToInt32(reader["poi_id"]),
-                        category_id = Convert.ToInt32(reader["category_id"]),
-                        name = reader["name"].ToString(),
-                        description = reader["description"].ToString(),
-                        address = reader["address"].ToString(),
-                        latitude = Convert.ToDouble(reader["latitude"]),
-                        longitude = Convert.ToDouble(reader["longitude"]),
-                        open_time = reader["open_time"].ToString()
-                    };
+                    await conn.OpenAsync();
 
-                    foods.Add(food);
+                    // Select all from pois. We'll filter or just take the first language we find.
+                    string query = "SELECT p.*, (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url FROM pois p";
+
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            try
+                            {
+                                Food food = new Food
+                                {
+                                    id = Convert.ToInt32(reader["poi_id"]),
+                                    category_id = reader["category_id"] != DBNull.Value ? Convert.ToInt32(reader["category_id"]) : 0,
+                                    name = reader["name"].ToString() ?? "",
+                                    description = reader["description"].ToString() ?? "",
+                                    address = reader["address"].ToString() ?? "",
+                                    latitude = reader["latitude"] != DBNull.Value ? Convert.ToDouble(reader["latitude"]) : 0.0,
+                                    longitude = reader["longitude"] != DBNull.Value ? Convert.ToDouble(reader["longitude"]) : 0.0,
+                                    open_time = reader["open_time"].ToString() ?? "",
+                                    image_url = reader["image_url"] != DBNull.Value ? reader["image_url"].ToString() : ""
+                                };
+
+                                if (lang != "vi")
+                                {
+                                    food.name = await _translator.TranslateAsync(food.name, lang);
+                                    food.description = await _translator.TranslateAsync(food.description, lang);
+                                    food.address = await _translator.TranslateAsync(food.address, lang);
+                                }
+
+                                foods.Add(food);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Error processing record: {ex.Message}");
+                            }
+                        }
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SQL Error in GetFoods: {ex.Message}");
             }
 
             return foods;
         }
 
         [HttpGet("{id}")]
-        public IActionResult GetFoodDetails(int id)
+        public async Task<IActionResult> GetFoodDetails(int id, [FromQuery] string lang = "vi")
         {
             string connStr = _configuration.GetConnectionString("DefaultConnection");
             FoodDetails details = new FoodDetails();
             details.images = new List<string>();
 
-            using (MySqlConnection conn = new MySqlConnection(connStr))
+            try
             {
-                conn.Open();
-
-                // 1. Get food info
-                using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM pois WHERE poi_id = @id", conn))
+                using (MySqlConnection conn = new MySqlConnection(connStr))
                 {
-                    cmd.Parameters.AddWithValue("@id", id);
-                    using (MySqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            details.id = Convert.ToInt32(reader["poi_id"]);
-                            details.category_id = reader["category_id"] != DBNull.Value ? Convert.ToInt32(reader["category_id"]) : 0;
-                            details.name = reader["name"].ToString();
-                            details.description = reader["description"].ToString();
-                            details.address = reader["address"].ToString();
-                            details.latitude = reader["latitude"] != DBNull.Value ? Convert.ToDouble(reader["latitude"]) : 0.0;
-                            details.longitude = reader["longitude"] != DBNull.Value ? Convert.ToDouble(reader["longitude"]) : 0.0;
-                            details.open_time = reader["open_time"].ToString();
-                        }
-                        else
-                        {
-                            return NotFound();
-                        }
-                    }
-                }
+                    await conn.OpenAsync();
 
-                // 2. Get visitor count
-                using (MySqlCommand cmd = new MySqlCommand("SELECT COUNT(*) FROM poi_visits WHERE poi_id = @id", conn))
-                {
-                    cmd.Parameters.AddWithValue("@id", id);
-                    details.visitor_count = Convert.ToInt32(cmd.ExecuteScalar());
-                }
-
-                // 3. Get images (assuming poi_images table exists)
-                try
-                {
-                    using (MySqlCommand cmd = new MySqlCommand("SELECT image_url FROM poi_images WHERE poi_id = @id", conn))
+                    // 1. Get food info
+                    using (MySqlCommand cmd = new MySqlCommand("SELECT p.*, (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url FROM pois p WHERE p.poi_id = @id", conn))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
-                        using (MySqlDataReader reader = cmd.ExecuteReader())
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            while (reader.Read())
+                            if (await reader.ReadAsync())
                             {
-                                details.images.Add(reader["image_url"].ToString());
+                                details.id = Convert.ToInt32(reader["poi_id"]);
+                                details.category_id = reader["category_id"] != DBNull.Value ? Convert.ToInt32(reader["category_id"]) : 0;
+                                details.name = reader["name"].ToString() ?? "";
+                                details.description = reader["description"].ToString() ?? "";
+                                details.address = reader["address"].ToString() ?? "";
+                                details.latitude = reader["latitude"] != DBNull.Value ? Convert.ToDouble(reader["latitude"]) : 0.0;
+                                details.longitude = reader["longitude"] != DBNull.Value ? Convert.ToDouble(reader["longitude"]) : 0.0;
+                                details.open_time = reader["open_time"].ToString() ?? "";
+                                details.image_url = reader["image_url"] != DBNull.Value ? reader["image_url"].ToString() : "";
+                            }
+                            else
+                            {
+                                return NotFound();
                             }
                         }
                     }
-                }
-                catch
-                {
-                    /* Ignore if table doesn't exist */
+
+                    if (lang != "vi")
+                    {
+                        details.name = await _translator.TranslateAsync(details.name, lang);
+                        details.description = await _translator.TranslateAsync(details.description, lang);
+                        details.address = await _translator.TranslateAsync(details.address, lang);
+                    }
+
+                    // 2. Get visitor count
+                    using (MySqlCommand cmd = new MySqlCommand("SELECT COUNT(*) FROM poi_visits WHERE poi_id = @id", conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", id);
+                        details.visitor_count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    }
+
+                    // 3. Get images (assuming poi_images table exists)
+                    try
+                    {
+                        using (MySqlCommand cmd = new MySqlCommand("SELECT image_url FROM poi_images WHERE poi_id = @id ORDER BY image_id ASC", conn))
+                        {
+                            cmd.Parameters.AddWithValue("@id", id);
+                            using (var reader = await cmd.ExecuteReaderAsync())
+                            {
+                                while (await reader.ReadAsync())
+                                {
+                                    if (reader["image_url"] != DBNull.Value)
+                                        details.images.Add(reader["image_url"].ToString() ?? "");
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error fetching images for POI {id}: {ex.Message}");
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SQL Error in GetFoodDetails: {ex.Message}");
+            }
+
             return Ok(details);
         }
 
         [HttpGet("{id}/reviews")]
-        public IActionResult GetReviews(int id)
+        public async Task<IActionResult> GetReviews(int id)
         {
             List<Review> reviews = new List<Review>();
             string connStr = _configuration.GetConnectionString("DefaultConnection");
@@ -127,21 +169,21 @@ namespace FoodMapAPI.Controllers
             {
                 using (MySqlConnection conn = new MySqlConnection(connStr))
                 {
-                    conn.Open();
-                    using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM poi_reviews WHERE poi_id = @id", conn))
+                    await conn.OpenAsync();
+                    using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM reviews WHERE poi_id = @id ORDER BY created_at DESC", conn))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
-                        using (MySqlDataReader reader = cmd.ExecuteReader())
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            while (reader.Read())
+                            while (await reader.ReadAsync())
                             {
                                 reviews.Add(new Review
                                 {
-                                    id = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0,
+                                    id = reader["review_id"] != DBNull.Value ? Convert.ToInt32(reader["review_id"]) : 0,
                                     poi_id = reader["poi_id"] != DBNull.Value ? Convert.ToInt32(reader["poi_id"]) : 0,
                                     user_id = reader["user_id"] != DBNull.Value ? Convert.ToInt32(reader["user_id"]) : 0,
                                     rating = reader["rating"] != DBNull.Value ? Convert.ToInt32(reader["rating"]) : 5,
-                                    comment = reader["comment"].ToString(),
+                                    comment = reader["comment"].ToString() ?? "",
                                     created_at = reader["created_at"]?.ToString()
                                 });
                             }
@@ -149,27 +191,30 @@ namespace FoodMapAPI.Controllers
                     }
                 }
             }
-            catch { } // Ignore missing table
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SQL Error in GetReviews: {ex.Message}");
+            }
             return Ok(reviews);
         }
 
         [HttpPost("{id}/reviews")]
-        public IActionResult AddReview(int id, [FromBody] Review review)
+        public async Task<IActionResult> AddReview(int id, [FromBody] Review review)
         {
             string connStr = _configuration.GetConnectionString("DefaultConnection");
             try
             {
                 using (MySqlConnection conn = new MySqlConnection(connStr))
                 {
-                    conn.Open();
-                    // Assume table poi_reviews(poi_id, user_id, rating, comment)
-                    using (MySqlCommand cmd = new MySqlCommand("INSERT INTO poi_reviews (poi_id, user_id, rating, comment) VALUES (@poi, @user, @rating, @comment)", conn))
+                    await conn.OpenAsync();
+                    // Table: reviews(poi_id, user_id, rating, comment)
+                    using (MySqlCommand cmd = new MySqlCommand("INSERT INTO reviews (poi_id, user_id, rating, comment) VALUES (@poi, @user, @rating, @comment)", conn))
                     {
                         cmd.Parameters.AddWithValue("@poi", id);
                         cmd.Parameters.AddWithValue("@user", review.user_id > 0 ? review.user_id : 1);
                         cmd.Parameters.AddWithValue("@rating", review.rating > 0 ? review.rating : 5);
                         cmd.Parameters.AddWithValue("@comment", review.comment ?? "");
-                        cmd.ExecuteNonQuery();
+                        await cmd.ExecuteNonQueryAsync();
                     }
                 }
             }
@@ -181,19 +226,19 @@ namespace FoodMapAPI.Controllers
         }
 
         [HttpPost("{id}/visit")]
-        public IActionResult LogVisit(int id, [FromBody] Visit visitReq)
+        public async Task<IActionResult> LogVisit(int id, [FromBody] Visit visitReq)
         {
             string connStr = _configuration.GetConnectionString("DefaultConnection");
             try
             {
                 using (MySqlConnection conn = new MySqlConnection(connStr))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     using (MySqlCommand cmd = new MySqlCommand("INSERT INTO poi_visits (poi_id, user_id) VALUES (@poi, @user)", conn))
                     {
                         cmd.Parameters.AddWithValue("@poi", id);
                         cmd.Parameters.AddWithValue("@user", visitReq != null && visitReq.user_id > 0 ? visitReq.user_id : 1);
-                        cmd.ExecuteNonQuery();
+                        await cmd.ExecuteNonQueryAsync();
                     }
                 }
             }
@@ -205,7 +250,7 @@ namespace FoodMapAPI.Controllers
         }
 
         [HttpGet("{id}/guide")]
-        public IActionResult GetGuide(int id)
+        public async Task<IActionResult> GetGuide(int id, [FromQuery] string lang = "vi")
         {
             string connStr = _configuration.GetConnectionString("DefaultConnection");
             Guide guide = null;
@@ -213,30 +258,46 @@ namespace FoodMapAPI.Controllers
             {
                 using (MySqlConnection conn = new MySqlConnection(connStr))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM poi_guides WHERE poi_id = @id LIMIT 1", conn))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
-                        using (MySqlDataReader reader = cmd.ExecuteReader())
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            if (reader.Read())
+                            if (await reader.ReadAsync())
                             {
                                 guide = new Guide
                                 {
                                     guide_id = Convert.ToInt32(reader["guide_id"]),
                                     poi_id = Convert.ToInt32(reader["poi_id"]),
-                                    title = reader["title"].ToString(),
-                                    description = reader["description"].ToString(),
-                                    language = reader["language"].ToString(),
+                                    title = reader["title"].ToString() ?? "",
+                                    description = reader["description"].ToString() ?? "",
+                                    language = reader["language"].ToString() ?? "",
                                 };
                             }
                         }
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SQL Error in GetGuide: {ex.Message}");
+            }
 
-            if (guide != null) return Ok(guide);
+            if (guide != null)
+            {
+                if (lang != "vi")
+                {
+                    try
+                    {
+                        guide.title = await _translator.TranslateAsync(guide.title, lang);
+                        guide.description = await _translator.TranslateAsync(guide.description, lang);
+                        guide.language = lang;
+                    }
+                    catch { }
+                }
+                return Ok(guide);
+            }
             return NotFound();
         }
     }

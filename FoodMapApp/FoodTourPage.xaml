@@ -1,5 +1,6 @@
 ﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             NavigationPage.HasNavigationBar="False"
              x:Class="FoodMapApp.FoodTourPage">
 
     <Grid>
@@ -21,10 +22,13 @@ HorizontalOptions="Center"/>
             <Button
 Text="Bắt đầu Food Tour"
 Clicked="StartTour"
-BackgroundColor="#ff5722"
+BackgroundColor="#FB6F92"
 TextColor="White"
 CornerRadius="25"
-WidthRequest="200"/>
+WidthRequest="240"
+HeightRequest="55"
+FontSize="18"
+FontAttributes="Bold"/>
 
         </VerticalStackLayout>
 

@@ -3,8 +3,26 @@
 <ContentPage 
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    NavigationPage.HasNavigationBar="False"
     x:Class="FoodMapApp.MainPage">
 
-    <WebView x:Name="mapView" />
+    <Grid>
+        <WebView x:Name="mapView" />
+
+        <Button Text="✕"
+                Clicked="OnExitClicked"
+                BackgroundColor="#FB6F92"
+                TextColor="White"
+                FontSize="20"
+                FontAttributes="Bold"
+                CornerRadius="22"
+                WidthRequest="44"
+                HeightRequest="44"
+                HorizontalOptions="End"
+                VerticalOptions="Start"
+                Margin="15,40"
+                Padding="0"
+                Shadow="{Shadow Brush=Black, Offset='0,2', Opacity=0.3, Radius=5}"/>
+    </Grid>
 
 </ContentPage>

@@ -1,0 +1,90 @@
+:root {
+    --primary-pink: #FF8BA7;
+    --pink-accent: #FFC2D1;
+    --pink-light: #FFE5EC;
+    --pink-dark: #FB6F92;
+    --text-main: #2D3142;
+    --text-sub: #7A7C8C;
+    --bg-card: #FFFFFF;
+    --shadow-sm: 0 4px 12px rgba(251, 111, 146, 0.15);
+    --shadow-md: 0 10px 25px rgba(251, 111, 146, 0.25);
+    --shadow-lg: 0 18px 40px rgba(251, 111, 146, 0.35);
+    --radius-md: 16px;
+    --radius-lg: 20px;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: 'Outfit', sans-serif;
+    height: 100vh;
+    width: 100vw;
+    background-color: var(--pink-light);
+    overflow: hidden;
+}
+
+#map {
+    height: 100%;
+    width: 100%;
+    z-index: 1;
+}
+
+/* Glassmorphism Title on Map Settings */
+.map-header {
+    position: absolute;
+    top: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 12px 28px;
+    border-radius: 30px;
+    box-shadow: var(--shadow-sm);
+    color: var(--text-main);
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+}
+
+    .map-header svg {
+        color: var(--pink-dark);
+        width: 22px;
+        height: 22px;
+    }
+
+/* Locate Button */
+#locate-btn {
+    position: absolute;
+    bottom: 145px;
+    right: 15px;
+    width: 44px;
+    height: 44px;
+    background: white;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+    z-index: 1000;
+    cursor: pointer;
+    color: var(--pink-dark);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+    #locate-btn:hover {
+        background: var(--pink-light);
+        transform: scale(1.1);
+    }
+
+    #locate-btn svg {
+        width: 24px;
+        height: 24px;
+    }
