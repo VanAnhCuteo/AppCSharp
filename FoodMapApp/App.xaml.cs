@@ -6,7 +6,7 @@
         {
             InitializeComponent();
 
-            MainPage = new NavigationPage(new FoodTourPage());
+            MainPage = new AppShell();
         }
     }
 }

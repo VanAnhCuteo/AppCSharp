@@ -9,6 +9,6 @@ public partial class FoodTourPage : ContentPage
 
     private async void StartTour(object sender, EventArgs e)
     {
-        await Navigation.PushAsync(new MainPage());
+        await Shell.Current.GoToAsync("//HomePage");
     }
 }

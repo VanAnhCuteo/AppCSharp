@@ -95,9 +95,4 @@ public partial class MainPage : ContentPage
             Console.WriteLine(ex);
         }
     }
-
-    private async void OnExitClicked(object sender, EventArgs e)
-    {
-        await Navigation.PopAsync();
-    }
 }

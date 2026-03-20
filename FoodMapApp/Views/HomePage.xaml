@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="FoodMapApp.Views.HomePage"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="#F9F1F0">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Padding="20,50,20,20">
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#FF6A88" Offset="0.0" />
+                    <GradientStop Color="#FF99AC" Offset="1.0" />
+                </LinearGradientBrush>
+            </Grid.Background>
+            <VerticalStackLayout Spacing="14">
+                <HorizontalStackLayout>
+                    <VerticalStackLayout HorizontalOptions="StartAndExpand">
+                        <Label x:Name="GreetingLabel" Text="Chao buoi toi!" TextColor="White" FontSize="14" Opacity="0.9"/>
+                        <Label x:Name="UsernameLabel" Text="Khach" TextColor="White" FontSize="22" FontAttributes="Bold"/>
+                    </VerticalStackLayout>
+                    <Label Text="&#x1F4CD;" FontSize="30" VerticalOptions="Center" HorizontalOptions="End"/>
+                </HorizontalStackLayout>
+
+                <!-- Search Bar -->
+                <Frame BackgroundColor="White" CornerRadius="25" Padding="15,0" HeightRequest="50" HasShadow="True">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Label Grid.Column="0" Text="&#x1F50D;" FontSize="18" VerticalOptions="Center" Margin="0,0,8,0"/>
+                        <Entry Grid.Column="1"
+                               x:Name="SearchEntry"
+                               Placeholder="Tim mon an, quan, BBQ, nhau..."
+                               PlaceholderColor="#AAAAAA"
+                               TextColor="#333333"
+                               BackgroundColor="Transparent"
+                               ReturnCommand="{Binding SearchCommand}"
+                               TextChanged="OnSearchTextChanged"
+                               VerticalOptions="Center"/>
+                    </Grid>
+                </Frame>
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- Scrollable Content -->
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Spacing="20" Padding="20,15">
+
+                <!-- Quick Categories -->
+                <Label Text="Danh muc" FontSize="18" FontAttributes="Bold" TextColor="#333"/>
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
+                    <VerticalStackLayout Grid.Column="0" HorizontalOptions="Center" Spacing="6">
+                        <Frame WidthRequest="60" HeightRequest="60" CornerRadius="30" Padding="0" BackgroundColor="#FFF0F3" HasShadow="False">
+                            <Label Text="&#x1F357;" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"/>
+                        </Frame>
+                        <Label Text="Do nuong" FontSize="12" HorizontalOptions="Center" TextColor="#555"/>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="6">
+                        <Frame WidthRequest="60" HeightRequest="60" CornerRadius="30" Padding="0" BackgroundColor="#F0F8FF" HasShadow="False">
+                            <Label Text="&#x1F990;" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"/>
+                        </Frame>
+                        <Label Text="Hai san" FontSize="12" HorizontalOptions="Center" TextColor="#555"/>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center" Spacing="6">
+                        <Frame WidthRequest="60" HeightRequest="60" CornerRadius="30" Padding="0" BackgroundColor="#F0FFF4" HasShadow="False">
+                            <Label Text="&#x1F37A;" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"/>
+                        </Frame>
+                        <Label Text="Do uong" FontSize="12" HorizontalOptions="Center" TextColor="#555"/>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="3" HorizontalOptions="Center" Spacing="6">
+                        <Frame WidthRequest="60" HeightRequest="60" CornerRadius="30" Padding="0" BackgroundColor="#FFFBF0" HasShadow="False">
+                            <Label Text="&#x1F319;" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"/>
+                        </Frame>
+                        <Label Text="An dem" FontSize="12" HorizontalOptions="Center" TextColor="#555"/>
+                    </VerticalStackLayout>
+                </Grid>
+
+                <!-- Top Restaurants -->
+                <HorizontalStackLayout>
+                    <Label Text="Top quan hot" FontSize="18" FontAttributes="Bold" TextColor="#333" HorizontalOptions="StartAndExpand"/>
+                    <Label Text="Xem tat ca >" FontSize="13" TextColor="#FF6A88" VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+
+                <CollectionView x:Name="RestaurantsCollection"
+                                HeightRequest="200"
+                                ItemsLayout="HorizontalList">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Frame WidthRequest="160" HeightRequest="185" CornerRadius="16" Padding="0" Margin="0,5,12,5" HasShadow="True" BackgroundColor="White">
+                                <Grid RowDefinitions="110,*">
+                                    <Frame Grid.Row="0" CornerRadius="16" Padding="0" IsClippedToBounds="True" BackgroundColor="#FFD0DC">
+                                        <Label Text="&#x1F374;" FontSize="50" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                    </Frame>
+                                    <VerticalStackLayout Grid.Row="1" Padding="10,8" Spacing="2">
+                                        <Label Text="{Binding name}" FontSize="13" FontAttributes="Bold" LineBreakMode="TailTruncation" TextColor="#222"/>
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Label Text="&#x2B50;" FontSize="11" TextColor="#FFB400"/>
+                                            <Label Text="4.5" FontSize="11" TextColor="#666"/>
+                                            <Label Text="| $$" FontSize="11" TextColor="#999"/>
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- Events / Promotions -->
+                <Label Text="Su kien &amp; Uu dai" FontSize="18" FontAttributes="Bold" TextColor="#333"/>
+
+                <Frame BackgroundColor="#FF6A88" CornerRadius="16" Padding="18,14" HasShadow="True">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout Grid.Column="0" Spacing="4">
+                            <Label Text="Happy Hour &#x1F37B;" TextColor="White" FontSize="16" FontAttributes="Bold"/>
+                            <Label Text="Giam 30% bia tuoi tu 17:00 - 19:00" TextColor="White" FontSize="13" Opacity="0.9"/>
+                            <Label Text="Ap dung toan tuyen Bui Vien" TextColor="White" FontSize="12" Opacity="0.7"/>
+                        </VerticalStackLayout>
+                        <Label Grid.Column="1" Text="&#x1F389;" FontSize="40" VerticalOptions="Center"/>
+                    </Grid>
+                </Frame>
+
+                <Frame BackgroundColor="#FF9A8B" CornerRadius="16" Padding="18,14" HasShadow="True">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout Grid.Column="0" Spacing="4">
+                            <Label Text="Combo An Vat &#x1F354;" TextColor="White" FontSize="16" FontAttributes="Bold"/>
+                            <Label Text="Combo 2 nguoi chi tu 150.000d" TextColor="White" FontSize="13" Opacity="0.9"/>
+                            <Label Text="Nhieu quan tham gia" TextColor="White" FontSize="12" Opacity="0.7"/>
+                        </VerticalStackLayout>
+                        <Label Grid.Column="1" Text="&#x1F46B;" FontSize="40" VerticalOptions="Center"/>
+                    </Grid>
+                </Frame>
+
+                <!-- Spacer for tab bar -->
+                <BoxView HeightRequest="20" Color="Transparent"/>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

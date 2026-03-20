@@ -4,12 +4,61 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:FoodMapApp"
+    xmlns:views="clr-namespace:FoodMapApp.Views"
     Shell.FlyoutBehavior="Disabled"
     Title="FoodMapApp">
 
+    <!-- Shell Styling -->
+    <Shell.Resources>
+        <ResourceDictionary>
+            <Style x:Key="BaseStyle" TargetType="Element">
+                <Setter Property="Shell.BackgroundColor" Value="#FF6A88"/>
+                <Setter Property="Shell.ForegroundColor" Value="White"/>
+                <Setter Property="Shell.TitleColor" Value="White"/>
+                <Setter Property="Shell.UnselectedColor" Value="#FFD0DC"/>
+            </Style>
+        </ResourceDictionary>
+    </Shell.Resources>
+
+    <!-- Auth Flow (flat, no tab bar) -->
     <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+        Title="Login"
+        ContentTemplate="{DataTemplate views:LoginPage}"
+        Route="LoginPage"
+        Shell.TabBarIsVisible="False"/>
+
+    <!-- Food Tour Intro (no tab bar) -->
+    <ShellContent
+        ContentTemplate="{DataTemplate local:FoodTourPage}"
+        Route="FoodTourPage"
+        Shell.TabBarIsVisible="False"/>
+
+    <!-- Main Tabbed Interface -->
+    <TabBar Route="MainTabs" Shell.TabBarIsVisible="True">
+        <Tab Title="Trang chu">
+            <Tab.Icon>
+                <FontImageSource Glyph="&#x2302;" FontFamily="OpenSansRegular" Color="#FF6A88" Size="22"/>
+            </Tab.Icon>
+            <ShellContent
+                ContentTemplate="{DataTemplate views:HomePage}"
+                Route="HomePage"/>
+        </Tab>
+        <Tab Title="Ban do">
+            <Tab.Icon>
+                <FontImageSource Glyph="&#x1F5FA;" FontFamily="OpenSansRegular" Color="#FF6A88" Size="22"/>
+            </Tab.Icon>
+            <ShellContent
+                ContentTemplate="{DataTemplate local:MainPage}"
+                Route="MainPage"/>
+        </Tab>
+        <Tab Title="Thong tin">
+            <Tab.Icon>
+                <FontImageSource Glyph="&#x1F464;" FontFamily="OpenSansRegular" Color="#FF6A88" Size="22"/>
+            </Tab.Icon>
+            <ShellContent
+                ContentTemplate="{DataTemplate views:ProfilePage}"
+                Route="ProfilePage"/>
+        </Tab>
+    </TabBar>
 
 </Shell>
