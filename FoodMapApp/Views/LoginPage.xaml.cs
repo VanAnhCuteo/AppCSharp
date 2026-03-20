@@ -9,7 +9,22 @@ namespace FoodMapApp.Views
         public LoginPage()
         {
             InitializeComponent();
-            _authService = new AuthService(); // In a real app, use Dependency Injection
+            _authService = new AuthService();
+        }
+
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            // Set Vietnamese text from code-behind to avoid XAML encoding issues
+            LogoLabel.Text = "\U0001F354";
+            AppTitleLabel.Text = "FoodTour Bùi Viện";
+            WelcomeLabel.Text = "Chào mừng trở lại! Vui lòng đăng nhập.";
+            IdentifierLabel.Text = "Tên đăng nhập hoặc Email";
+            IdentifierEntry.Placeholder = "Nhập tên đăng nhập";
+            PasswordLabel.Text = "Mật khẩu";
+            LoginButton.Text = "ĐĂNG NHẬP";
+            NoAccountLabel.Text = "Chưa có tài khoản?";
+            RegisterNowLabel.Text = "Đăng ký ngay";
         }
 
         private async void OnLoginClicked(object sender, EventArgs e)
@@ -19,7 +34,7 @@ namespace FoodMapApp.Views
 
             if (string.IsNullOrEmpty(identifier) || string.IsNullOrEmpty(password))
             {
-                await DisplayAlert("Error", "Please enter both username/email and password.", "OK");
+                await DisplayAlert("Lỗi", "Vui lòng nhập tên đăng nhập và mật khẩu.", "OK");
                 return;
             }
 
@@ -29,12 +44,11 @@ namespace FoodMapApp.Views
 
             if (result.success)
             {
-                // Navigate to food tour intro page
-                await Shell.Current.GoToAsync("//FoodTourPage");
+                await Shell.Current.GoToAsync("//HomePage");
             }
             else
             {
-                await DisplayAlert("Login Failed", result.message, "OK");
+                await DisplayAlert("Đăng nhập thất bại", result.message, "OK");
             }
         }
 

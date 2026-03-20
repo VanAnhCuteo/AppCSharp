@@ -34,6 +34,14 @@
 
     <div id="map"></div>
 
+    <!-- Navigation Overlay (Google Maps Style) -->
+    <div id="nav-overlay" class="nav-overlay hidden">
+        <div class="nav-info">
+            <span id="nav-distance">0.0 km</span>
+        </div>
+        <button class="nav-cancel-btn" onclick="cancelNavigation()">Hủy chỉ dẫn</button>
+    </div>
+
     <button id="locate-btn" onclick="centerOnUser()" title="My Location">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -79,6 +87,11 @@
                     <svg class="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     <span id="sheet-time"></span>
                 </div>
+                <!-- Navigation Button -->
+                <button id="get-directions-btn" class="resto-btn" style="background: var(--pink-dark); width: 100%; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 14px; height: 50px;">
+                    <svg fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>
+                    Đến quán
+                </button>
             </div>
 
             <!-- Reviews Section -->
@@ -87,7 +100,7 @@
                 <div id="sheet-reviews-list"></div>
 
                 <div class="review-form">
-                    <textarea id="review-comment" class="review-input" placeholder="Share your experience..." autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                    <textarea id="review-comment" class="review-input" placeholder="Chia sẻ cảm nhận của bạn..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"></textarea>
                     <button id="submit-review-btn" class="resto-btn">Submit Review</button>
                 </div>
             </div>

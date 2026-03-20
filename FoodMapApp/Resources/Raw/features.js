@@ -38,7 +38,10 @@ function closeDetails() {
     sheet.style.transform = '';
 }
 
-let currentBasePoiId = null; // Store the POI ID (2nd column in DB)
+let currentBasePoiId = null;
+let currentDestCoords = null;
+let routingLayer = null;
+let navigationActive = false;
 
 function setSelectedLang(lang, el) {
     selectedLanguage = lang;
@@ -84,6 +87,7 @@ async function openDetails(poiId, lang = selectedLanguage) {
             let secondaryImages = (data.images || data.Images || []).map(img => img.trim());
 
             console.log(`Food ${poiId} details:`, data);
+            currentDestCoords = [data.latitude, data.longitude];
 
             // Use a Set to ensure all images are unique
             let imageSet = new Set();
@@ -282,4 +286,64 @@ function centerOnUser() {
     } else {
         alert("Waiting for GPS location...");
     }
+}
+
+const directionsBtn = document.getElementById('get-directions-btn');
+if (directionsBtn) {
+    directionsBtn.onclick = () => {
+        if (currentDestCoords && userMarker) {
+            const userCoords = userMarker.getLatLng();
+            startNavigation(userCoords.lat, userCoords.lng, currentDestCoords[0], currentDestCoords[1]);
+            closeDetails();
+        } else {
+            alert("?ang xác ??nh v? trí c?a b?n...");
+        }
+    };
+}
+
+async function startNavigation(slat, slon, dlat, dlon) {
+    if (routingLayer) map.removeLayer(routingLayer);
+
+    // OSRM expects [lon, lat]
+    const url = `https://router.project-osrm.org/route/v1/driving/${slon},${slat};${dlon},${dlat}?overview=full&geometries=geojson`;
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.code === 'Ok') {
+            const route = data.routes[0];
+            const distance = (route.distance / 1000).toFixed(1); // km
+
+            // Draw Route
+            routingLayer = L.geoJSON(route.geometry, {
+                style: {
+                    color: '#FB6F92',
+                    weight: 6,
+                    opacity: 0.8,
+                    lineJoin: 'round'
+                }
+            }).addTo(map);
+
+            // Fit bounds
+            map.fitBounds(routingLayer.getBounds(), { padding: [50, 50] });
+
+            // Update UI
+            document.getElementById('nav-distance').innerText = `${distance} km`;
+            document.getElementById('nav-overlay').classList.remove('hidden');
+            navigationActive = true;
+        }
+    } catch (e) {
+        console.error("Routing error", e);
+        alert("Không th? tìm ???ng ?i lúc này.");
+    }
+}
+
+function cancelNavigation() {
+    if (routingLayer) {
+        map.removeLayer(routingLayer);
+        routingLayer = null;
+    }
+    document.getElementById('nav-overlay').classList.add('hidden');
+    navigationActive = false;
 }

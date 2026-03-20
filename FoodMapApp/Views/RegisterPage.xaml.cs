@@ -12,6 +12,22 @@ namespace FoodMapApp.Views
             _authService = new AuthService();
         }
 
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            // Set Vietnamese text from code-behind to avoid XAML encoding issues
+            TitleLabel.Text = "Tham Gia FoodTour";
+            SubtitleLabel.Text = "Tạo tài khoản để khám phá ẩm thực Bùi Viện.";
+            UsernameLbl.Text = "Tên đăng nhập";
+            UsernameEntry.Placeholder = "Chọn tên đăng nhập";
+            EmailLbl.Text = "Địa chỉ Email";
+            PasswordLbl.Text = "Mật khẩu";
+            ConfirmPasswordLbl.Text = "Xác nhận mật khẩu";
+            RegisterButton.Text = "ĐĂNG KÝ";
+            HaveAccountLabel.Text = "Đã có tài khoản?";
+            LoginNowLabel.Text = "Đăng nhập";
+        }
+
         private async void OnRegisterClicked(object sender, EventArgs e)
         {
             string username = UsernameEntry.Text;
@@ -21,13 +37,13 @@ namespace FoodMapApp.Views
 
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
             {
-                await DisplayAlert("Error", "All fields are required.", "OK");
+                await DisplayAlert("Lỗi", "Vui lòng điền đầy đủ thông tin.", "OK");
                 return;
             }
 
             if (password != confirmPassword)
             {
-                await DisplayAlert("Error", "Passwords do not match.", "OK");
+                await DisplayAlert("Lỗi", "Mật khẩu xác nhận không khớp.", "OK");
                 return;
             }
 
@@ -37,12 +53,12 @@ namespace FoodMapApp.Views
 
             if (result.success)
             {
-                await DisplayAlert("Success", "Account created successfully! Welcome to Bùi Viện FoodTour.", "OK");
-                await Shell.Current.GoToAsync("//MainPage");
+                await DisplayAlert("Thành công", "Tài khoản đã tạo! Chào mừng đến FoodTour Bùi Viện.", "OK");
+                await Shell.Current.GoToAsync("//HomePage");
             }
             else
             {
-                await DisplayAlert("Registration Failed", result.message, "OK");
+                await DisplayAlert("Đăng ký thất bại", result.message, "OK");
             }
         }
 

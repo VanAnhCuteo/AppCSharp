@@ -88,3 +88,52 @@ body, html {
         width: 24px;
         height: 24px;
     }
+/* Navigation Overlay (Google Maps Style) */
+.nav-overlay {
+    position: absolute;
+    top: 85px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: 90%;
+    max-width: 400px;
+    background: rgba(45, 49, 66, 0.9);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+    .nav-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+        top: 60px;
+    }
+
+.nav-info {
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.nav-cancel-btn {
+    background: #FF4D4D;
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+    .nav-cancel-btn:active {
+        background: #D43F3F;
+    }
