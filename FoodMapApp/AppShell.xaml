@@ -16,6 +16,9 @@
                 <Setter Property="Shell.ForegroundColor" Value="White"/>
                 <Setter Property="Shell.TitleColor" Value="White"/>
                 <Setter Property="Shell.UnselectedColor" Value="#FFD0DC"/>
+                <Setter Property="Shell.TabBarBackgroundColor" Value="White"/>
+                <Setter Property="Shell.TabBarTitleColor" Value="#FF6A88"/>
+                <Setter Property="Shell.TabBarUnselectedColor" Value="#999"/>
             </Style>
         </ResourceDictionary>
     </Shell.Resources>

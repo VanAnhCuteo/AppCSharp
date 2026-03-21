@@ -19,8 +19,30 @@
                        BackgroundColor="White" HorizontalOptions="Center">
                     <Label Text="&#x1F464;" FontSize="50" HorizontalOptions="Center" VerticalOptions="Center"/>
                 </Frame>
-                <Label x:Name="ProfileUsernameLabel" TextColor="White" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center"/>
-                <Label x:Name="ProfileEmailLabel" Text="" TextColor="White" FontSize="13" Opacity="0.85" HorizontalOptions="Center"/>
+
+                <!-- Display Mode -->
+                <VerticalStackLayout x:Name="DisplayModeLayout" Spacing="5" HorizontalOptions="Center">
+                    <Label x:Name="ProfileUsernameLabel" TextColor="White" FontSize="20" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label x:Name="ProfileEmailLabel" TextColor="White" FontSize="13" Opacity="0.85" HorizontalOptions="Center"/>
+                    <Button x:Name="EditProfileButton" Text="Chỉnh sửa" Clicked="OnEditClicked" 
+                            BackgroundColor="#00000033" TextColor="White" FontSize="12" CornerRadius="15" HeightRequest="30" Padding="15,0"/>
+                </VerticalStackLayout>
+
+                <!-- Edit Mode -->
+                <VerticalStackLayout x:Name="EditModeLayout" Spacing="8" HorizontalOptions="Center" IsVisible="False" WidthRequest="250">
+                    <Entry x:Name="EditUsernameEntry" Placeholder="Tên người dùng" TextColor="White" PlaceholderColor="#DDD" HorizontalTextAlignment="Center" 
+                           IsTextPredictionEnabled="False" IsSpellCheckEnabled="False"/>
+                    <Entry x:Name="EditEmailEntry" Placeholder="Email" TextColor="White" PlaceholderColor="#DDD" Keyboard="Email" HorizontalTextAlignment="Center" 
+                           IsTextPredictionEnabled="False" IsSpellCheckEnabled="False"/>
+                    <Entry x:Name="EditPasswordEntry" Placeholder="Mật khẩu mới (để trống nếu không đổi)" IsPassword="True" TextColor="White" PlaceholderColor="#DDD" HorizontalTextAlignment="Center" 
+                           IsTextPredictionEnabled="False" IsSpellCheckEnabled="False"/>
+
+                    <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                        <Button Text="Lưu" Clicked="OnSaveClicked" BackgroundColor="White" TextColor="#FF6A88" CornerRadius="10" HeightRequest="35"/>
+                        <Button Text="Hủy" Clicked="OnCancelClicked" BackgroundColor="#00000033" TextColor="White" CornerRadius="10" HeightRequest="35"/>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+
                 <Frame BackgroundColor="#00000033" CornerRadius="12" Padding="10,4" HorizontalOptions="Center">
                     <Label x:Name="ProfileRoleLabel" TextColor="White" FontSize="12"/>
                 </Frame>
@@ -32,18 +54,18 @@
 
                 <Frame BackgroundColor="White" CornerRadius="16" Padding="16" HasShadow="True">
                     <Grid ColumnDefinitions="*,*,*">
-                        <VerticalStackLayout Grid.Column="0" HorizontalOptions="Center" Spacing="4">
+                        <VerticalStackLayout Grid.Column="0" HorizontalOptions="Center" VerticalOptions="Center" Spacing="4">
                             <Label x:Name="VisitCountLabel" Text="0" FontSize="22" FontAttributes="Bold" TextColor="#FF6A88" HorizontalOptions="Center"/>
                             <Label x:Name="VisitLabel" FontSize="12" TextColor="#888" HorizontalOptions="Center"/>
                         </VerticalStackLayout>
                         <BoxView Grid.Column="0" WidthRequest="1" BackgroundColor="#EEE" HorizontalOptions="End" VerticalOptions="Fill"/>
-                        <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="4">
+                        <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" VerticalOptions="Center" Spacing="4">
                             <Label x:Name="ReviewCountLabel" Text="0" FontSize="22" FontAttributes="Bold" TextColor="#FF6A88" HorizontalOptions="Center"/>
                             <Label x:Name="ReviewLabel" FontSize="12" TextColor="#888" HorizontalOptions="Center"/>
                         </VerticalStackLayout>
                         <BoxView Grid.Column="1" WidthRequest="1" BackgroundColor="#EEE" HorizontalOptions="End" VerticalOptions="Fill"/>
-                        <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center" Spacing="4">
-                            <Label Text="Bui Vien" FontSize="14" FontAttributes="Bold" TextColor="#FF6A88" HorizontalOptions="Center"/>
+                        <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center" VerticalOptions="Center" Spacing="4">
+                            <Label Text="Bui Vien" FontSize="18" FontAttributes="Bold" TextColor="#FF6A88" HorizontalOptions="Center"/>
                             <Label x:Name="AreaLabel" FontSize="12" TextColor="#888" HorizontalOptions="Center"/>
                         </VerticalStackLayout>
                     </Grid>

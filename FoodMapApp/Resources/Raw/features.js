@@ -185,7 +185,9 @@ let currentAudioGuide = null;
 let currentPoiDescription = ""; // Store current POI description for TTS
 let selectedLanguage = 'vi';
 
-let poiTimers = {};
+let poiAudioTimers = {};
+let poiHistoryTimers = {};
+let playedAudioPois = new Set();
 let lastGeofenceTime = 0;
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -216,38 +218,65 @@ function startGeofencing() {
 
 function processLocation(position) {
     const now = Date.now();
-    if (now - lastGeofenceTime < 3000) return;
+    if (now - lastGeofenceTime < 2000) return;
     lastGeofenceTime = now;
     const userLat = position.coords.latitude;
     const userLon = position.coords.longitude;
 
-    // Show/Update User Marker
     if (!userMarker) {
-        userMarker = L.marker([userLat, userLon], {
-            icon: blueLocationIcon,
-            zIndexOffset: 1000
-        }).addTo(map);
+        userMarker = L.marker([userLat, userLon], { icon: blueLocationIcon, zIndexOffset: 1000 }).addTo(map);
     } else {
         userMarker.setLatLng([userLat, userLon]);
     }
 
+    let poisInRange = allFoodsData.map(food => {
+        const dist = calculateDistance(userLat, userLon, food.latitude, food.longitude);
+        const range = food.range_meters || 50;
+        return { ...food, distance: dist, range: range };
+    }).filter(f => f.distance <= f.range);
+
+    let closestPoi = poisInRange.length > 0 ? poisInRange.sort((a, b) => a.distance - b.distance)[0] : null;
+
     allFoodsData.forEach(food => {
-        if (!visitedFoods.has(food.id)) {
-            const d = calculateDistance(userLat, userLon, food.latitude, food.longitude);
-            if (d <= 50) {
-                if (!poiTimers[food.id]) {
-                    poiTimers[food.id] = setTimeout(() => {
-                        visitedFoods.add(food.id);
-                        handleVisit(food.id);
-                        delete poiTimers[food.id];
-                    }, 8000);
-                }
-            } else if (poiTimers[food.id]) {
-                clearTimeout(poiTimers[food.id]);
-                delete poiTimers[food.id];
+        const isClosest = closestPoi && closestPoi.id === food.id;
+        if (isClosest) {
+            if (!playedAudioPois.has(food.id) && !poiAudioTimers[food.id]) {
+                poiAudioTimers[food.id] = setTimeout(() => {
+                    if (!playedAudioPois.has(food.id)) {
+                        playedAudioPois.add(food.id);
+                        triggerAutoAudio(food.id);
+                    }
+                    delete poiAudioTimers[food.id];
+                }, 5000);
             }
+            if (!visitedFoods.has(food.id) && !poiHistoryTimers[food.id]) {
+                poiHistoryTimers[food.id] = setTimeout(() => {
+                    visitedFoods.add(food.id);
+                    handleVisit(food.id);
+                    delete poiHistoryTimers[food.id];
+                }, 10000);
+            }
+        } else {
+            if (poiAudioTimers[food.id]) { clearTimeout(poiAudioTimers[food.id]); delete poiAudioTimers[food.id]; }
+            if (poiHistoryTimers[food.id]) { clearTimeout(poiHistoryTimers[food.id]); delete poiHistoryTimers[food.id]; }
         }
     });
+}
+
+async function triggerAutoAudio(poiId) {
+    try {
+        const guideRes = await fetch(`${platformApiBase}/${poiId}/guide?lang=${selectedLanguage}`);
+        if (guideRes.ok) {
+            const guide = await guideRes.json();
+            playAudioGuide(`${guide.title}. ${guide.description || ''}`, guide.language || selectedLanguage);
+        } else {
+            const detailsRes = await fetch(`${platformApiBase}/${poiId}?lang=${selectedLanguage}`);
+            if (detailsRes.ok) {
+                const data = await detailsRes.json();
+                if (data.description) playAudioGuide(`${data.name}. ${data.description}`, selectedLanguage);
+            }
+        }
+    } catch (e) { console.error("Auto-audio error", e); }
 }
 
 async function handleVisit(poiId) {
@@ -315,15 +344,29 @@ async function startNavigation(slat, slon, dlat, dlon) {
             const route = data.routes[0];
             const distance = (route.distance / 1000).toFixed(1); // km
 
-            // Draw Route
-            routingLayer = L.geoJSON(route.geometry, {
+            // Draw Main Route
+            const mainRouteLayer = L.geoJSON(route.geometry, {
                 style: {
                     color: '#FB6F92',
                     weight: 6,
                     opacity: 0.8,
                     lineJoin: 'round'
                 }
-            }).addTo(map);
+            });
+
+            // Add Walking Segment (Dashed Line from route end to target)
+            const lastPoint = route.geometry.coordinates[route.geometry.coordinates.length - 1];
+            const walkingLine = L.polyline([
+                [lastPoint[1], lastPoint[0]],
+                [dlat, dlon]
+            ], {
+                color: '#FB6F92',
+                weight: 4,
+                opacity: 0.6,
+                dashArray: '5, 10'
+            });
+
+            routingLayer = L.featureGroup([mainRouteLayer, walkingLine]).addTo(map);
 
             // Fit bounds
             map.fitBounds(routingLayer.getBounds(), { padding: [50, 50] });

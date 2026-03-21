@@ -58,8 +58,32 @@ namespace FoodMapApp.Services
         {
             Preferences.Default.Set("user_id", response.user_id);
             Preferences.Default.Set("username", response.username);
+            Preferences.Default.Set("email", response.email); // Save email
             Preferences.Default.Set("role", response.role);
             Preferences.Default.Set("is_logged_in", true);
+        }
+
+        public async Task<bool> UpdateProfileAsync(int userId, string username, string email, string? password = null)
+        {
+            try
+            {
+                var request = new { user_id = userId, username, email, password };
+                var response = await _httpClient.PutAsJsonAsync($"{BaseUrl}/update", request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // Update local session
+                    Preferences.Default.Set("username", username);
+                    Preferences.Default.Set("email", email);
+                    return true;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Update Profile error: {ex.Message}");
+                return false;
+            }
         }
 
         public void Logout()
@@ -70,6 +94,7 @@ namespace FoodMapApp.Services
         public bool IsLoggedIn => Preferences.Default.Get("is_logged_in", false);
         public int UserId => Preferences.Default.Get("user_id", 0);
         public string Username => Preferences.Default.Get("username", string.Empty);
+        public string Email => Preferences.Default.Get("email", string.Empty);
 
         // Static accessors for use without an instance
         public static string CurrentUsername => Preferences.Default.Get("username", string.Empty);
@@ -82,6 +107,7 @@ namespace FoodMapApp.Services
         public string message { get; set; }
         public int user_id { get; set; }
         public string username { get; set; }
+        public string email { get; set; } // Add email
         public string role { get; set; }
     }
 }

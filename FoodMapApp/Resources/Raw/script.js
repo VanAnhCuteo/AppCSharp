@@ -11,10 +11,14 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 }).addTo(map);
 
 // Main Entry Point from C#
-function loadFoods(foods) {
-    console.log("Loading foods into map:", foods);
+async function loadFoods(foods, userId = 0) {
+    console.log("Loading foods into map:", foods, "User:", userId);
     const markers = [];
     allFoodsData = foods;
+
+    if (userId > 0) {
+        await syncVisitedHistory(userId);
+    }
 
     const markersGroup = L.markerClusterGroup({
         chunkedLoading: true,
@@ -93,4 +97,21 @@ function loadFoods(foods) {
     }
 
     startGeofencing();
+}
+
+async function syncVisitedHistory(userId) {
+    try {
+        const res = await fetch(`${platformApiBase}/history/${userId}`);
+        if (res.ok) {
+            const history = await res.json();
+            console.log("Synced history from server:", history);
+            if (Array.isArray(history)) {
+                history.forEach(item => {
+                    if (item.id) visitedFoods.add(item.id);
+                });
+            }
+        }
+    } catch (e) {
+        console.error("History sync error:", e);
+    }
 }

@@ -21,7 +21,10 @@ public partial class MainPage : ContentPage
         {
             _isMapLoaded = true;
             if (_foodsJson != null)
-                mapView.EvaluateJavaScriptAsync($"loadFoods({_foodsJson});");
+            {
+                int userId = Preferences.Default.Get("user_id", 0);
+                mapView.EvaluateJavaScriptAsync($"loadFoods({_foodsJson}, {userId});");
+            }
         };
 
         mapView.Source = "map.html";
@@ -88,7 +91,10 @@ public partial class MainPage : ContentPage
             _foodsJson = await client.GetStringAsync($"{BackendUrl}?lang={lang}");
 
             if (_isMapLoaded)
-                await mapView.EvaluateJavaScriptAsync($"loadFoods({_foodsJson});");
+            {
+                int userId = Preferences.Default.Get("user_id", 0);
+                await mapView.EvaluateJavaScriptAsync($"loadFoods({_foodsJson}, {userId});");
+            }
         }
         catch (Exception ex)
         {

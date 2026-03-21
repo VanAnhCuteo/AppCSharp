@@ -89,7 +89,7 @@ namespace FoodMapAPI.Controllers
                 {
                     await conn.OpenAsync();
 
-                    string query = "SELECT user_id, username, role FROM users WHERE (username = @id OR email = @id) AND password = @pass LIMIT 1";
+                    string query = "SELECT user_id, username, role, email FROM users WHERE (username = @id OR email = @id) AND password = @pass LIMIT 1";
                     using (MySqlCommand cmd = new MySqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@id", request.identifier);
@@ -105,7 +105,8 @@ namespace FoodMapAPI.Controllers
                                     message = "Login successful.",
                                     user_id = Convert.ToInt32(reader["user_id"]),
                                     username = reader["username"].ToString(),
-                                    role = reader["role"].ToString()
+                                    role = reader["role"].ToString(),
+                                    email = reader["email"].ToString()
                                 });
                             }
                             else
@@ -119,6 +120,69 @@ namespace FoodMapAPI.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new AuthResponse { success = false, message = $"Database error: {ex.Message}" });
+            }
+        }
+
+        [HttpPut("update")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+        {
+            if (request.user_id <= 0 || string.IsNullOrEmpty(request.username) || string.IsNullOrEmpty(request.email))
+            {
+                return BadRequest(new { success = false, message = "User ID, username, and email are required." });
+            }
+
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+
+                    // Check if new username or email already exists for OTHER users
+                    string checkQuery = "SELECT COUNT(*) FROM users WHERE (username = @username OR email = @email) AND user_id != @userId";
+                    using (MySqlCommand checkCmd = new MySqlCommand(checkQuery, conn))
+                    {
+                        checkCmd.Parameters.AddWithValue("@username", request.username);
+                        checkCmd.Parameters.AddWithValue("@email", request.email);
+                        checkCmd.Parameters.AddWithValue("@userId", request.user_id);
+                        int count = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                        if (count > 0)
+                        {
+                            return BadRequest(new { success = false, message = "Username or email already exists." });
+                        }
+                    }
+
+                    // Update user
+                    string updateQuery = "UPDATE users SET username = @username, email = @email" +
+                                       (!string.IsNullOrEmpty(request.password) ? ", password = @password" : "") +
+                                       " WHERE user_id = @userId";
+
+                    using (MySqlCommand updateCmd = new MySqlCommand(updateQuery, conn))
+                    {
+                        updateCmd.Parameters.AddWithValue("@username", request.username);
+                        updateCmd.Parameters.AddWithValue("@email", request.email);
+                        updateCmd.Parameters.AddWithValue("@userId", request.user_id);
+                        if (!string.IsNullOrEmpty(request.password))
+                        {
+                            updateCmd.Parameters.AddWithValue("@password", request.password);
+                        }
+
+                        int affectedRows = await updateCmd.ExecuteNonQueryAsync();
+                        if (affectedRows > 0)
+                        {
+                            return Ok(new { success = true, message = "Profile updated successfully.", username = request.username, email = request.email });
+                        }
+                        else
+                        {
+                            return NotFound(new { success = false, message = "User not found." });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = $"Database error: {ex.Message}" });
             }
         }
     }

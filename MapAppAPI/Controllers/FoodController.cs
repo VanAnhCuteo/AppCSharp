@@ -50,7 +50,8 @@ namespace FoodMapAPI.Controllers
                                     latitude = reader["latitude"] != DBNull.Value ? Convert.ToDouble(reader["latitude"]) : 0.0,
                                     longitude = reader["longitude"] != DBNull.Value ? Convert.ToDouble(reader["longitude"]) : 0.0,
                                     open_time = reader["open_time"].ToString() ?? "",
-                                    image_url = reader["image_url"] != DBNull.Value ? reader["image_url"].ToString() : ""
+                                    image_url = reader["image_url"] != DBNull.Value ? reader["image_url"].ToString() : "",
+                                    range_meters = reader["range_meters"] != DBNull.Value ? Convert.ToInt32(reader["range_meters"]) : 50
                                 };
 
                                 if (lang != "vi")
@@ -108,6 +109,7 @@ namespace FoodMapAPI.Controllers
                                 details.longitude = reader["longitude"] != DBNull.Value ? Convert.ToDouble(reader["longitude"]) : 0.0;
                                 details.open_time = reader["open_time"].ToString() ?? "";
                                 details.image_url = reader["image_url"] != DBNull.Value ? reader["image_url"].ToString() : "";
+                                details.range_meters = reader["range_meters"] != DBNull.Value ? Convert.ToInt32(reader["range_meters"]) : 50;
                             }
                             else
                             {
@@ -123,8 +125,8 @@ namespace FoodMapAPI.Controllers
                         details.address = await _translator.TranslateAsync(details.address, lang);
                     }
 
-                    // 2. Get visitor count
-                    using (MySqlCommand cmd = new MySqlCommand("SELECT COUNT(*) FROM poi_visits WHERE poi_id = @id", conn))
+                    // 2. Get unique visitor count
+                    using (MySqlCommand cmd = new MySqlCommand("SELECT COUNT(DISTINCT user_id) FROM poi_visits WHERE poi_id = @id", conn))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
                         details.visitor_count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
@@ -234,7 +236,11 @@ namespace FoodMapAPI.Controllers
                 using (MySqlConnection conn = new MySqlConnection(connStr))
                 {
                     await conn.OpenAsync();
-                    using (MySqlCommand cmd = new MySqlCommand("INSERT INTO poi_visits (poi_id, user_id) VALUES (@poi, @user)", conn))
+                    // Only insert if not already visited by this user
+                    string query = @"INSERT INTO poi_visits (poi_id, user_id) 
+                                   SELECT @poi, @user 
+                                   WHERE NOT EXISTS (SELECT 1 FROM poi_visits WHERE poi_id = @poi AND user_id = @user)";
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@poi", id);
                         cmd.Parameters.AddWithValue("@user", visitReq != null && visitReq.user_id > 0 ? visitReq.user_id : 1);
@@ -299,6 +305,88 @@ namespace FoodMapAPI.Controllers
                 return Ok(guide);
             }
             return NotFound();
+        }
+
+        [HttpGet("history/{userId}")]
+        public async Task<IActionResult> GetVisitHistory(int userId)
+        {
+            List<object> history = new List<object>();
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+                    // Join poi_visits with pois to get name and address
+                    string query = @"SELECT p.poi_id, p.name, p.address 
+                                   FROM poi_visits v 
+                                   JOIN pois p ON v.poi_id = p.poi_id 
+                                   WHERE v.user_id = @userId 
+                                   ORDER BY v.visit_date DESC";
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@userId", userId);
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                history.Add(new
+                                {
+                                    id = Convert.ToInt32(reader["poi_id"]),
+                                    name = reader["name"].ToString(),
+                                    address = reader["address"].ToString()
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+
+            return Ok(history);
+        }
+
+        [HttpGet("reviews/user/{userId}")]
+        public async Task<IActionResult> GetUserReviews(int userId)
+        {
+            List<Review> reviews = new List<Review>();
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+                    using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM reviews WHERE user_id = @user ORDER BY created_at DESC", conn))
+                    {
+                        cmd.Parameters.AddWithValue("@user", userId);
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                reviews.Add(new Review
+                                {
+                                    id = Convert.ToInt32(reader["review_id"]),
+                                    poi_id = Convert.ToInt32(reader["poi_id"]),
+                                    user_id = Convert.ToInt32(reader["user_id"]),
+                                    rating = Convert.ToInt32(reader["rating"]),
+                                    comment = reader["comment"].ToString() ?? "",
+                                    created_at = reader["created_at"]?.ToString()
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            return Ok(reviews);
         }
     }
 }
