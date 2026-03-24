@@ -43,7 +43,7 @@ let currentDestCoords = null;
 let routingLayer = null;
 let navigationActive = false;
 
-function setSelectedLang(lang, el) {
+async function setSelectedLang(lang, el) {
     selectedLanguage = lang;
     document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
     el.classList.add('active');
@@ -51,9 +51,10 @@ function setSelectedLang(lang, el) {
     // Request C# to reload markers for this language
     window.location.href = `app-request-reload://markers?lang=${lang}`;
 
-    // Reload current sheet details if open
+    // Reload current sheet details if open and play audio
     if (currentBasePoiId) {
-        openDetails(currentBasePoiId, lang);
+        await openDetails(currentBasePoiId, lang);
+        playCurrentAudio();
     }
 }
 
@@ -83,7 +84,13 @@ async function openDetails(poiId, lang = selectedLanguage) {
 
             const imgContainer = document.getElementById('sheet-images');
             imgContainer.innerHTML = ''; // Clear previous images
-            const mainImg = (data.image_url || data.imageUrl || "").trim();
+            const rawImgUrl = data.image_url || data.imageUrl || ""; 
+            let parsedImages = [];
+            if (typeof parseAllImages === 'function') {
+                parsedImages = parseAllImages(rawImgUrl);
+            } else {
+                parsedImages = [rawImgUrl];
+            }
             let secondaryImages = (data.images || data.Images || []).map(img => img.trim());
 
             console.log(`Food ${poiId} details:`, data);
@@ -91,7 +98,7 @@ async function openDetails(poiId, lang = selectedLanguage) {
 
             // Use a Set to ensure all images are unique
             let imageSet = new Set();
-            if (mainImg) imageSet.add(mainImg);
+            parsedImages.forEach(img => { if (img) imageSet.add(img); });
             secondaryImages.forEach(img => {
                 if (img) imageSet.add(img);
             });
@@ -325,7 +332,7 @@ if (directionsBtn) {
             startNavigation(userCoords.lat, userCoords.lng, currentDestCoords[0], currentDestCoords[1]);
             closeDetails();
         } else {
-            alert("?ang xác ??nh v? trí c?a b?n...");
+            alert("?ang xï¿½c ??nh v? trï¿½ c?a b?n...");
         }
     };
 }
@@ -378,7 +385,7 @@ async function startNavigation(slat, slon, dlat, dlon) {
         }
     } catch (e) {
         console.error("Routing error", e);
-        alert("Không th? tìm ???ng ?i lúc này.");
+        alert("Khï¿½ng th? tï¿½m ???ng ?i lï¿½c nï¿½y.");
     }
 }
 
@@ -390,3 +397,4 @@ function cancelNavigation() {
     document.getElementById('nav-overlay').classList.add('hidden');
     navigationActive = false;
 }
+

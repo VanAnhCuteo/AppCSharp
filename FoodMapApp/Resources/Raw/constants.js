@@ -5,8 +5,8 @@ let currentPoiId = null;
 let userMarker = null; // To store the user's location marker
 let mapMarkers = [];
 let markersGroup = null;
-// Using 127.0.0.1 for Android via ADB Reverse (tcp:5000 tcp:5000)
-const backendIp = "127.0.0.1"; 
+// Using Local Wi-Fi IP to support Physical Devices
+const backendIp = "172.20.10.3"; 
 const platformApiBase = window.navigator.userAgent.includes("Android") ? `http://${backendIp}:5000/api/Food` : "http://localhost:5000/api/Food";
 
 // Icons & SVGs
@@ -26,7 +26,7 @@ const markerSvg = `
 
 const pinkIcon = L.divIcon({
     className: 'custom-pink-marker',
-    html: '<div class="marker-pulse"></div>' + markerSvg,
+    html: '<div class="marker-inner"><div class="marker-pulse"></div>' + markerSvg + '</div>',
     iconSize: [46, 52],
     iconAnchor: [23, 50],
     popupAnchor: [0, -46]
@@ -46,9 +46,47 @@ const iconCamera = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 function handleImageError(el) {
     console.error('Failed to load image:', el.src);
     el.onerror = null;
-    el.src = ""; // Clear src to stop further attempts
-    const wrapper = el.parentElement;
-    if (wrapper) {
-        wrapper.innerHTML = `<div class="resto-placeholder">${iconCamera}</div>`;
+    
+    if (el.classList.contains('resto-img')) {
+        const wrapper = el.parentElement;
+        if (wrapper) {
+            wrapper.innerHTML = `<div class="resto-placeholder">${iconCamera}</div>`;
+        }
+    } else {
+        // For array sheets or multi-galleries, just hide the broken image
+        // instead of nuking the entire parent container which holds other valid images
+        el.style.display = 'none';
     }
+}
+
+function parseFirstImage(raw) {
+    if (!raw || typeof raw !== 'string') return "";
+    raw = raw.trim();
+    if (raw.startsWith('[')) {
+        try {
+            const arr = JSON.parse(raw);
+            if (arr && arr.length > 0) return arr[0];
+        } catch(e) {}
+    }
+    const parts = raw.split(/[,;]/);
+    if (parts.length > 0) {
+        return parts[0].replace(/['"\[\]]+/g, '').trim();
+    }
+    return raw;
+}
+
+function parseAllImages(raw) {
+    if (!raw || typeof raw !== 'string') return [];
+    raw = raw.trim();
+    if (raw.startsWith('[')) {
+        try {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) return arr.filter(url => url && url.toString().trim() !== '');
+        } catch(e) {}
+    }
+    const parts = raw.split(/[,;]/);
+    if (parts.length > 0) {
+        return parts.map(p => p.replace(/['"\[\]]+/g, '').trim()).filter(url => url !== '');
+    }
+    return [];
 }

@@ -1,184 +1,219 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:FoodMapApp.Views"
              x:Class="FoodMapApp.Views.HomePage"
              NavigationPage.HasNavigationBar="False"
-             BackgroundColor="#1A1A2E">
+             BackgroundColor="#FFF5F7">
 
     <Grid RowDefinitions="Auto,*">
-        <Grid.GestureRecognizers>
-            <TapGestureRecognizer Tapped="OnBackgroundTapped" />
-        </Grid.GestureRecognizers>
 
-        <!-- Header -->
-        <Grid Grid.Row="0" Padding="20,52,20,20">
+        <!-- ── HEADER ── -->
+        <Grid Grid.Row="0" Padding="0,0,0,24">
             <Grid.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop Color="#FF6A88" Offset="0.0" />
-                    <GradientStop Color="#FFAD9F" Offset="1.0" />
+                    <GradientStop Color="#FF6A88" Offset="0.0"/>
+                    <GradientStop Color="#FF8C69" Offset="0.6"/>
+                    <GradientStop Color="#FFAD9F" Offset="1.0"/>
                 </LinearGradientBrush>
             </Grid.Background>
-            <VerticalStackLayout Spacing="14">
-                <HorizontalStackLayout>
-                    <VerticalStackLayout HorizontalOptions="StartAndExpand">
-                        <Label x:Name="GreetingLabel" TextColor="#FFE8EF" FontSize="13" Opacity="0.9"/>
-                        <Label x:Name="UsernameLabel" TextColor="White" FontSize="24" FontAttributes="Bold"/>
-                    </VerticalStackLayout>
-                    <Frame WidthRequest="42" HeightRequest="42" CornerRadius="21" Padding="0"
-                           BackgroundColor="#33FFFFFF" HasShadow="False" VerticalOptions="Center">
-                        <Label Text="📍" FontSize="22" HorizontalOptions="Center" VerticalOptions="Center"/>
-                    </Frame>
-                </HorizontalStackLayout>
 
-                <!-- Search Bar -->
-                <Frame BackgroundColor="#22FFFFFF" CornerRadius="18" Padding="14,0"
-                       HeightRequest="48" HasShadow="False">
-                    <Grid ColumnDefinitions="Auto,*">
-                        <Label Grid.Column="0" Text="🔍" FontSize="16"
-                               VerticalOptions="Center" Margin="0,0,10,0"/>
+            <!-- Decorative circle -->
+            <Ellipse WidthRequest="200" HeightRequest="200"
+                     HorizontalOptions="End" VerticalOptions="Start"
+                     Margin="0,-80,-40,0" Opacity="0.12">
+                <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
+            </Ellipse>
+
+            <VerticalStackLayout Padding="24,52,24,0" Spacing="20">
+
+                <!-- Greeting row -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout Grid.Column="0" Spacing="2">
+                        <Label x:Name="GreetingLabel" FontSize="14" TextColor="White" Opacity="0.85"/>
+                        <Label x:Name="UsernameLabel" FontSize="26" FontAttributes="Bold"
+                               TextColor="White" CharacterSpacing="0.5"/>
+                    </VerticalStackLayout>
+
+                    <!-- Location badge -->
+                    <Border Grid.Column="1" WidthRequest="44" HeightRequest="44"
+                            StrokeThickness="0" VerticalOptions="Center">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="22"/></Border.StrokeShape>
+                        <Border.Background>
+                            <SolidColorBrush Color="#33FFFFFF"/>
+                        </Border.Background>
+                        <Path Data="M12,2 C8.13,2 5,5.13 5,9 C5,14.25 12,22 12,22 C12,22 19,14.25 19,9 C19,5.13 15.87,2 12,2 M12,11.5 C10.62,11.5 9.5,10.38 9.5,9 C9.5,7.62 10.62,6.5 12,6.5 C13.38,6.5 14.5,7.62 14.5,9 C14.5,10.38 13.38,11.5 12,11.5 Z"
+                              Fill="White" Aspect="Uniform" WidthRequest="18" HeightRequest="18"
+                              HorizontalOptions="Center" VerticalOptions="Center"/>
+                    </Border>
+                </Grid>
+
+                <!-- Search bar (frosted glass) -->
+                <Border StrokeThickness="0" Padding="0" HeightRequest="52">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="26"/></Border.StrokeShape>
+                    <Border.Background>
+                        <SolidColorBrush Color="#22FFFFFF"/>
+                    </Border.Background>
+                    <Border.Shadow>
+                        <Shadow Brush="#FF6A88" Offset="0,4" Opacity="0.1" Radius="8"/>
+                    </Border.Shadow>
+                    <Grid ColumnDefinitions="Auto,*,Auto" Padding="16,0">
+                        <Path Grid.Column="0" Data="M15.5,14 L14.71,14 L14.43,13.73 C15.41,12.59 16,11.11 16,9.5 C16,5.91 13.09,3 9.5,3 C5.91,3 3,5.91 3,9.5 C3,13.09 5.91,16 9.5,16 C11.11,16 12.59,15.41 13.73,14.43 L14,14.71 L14,15.5 L19,20.49 L20.49,19 L15.5,14 Z M9.5,14 C7.01,14 5,11.99 5,9.5 C5,7.01 7.01,5 9.5,5 C11.99,5 14,7.01 14,9.5 C14,11.99 11.99,14 9.5,14 Z"
+                              Fill="White" Aspect="Uniform" WidthRequest="18" HeightRequest="18"
+                              VerticalOptions="Center" Margin="0,0,12,0"/>
                         <Entry Grid.Column="1" x:Name="SearchEntry"
                                TextChanged="OnSearchTextChanged"
                                Placeholder="Tìm quán, địa chỉ..."
-                               PlaceholderColor="#CCFFFFFF" TextColor="White"
+                               PlaceholderColor="#D9FFFFFF" TextColor="White"
                                BackgroundColor="Transparent" VerticalOptions="Center"
-                               IsTextPredictionEnabled="False"
-                               IsSpellCheckEnabled="False"/>
+                               IsTextPredictionEnabled="False" IsSpellCheckEnabled="False"/>
                     </Grid>
-                </Frame>
+                </Border>
             </VerticalStackLayout>
         </Grid>
 
-        <!-- Body -->
-        <ScrollView Grid.Row="1">
-            <ScrollView.GestureRecognizers>
-                <TapGestureRecognizer Tapped="OnBackgroundTapped" />
-            </ScrollView.GestureRecognizers>
-            <VerticalStackLayout Spacing="24" Padding="0,20,0,20">
+        <!-- ── BODY ── -->
+        <ScrollView Grid.Row="1" VerticalScrollBarVisibility="Never">
 
-                <!-- Categories -->
-                <VerticalStackLayout Spacing="12" Padding="20,0">
-                    <Label x:Name="CategoryTitleLabel" FontSize="17" FontAttributes="Bold"
-                           TextColor="White"/>
-                    <CollectionView x:Name="CategoriesCollection" HeightRequest="90"
-                                    ItemsLayout="HorizontalList">
+            <VerticalStackLayout Spacing="32" Padding="0,24,0,32">
+
+                <!-- ── CATEGORIES ── -->
+                <VerticalStackLayout Spacing="16" Padding="24,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Grid.Column="0" x:Name="CategoryTitleLabel" Text="Khám Phá"
+                               FontSize="19" FontAttributes="Bold" TextColor="#323242"/>
+                    </Grid>
+
+                    <CollectionView x:Name="CategoriesCollection" VerticalScrollBarVisibility="Never">
+                        <CollectionView.ItemsLayout>
+                            <GridItemsLayout Orientation="Vertical" Span="3" VerticalItemSpacing="20" HorizontalItemSpacing="10" />
+                        </CollectionView.ItemsLayout>
                         <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <VerticalStackLayout HorizontalOptions="Center" Spacing="6"
-                                                     Padding="6,0" WidthRequest="78">
+                            <DataTemplate x:DataType="viewmodels:CategoryItem">
+                                <VerticalStackLayout HorizontalOptions="Center" Spacing="8">
                                     <VerticalStackLayout.GestureRecognizers>
-                                        <TapGestureRecognizer Tapped="OnCategoryTapped" CommandParameter="{Binding .}"/>
+                                        <TapGestureRecognizer Tapped="OnCategoryTapped"
+                                                              CommandParameter="{Binding .}"/>
                                     </VerticalStackLayout.GestureRecognizers>
-                                    <Frame WidthRequest="58" HeightRequest="58" CornerRadius="18"
-                                           Padding="0" BackgroundColor="{Binding BackgroundColor}"
-                                           HasShadow="False" HorizontalOptions="Center">
-                                        <Label Text="{Binding Icon}" FontSize="26"
-                                               HorizontalOptions="Center" VerticalOptions="Center"/>
-                                    </Frame>
-                                    <Label Text="{Binding category_name}" FontSize="11"
-                                           HorizontalOptions="Center" TextColor="#CCFFFFFF"
-                                           LineBreakMode="TailTruncation"/>
+
+                                    <!-- Image Circle -->
+                                    <Border WidthRequest="76" HeightRequest="76" Padding="0"
+                                            BackgroundColor="{Binding BackgroundColor}"
+                                            StrokeThickness="0" HorizontalOptions="Center">
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="38"/></Border.StrokeShape>
+                                        <Image Source="{Binding ImageUrl}" Aspect="AspectFill" />
+                                    </Border>
+                                    <Label Text="{Binding category_name}" FontSize="14" TextColor="#323242"
+                                           FontAttributes="Bold" HorizontalOptions="Center"
+                                           HorizontalTextAlignment="Center"/>
                                 </VerticalStackLayout>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
                 </VerticalStackLayout>
 
-                <!-- Top Restaurants -->
-                <VerticalStackLayout Spacing="12">
-                    <HorizontalStackLayout Padding="20,0">
-                        <Label x:Name="TopRestaurantLabel" FontSize="17" FontAttributes="Bold"
-                               TextColor="White" HorizontalOptions="StartAndExpand"/>
-                        <Label x:Name="SeeAllLabel" FontSize="13" TextColor="#FF6A88"
-                               VerticalOptions="Center" FontAttributes="Bold"/>
-                    </HorizontalStackLayout>
+                <!-- ── TOP RESTAURANTS ── -->
+                <VerticalStackLayout Spacing="16">
+                    <Grid ColumnDefinitions="*,Auto" Padding="24,0">
+                        <Label Grid.Column="0" x:Name="TopRestaurantLabel" Text="Quán nổi bật"
+                               FontSize="19" FontAttributes="Bold" TextColor="#323242"/>
+                        <Label Grid.Column="1" x:Name="SeeAllLabel" Text="Tất cả"
+                               FontSize="13" TextColor="#FF6A88"
+                               FontAttributes="Bold" VerticalOptions="Center"/>
+                    </Grid>
 
-                    <CollectionView x:Name="RestaurantsCollection" HeightRequest="210"
-                                    ItemsLayout="HorizontalList">
+                    <CollectionView x:Name="RestaurantsCollection" HeightRequest="240"
+                                    ItemsLayout="HorizontalList" Margin="10,0" HorizontalScrollBarVisibility="Never">
                         <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Frame WidthRequest="165" HeightRequest="195" CornerRadius="20"
-                                       Padding="0" Margin="4,5,4,5" HasShadow="False"
-                                       BackgroundColor="#252540">
-                                    <Grid RowDefinitions="115,*">
-                                        <Frame Grid.Row="0" CornerRadius="20" Padding="0"
-                                               IsClippedToBounds="True" BackgroundColor="#3A2A40">
-                                            <Grid>
-                                                <Label Text="🍜" FontSize="52"
-                                                       HorizontalOptions="Center"
-                                                       VerticalOptions="Center"/>
-                                                <BoxView>
-                                                    <BoxView.Background>
-                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                            <GradientStop Color="#00000000" Offset="0.4"/>
-                                                            <GradientStop Color="#AA1A1A2E" Offset="1.0"/>
-                                                        </LinearGradientBrush>
-                                                    </BoxView.Background>
-                                                </BoxView>
-                                            </Grid>
-                                        </Frame>
-                                        <VerticalStackLayout Grid.Row="1" Padding="12,8" Spacing="4">
-                                            <Label Text="{Binding name}" FontSize="13"
-                                                   FontAttributes="Bold" LineBreakMode="TailTruncation"
-                                                   TextColor="White"/>
+                            <DataTemplate x:DataType="viewmodels:FoodItem">
+                                <Border WidthRequest="195" HeightRequest="225"
+                                        Padding="0" Margin="8,5" StrokeThickness="0"
+                                        BackgroundColor="White">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="28"/></Border.StrokeShape>
+                                    <Border.Shadow>
+                                        <Shadow Brush="#FF6A88" Offset="0,8" Opacity="0.12" Radius="16"/>
+                                    </Border.Shadow>
+
+                                    <Grid RowDefinitions="130,*">
+                                        <!-- Real Restaurant Image from Database -->
+                                        <Border Grid.Row="0" Padding="0" StrokeThickness="0" BackgroundColor="#FFF5F7">
+                                            <Border.StrokeShape><RoundRectangle CornerRadius="28"/></Border.StrokeShape>
+                                            
+                                            <!-- We use AspectFill so it looks premium -->
+                                            <Image Source="{Binding first_image}" Aspect="AspectFill" 
+                                                   WidthRequest="195" HeightRequest="130"
+                                                   HorizontalOptions="Fill" VerticalOptions="Fill" />
+                                            
+                                            <!-- Fallback vector if image_url is missing (stacked behind but visible if image fails) -->
+                                            <Path Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 M12,20 C7.58,20 4,16.42 4,12 C4,7.58 7.58,4 12,4 C16.42,4 20,7.58 20,12 C20,16.42 16.42,20 12,20 M12,6 C8.69,6 6,8.69 6,12 C6,15.31 8.69,18 12,18 C15.31,18 18,15.31 18,12 C18,8.69 15.31,6 12,6 Z"
+                                                  Fill="#FFAD9F" Aspect="Uniform" WidthRequest="40" HeightRequest="40"
+                                                  HorizontalOptions="Center" VerticalOptions="Center" ZIndex="-1"/>
+                                        </Border>
+
+                                        <!-- Info area -->
+                                        <VerticalStackLayout Grid.Row="1" Padding="14,10" Spacing="4">
+                                            <Label Text="{Binding name}" FontSize="14"
+                                                   FontAttributes="Bold" TextColor="#323242"
+                                                   LineBreakMode="TailTruncation"/>
                                             <HorizontalStackLayout Spacing="4">
-                                                <Label Text="⭐" FontSize="11"/>
-                                                <Label Text="4.5" FontSize="11" TextColor="#FFB400"/>
-                                                <Label Text=" · Gần đây" FontSize="11" TextColor="#9090AA"/>
+                                                <!-- Small Star Vector -->
+                                                <Path Data="M12,17.27 L18.18,21 L16.54,13.97 L22,9.24 L14.81,8.63 L12,2 L9.19,8.63 L2,9.24 L7.46,13.97 L5.82,21 L12,17.27 Z"
+                                                      Fill="#FFB400" Aspect="Uniform" WidthRequest="12" HeightRequest="12" VerticalOptions="Center"/>
+                                                <Label Text="4.8" FontSize="11" TextColor="#323242"
+                                                       FontAttributes="Bold" VerticalOptions="Center"/>
+                                                <Label Text="· Gần đây" FontSize="11" TextColor="#A1A1B5" VerticalOptions="Center"/>
                                             </HorizontalStackLayout>
+                                            <!-- Explore chip -->
+                                            <Border BackgroundColor="#FFF0F3" Padding="12,6"
+                                                    StrokeThickness="0" Margin="0,6,0,0"
+                                                    HorizontalOptions="Start">
+                                                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer Tapped="OnExploreTapped" CommandParameter="{Binding .}"/>
+                                                </Border.GestureRecognizers>
+                                                <Label Text="Chi tiết ›" FontSize="10"
+                                                       TextColor="#FF6A88" FontAttributes="Bold"/>
+                                            </Border>
                                         </VerticalStackLayout>
                                     </Grid>
-                                </Frame>
+                                </Border>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
                     </CollectionView>
                 </VerticalStackLayout>
 
-                <!-- No Results -->
+                <!-- ── NO RESULTS ── -->
                 <Label x:Name="NoResultsLabel"
-                       Text="Không tìm thấy quán phù hợp 😢"
-                       FontSize="15" TextColor="#9090AA"
+                       Text="Không tìm thấy quán phù hợp"
+                       FontSize="15" TextColor="#A1A1B5"
                        HorizontalOptions="Center" Padding="0,10"
                        IsVisible="False"/>
 
-                <!-- Events -->
-                <VerticalStackLayout Spacing="12" Padding="20,0">
-                    <Label x:Name="EventTitleLabel" FontSize="17" FontAttributes="Bold"
-                           TextColor="White"/>
+                <!-- ── EVENTS ── -->
+                <VerticalStackLayout Spacing="16" Padding="24,0">
+                    <Label x:Name="EventTitleLabel" Text="Sự Kiện Đặc Biệt" FontSize="19" FontAttributes="Bold"
+                           TextColor="#323242"/>
 
                     <!-- Event 1 -->
-                    <Frame BackgroundColor="#252540" CornerRadius="20" Padding="0"
-                           HasShadow="False">
-                        <Grid ColumnDefinitions="6,*,Auto">
+                    <Border BackgroundColor="White" Padding="0" StrokeThickness="0">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="24"/></Border.StrokeShape>
+                        <Border.Shadow>
+                            <Shadow Brush="#FF6A88" Offset="0,6" Opacity="0.08" Radius="16"/>
+                        </Border.Shadow>
+                        <Grid ColumnDefinitions="5,*,Auto">
                             <BoxView Grid.Column="0" BackgroundColor="#FF6A88"
-                                     CornerRadius="20" WidthRequest="6"/>
-                            <VerticalStackLayout Grid.Column="1" Spacing="4" Padding="14,14">
-                                <Label x:Name="Event1Title" TextColor="White"
-                                       FontSize="15" FontAttributes="Bold"/>
-                                <Label x:Name="Event1Desc" TextColor="#CCFFFFFF" FontSize="13"/>
-                                <Label x:Name="Event1Sub" TextColor="#9090AA" FontSize="11"/>
+                                     CornerRadius="2.5" WidthRequest="5" Margin="0,16"/>
+                            <VerticalStackLayout Grid.Column="1" Spacing="4" Padding="16,18">
+                                <Label x:Name="Event1Title" Text="Cocktail Night" FontSize="15" FontAttributes="Bold"
+                                       TextColor="#323242"/>
+                                <Label x:Name="Event1Desc" Text="Giảm 30% thức uống từ 17:00 - 19:00" FontSize="13" TextColor="#6D6D80"/>
+                                <Label x:Name="Event1Sub" Text="Áp dụng hội viên" FontSize="11" TextColor="#A1A1B5"/>
                             </VerticalStackLayout>
-                            <Label Grid.Column="2" Text="🎉" FontSize="36"
-                                   VerticalOptions="Center" Margin="0,0,16,0"/>
+                            <Path Grid.Column="2" Data="M12,21.35 L10.55,20.03 C5.4,15.36 2,12.28 2,8.5 C2,5.42 4.42,3 7.5,3 C9.24,3 10.91,3.81 12,5.09 C13.09,3.81 14.76,3 16.5,3 C19.58,3 22,5.42 22,8.5 C22,12.28 18.6,15.36 13.45,20.04 L12,21.35 Z"
+                                  Fill="#FFF0F3" Aspect="Uniform" WidthRequest="28" HeightRequest="28"
+                                  VerticalOptions="Center" Margin="0,0,24,0"/>
                         </Grid>
-                    </Frame>
-
-                    <!-- Event 2 -->
-                    <Frame BackgroundColor="#252540" CornerRadius="20" Padding="0"
-                           HasShadow="False">
-                        <Grid ColumnDefinitions="6,*,Auto">
-                            <BoxView Grid.Column="0" BackgroundColor="#FFAD9F"
-                                     CornerRadius="20" WidthRequest="6"/>
-                            <VerticalStackLayout Grid.Column="1" Spacing="4" Padding="14,14">
-                                <Label x:Name="Event2Title" TextColor="White"
-                                       FontSize="15" FontAttributes="Bold"/>
-                                <Label x:Name="Event2Desc" TextColor="#CCFFFFFF" FontSize="13"/>
-                                <Label x:Name="Event2Sub" TextColor="#9090AA" FontSize="11"/>
-                            </VerticalStackLayout>
-                            <Label Grid.Column="2" Text="👫" FontSize="36"
-                                   VerticalOptions="Center" Margin="0,0,16,0"/>
-                        </Grid>
-                    </Frame>
-
+                    </Border>
                 </VerticalStackLayout>
 
                 <BoxView HeightRequest="20" BackgroundColor="Transparent"/>

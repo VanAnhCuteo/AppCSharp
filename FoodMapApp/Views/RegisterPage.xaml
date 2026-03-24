@@ -4,136 +4,162 @@
              x:Class="FoodMapApp.Views.RegisterPage"
              NavigationPage.HasNavigationBar="False"
              Shell.NavBarIsVisible="False"
-             BackgroundColor="#1A1A2E">
+             BackgroundColor="#FFF5F7">
 
-    <ScrollView VerticalOptions="Center">
-        <VerticalStackLayout Spacing="0" Padding="28,40">
+    <ScrollView>
+        <Grid RowDefinitions="Auto,*,Auto" MinimumHeightRequest="800" Padding="0">
 
-            <!-- Title -->
-            <Label x:Name="TitleLabel"
-                   TextColor="White" FontSize="30" FontAttributes="Bold"
-                   HorizontalOptions="Center" Margin="0,0,0,6"/>
-            <Label x:Name="SubtitleLabel"
-                   TextColor="#9090AA" FontSize="14"
-                   HorizontalOptions="Center" HorizontalTextAlignment="Center"
-                   Margin="0,0,0,32"/>
+            <!-- Top Gradient Banner -->
+            <Grid Grid.Row="0" MinimumHeightRequest="240" Padding="0,0,0,60">
+                <Grid.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#FF6A88" Offset="0.0"/>
+                        <GradientStop Color="#FF8C69" Offset="0.6"/>
+                        <GradientStop Color="#FFAD9F" Offset="1.0"/>
+                    </LinearGradientBrush>
+                </Grid.Background>
+                <!-- Decorative circles -->
+                <Ellipse WidthRequest="200" HeightRequest="200"
+                         HorizontalOptions="End" VerticalOptions="Start"
+                         Margin="0,-50,-50,0" Opacity="0.12">
+                    <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
+                </Ellipse>
+
+                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center"
+                                     Spacing="8" Margin="0,10,0,0">
+                    <Label x:Name="TitleLabel" Text="Tạo tài khoản" FontSize="28" FontAttributes="Bold"
+                           TextColor="White" HorizontalOptions="Center"/>
+                    <Label x:Name="SubtitleLabel" Text="Tham gia cộng đồng FoodMap" FontSize="14" TextColor="White"
+                           Opacity="0.9" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+            </Grid>
 
             <!-- Form Card -->
-            <Frame BackgroundColor="#252540" CornerRadius="24" Padding="24" HasShadow="False">
-                <VerticalStackLayout Spacing="18">
+            <Grid Grid.Row="1" Margin="24,-45,24,0">
+                <Frame BackgroundColor="White" CornerRadius="32" Padding="28,32"
+                       HasShadow="False">
+                    <Frame.Shadow>
+                        <Shadow Brush="#FF6A88" Offset="0,12" Opacity="0.1" Radius="28"/>
+                    </Frame.Shadow>
+                    <VerticalStackLayout Spacing="18">
 
-                    <!-- Username -->
-                    <VerticalStackLayout Spacing="8">
-                        <Label x:Name="UsernameLbl" TextColor="#9090AA" FontSize="12"
-                               FontAttributes="Bold" Margin="4,0"/>
-                        <Frame BackgroundColor="#1E1E38" CornerRadius="14" Padding="0"
-                               HasShadow="False" HeightRequest="52">
-                            <Grid ColumnDefinitions="4,*">
-                                <BoxView Grid.Column="0" BackgroundColor="#FF6A88"
-                                         WidthRequest="4" CornerRadius="4"/>
-                                <Entry Grid.Column="1" x:Name="UsernameEntry"
-                                       TextColor="White" BackgroundColor="Transparent"
-                                       PlaceholderColor="#55557A" Margin="12,0"
-                                       IsTextPredictionEnabled="False"
-                                       IsSpellCheckEnabled="False"
-                                       VerticalOptions="Center"/>
-                            </Grid>
-                        </Frame>
+                        <!-- Username -->
+                        <VerticalStackLayout Spacing="6">
+                            <Label x:Name="UsernameLbl" Text="Tên người dùng" FontSize="13" FontAttributes="Bold"
+                                   TextColor="#323242" Margin="6,0"/>
+                            <Frame BackgroundColor="#FFF5F7" CornerRadius="16" Padding="0"
+                                   HasShadow="False" HeightRequest="56" BorderColor="Transparent">
+                                <Grid ColumnDefinitions="4,Auto,*">
+                                    <BoxView Grid.Column="0" BackgroundColor="#FF6A88" CornerRadius="4"/>
+                                    <!-- User Vector -->
+                                    <Path Grid.Column="1" Data="M12,12 C14.21,12 16,10.21 16,8 C16,5.79 14.21,4 12,4 C9.79,4 8,5.79 8,8 C8,10.21 9.79,12 12,12 M12,14 C9.33,14 4,15.34 4,18 L4,20 L20,20 L20,18 C20,15.34 14.67,14 12,14 Z"
+                                          Fill="#FF6A88" Aspect="Uniform" WidthRequest="20" HeightRequest="20"
+                                          VerticalOptions="Center" Margin="14,0,10,0"/>
+                                    <Entry Grid.Column="2" x:Name="UsernameEntry"
+                                           Placeholder="Tên hiển thị"
+                                           TextColor="#2D2D2D" BackgroundColor="Transparent"
+                                           PlaceholderColor="#C7B2BD" Margin="0,0,14,0"
+                                           VerticalOptions="Center"/>
+                                </Grid>
+                            </Frame>
+                        </VerticalStackLayout>
+
+                        <!-- Email -->
+                        <VerticalStackLayout Spacing="6">
+                            <Label x:Name="EmailLbl" Text="Email" FontSize="13" FontAttributes="Bold"
+                                   TextColor="#323242" Margin="6,0"/>
+                            <Frame BackgroundColor="#FFF5F7" CornerRadius="16" Padding="0"
+                                   HasShadow="False" HeightRequest="56" BorderColor="Transparent">
+                                <Grid ColumnDefinitions="4,Auto,*">
+                                    <BoxView Grid.Column="0" BackgroundColor="#FFAD9F" CornerRadius="4"/>
+                                    <!-- Mail Vector -->
+                                    <Path Grid.Column="1" Data="M20,4 L4,4 C2.9,4 2.01,4.9 2.01,6 L2,18 C2,19.1 2.9,20 4,20 L20,20 C21.1,20 22,19.1 22,18 L22,6 C22,4.9 21.1,4 20,4 M20,8 L12,13 L4,8 L4,6 L12,11 L20,6 L20,8 Z"
+                                          Fill="#FFAD9F" Aspect="Uniform" WidthRequest="20" HeightRequest="20"
+                                          VerticalOptions="Center" Margin="14,0,10,0"/>
+                                    <Entry Grid.Column="2" x:Name="EmailEntry"
+                                           Placeholder="yourname@gmail.com" Keyboard="Email"
+                                           TextColor="#2D2D2D" BackgroundColor="Transparent"
+                                           PlaceholderColor="#C7B2BD" Margin="0,0,14,0"
+                                           VerticalOptions="Center"/>
+                                </Grid>
+                            </Frame>
+                        </VerticalStackLayout>
+
+                        <!-- Password -->
+                        <VerticalStackLayout Spacing="6">
+                            <Label x:Name="PasswordLbl" Text="Mật khẩu" FontSize="13" FontAttributes="Bold"
+                                   TextColor="#323242" Margin="6,0"/>
+                            <Frame BackgroundColor="#FFF5F7" CornerRadius="16" Padding="0"
+                                   HasShadow="False" HeightRequest="56" BorderColor="Transparent">
+                                <Grid ColumnDefinitions="4,Auto,*">
+                                    <BoxView Grid.Column="0" BackgroundColor="#FF6A88" CornerRadius="4"/>
+                                    <!-- Lock Vector -->
+                                    <Path Grid.Column="1" Data="M18,8 L17,8 L17,6 C17,3.24 14.76,1 12,1 C9.24,1 7,3.24 7,6 L7,8 L6,8 C4.9,8 4,8.9 4,10 L4,20 C4,21.1 4.9,22 6,22 L18,22 C19.1,22 20,21.1 20,20 L20,10 C20,8.9 19.1,8 18,8 M9,6 C9,4.34 10.34,3 12,3 C13.66,3 15,4.34 15,6 L15,8 L9,8 L9,6 M12,17 C10.9,17 10,16.1 10,15 C10,13.9 10.9,13 12,17 Z"
+                                          Fill="#FF6A88" Aspect="Uniform" WidthRequest="20" HeightRequest="20"
+                                          VerticalOptions="Center" Margin="14,0,10,0"/>
+                                    <Entry Grid.Column="2" x:Name="PasswordEntry"
+                                           Placeholder="••••••••" IsPassword="True"
+                                           TextColor="#2D2D2D" BackgroundColor="Transparent"
+                                           PlaceholderColor="#C7B2BD" Margin="0,0,14,0"
+                                           VerticalOptions="Center"/>
+                                </Grid>
+                            </Frame>
+                        </VerticalStackLayout>
+
+                        <!-- Confirm Password -->
+                        <VerticalStackLayout Spacing="6">
+                            <Label x:Name="ConfirmPasswordLbl" Text="Xác nhận mật khẩu" FontSize="13" FontAttributes="Bold"
+                                   TextColor="#323242" Margin="6,0"/>
+                            <Frame BackgroundColor="#FFF5F7" CornerRadius="16" Padding="0"
+                                   HasShadow="False" HeightRequest="56" BorderColor="Transparent">
+                                <Grid ColumnDefinitions="4,Auto,*">
+                                    <BoxView Grid.Column="0" BackgroundColor="#FFAD9F" CornerRadius="4"/>
+                                    <Path Grid.Column="1" Data="M18,8 L17,8 L17,6 C17,3.24 14.76,1 12,1 C9.24,1 7,3.24 7,6 L7,8 L6,8 C4.9,8 4,8.9 4,10 L4,20 C4,21.1 4.9,22 6,22 L18,22 C19.1,22 20,21.1 20,20 L20,10 C20,8.9 19.1,8 18,8 M9,6 C9,4.34 10.34,3 12,3 C13.66,3 15,4.34 15,6 L15,8 L9,8 L9,6 M12,17 C10.9,17 10,16.1 10,15 C10,13.9 10.9,13 12,17 Z"
+                                          Fill="#FFAD9F" Aspect="Uniform" WidthRequest="20" HeightRequest="20"
+                                          VerticalOptions="Center" Margin="14,0,10,0"/>
+                                    <Entry Grid.Column="2" x:Name="ConfirmPasswordEntry"
+                                           Placeholder="••••••••" IsPassword="True"
+                                           TextColor="#2D2D2D" BackgroundColor="Transparent"
+                                           PlaceholderColor="#C7B2BD" Margin="0,0,14,0"
+                                           VerticalOptions="Center"/>
+                                </Grid>
+                            </Frame>
+                        </VerticalStackLayout>
+
+                        <!-- Register Button -->
+                        <Button x:Name="RegisterButton" Text="Đăng ký" Clicked="OnRegisterClicked"
+                                TextColor="White" FontAttributes="Bold" FontSize="16"
+                                CornerRadius="18" HeightRequest="60"
+                                Margin="0,12,0,0" BorderWidth="0">
+                            <Button.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#FF6A88" Offset="0.0"/>
+                                    <GradientStop Color="#FF526B" Offset="1.0"/>
+                                </LinearGradientBrush>
+                            </Button.Background>
+                            <Button.Shadow>
+                                <Shadow Brush="#FF6A88" Offset="0,8" Opacity="0.3" Radius="16"/>
+                            </Button.Shadow>
+                        </Button>
+
+                        <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False"
+                                           Color="#FF6A88" HorizontalOptions="Center"/>
                     </VerticalStackLayout>
+                </Frame>
+            </Grid>
 
-                    <!-- Email -->
-                    <VerticalStackLayout Spacing="8">
-                        <Label x:Name="EmailLbl" TextColor="#9090AA" FontSize="12"
-                               FontAttributes="Bold" Margin="4,0"/>
-                        <Frame BackgroundColor="#1E1E38" CornerRadius="14" Padding="0"
-                               HasShadow="False" HeightRequest="52">
-                            <Grid ColumnDefinitions="4,*">
-                                <BoxView Grid.Column="0" BackgroundColor="#FFAD9F"
-                                         WidthRequest="4" CornerRadius="4"/>
-                                <Entry Grid.Column="1" x:Name="EmailEntry"
-                                       Placeholder="yourname@gmail.com"
-                                       TextColor="White" BackgroundColor="Transparent"
-                                       PlaceholderColor="#55557A" Margin="12,0"
-                                       Keyboard="Email"
-                                       IsTextPredictionEnabled="False"
-                                       IsSpellCheckEnabled="False"
-                                       VerticalOptions="Center"/>
-                            </Grid>
-                        </Frame>
-                    </VerticalStackLayout>
-
-                    <!-- Password -->
-                    <VerticalStackLayout Spacing="8">
-                        <Label x:Name="PasswordLbl" TextColor="#9090AA" FontSize="12"
-                               FontAttributes="Bold" Margin="4,0"/>
-                        <Frame BackgroundColor="#1E1E38" CornerRadius="14" Padding="0"
-                               HasShadow="False" HeightRequest="52">
-                            <Grid ColumnDefinitions="4,*">
-                                <BoxView Grid.Column="0" BackgroundColor="#FF6A88"
-                                         WidthRequest="4" CornerRadius="4"/>
-                                <Entry Grid.Column="1" x:Name="PasswordEntry"
-                                       Placeholder="••••••••" IsPassword="True"
-                                       TextColor="White" BackgroundColor="Transparent"
-                                       PlaceholderColor="#55557A" Margin="12,0"
-                                       IsTextPredictionEnabled="False"
-                                       IsSpellCheckEnabled="False"
-                                       VerticalOptions="Center"/>
-                            </Grid>
-                        </Frame>
-                    </VerticalStackLayout>
-
-                    <!-- Confirm Password -->
-                    <VerticalStackLayout Spacing="8">
-                        <Label x:Name="ConfirmPasswordLbl" TextColor="#9090AA" FontSize="12"
-                               FontAttributes="Bold" Margin="4,0"/>
-                        <Frame BackgroundColor="#1E1E38" CornerRadius="14" Padding="0"
-                               HasShadow="False" HeightRequest="52">
-                            <Grid ColumnDefinitions="4,*">
-                                <BoxView Grid.Column="0" BackgroundColor="#FFAD9F"
-                                         WidthRequest="4" CornerRadius="4"/>
-                                <Entry Grid.Column="1" x:Name="ConfirmPasswordEntry"
-                                       Placeholder="••••••••" IsPassword="True"
-                                       TextColor="White" BackgroundColor="Transparent"
-                                       PlaceholderColor="#55557A" Margin="12,0"
-                                       IsTextPredictionEnabled="False"
-                                       IsSpellCheckEnabled="False"
-                                       VerticalOptions="Center"/>
-                            </Grid>
-                        </Frame>
-                    </VerticalStackLayout>
-
-                    <!-- Register Button -->
-                    <Button x:Name="RegisterButton"
-                            Clicked="OnRegisterClicked"
-                            TextColor="White"
-                            FontAttributes="Bold" FontSize="17"
-                            CornerRadius="16" HeightRequest="56"
-                            Margin="0,10,0,0">
-                        <Button.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#FF6A88" Offset="0.0"/>
-                                <GradientStop Color="#FFAD9F" Offset="1.0"/>
-                            </LinearGradientBrush>
-                        </Button.Background>
-                    </Button>
-
-                </VerticalStackLayout>
-            </Frame>
-
-            <!-- Login Link -->
-            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6" Margin="0,24,0,0">
-                <Label x:Name="HaveAccountLabel" TextColor="#9090AA" FontSize="14"/>
-                <Label x:Name="LoginNowLabel" TextColor="#FF6A88"
+            <!-- Login link -->
+            <HorizontalStackLayout Grid.Row="2" HorizontalOptions="Center"
+                                   Spacing="6" Margin="0,32,0,40">
+                <Label x:Name="HaveAccountLabel" Text="Đã có tài khoản?" TextColor="#A1A1B5" FontSize="14"/>
+                <Label x:Name="LoginNowLabel" Text="Đăng nhập" TextColor="#FF6A88"
                        FontAttributes="Bold" FontSize="14">
                     <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnLoginTapped" />
+                        <TapGestureRecognizer Tapped="OnLoginTapped"/>
                     </Label.GestureRecognizers>
                 </Label>
             </HorizontalStackLayout>
 
-            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False"
-                               Color="#FF6A88" HorizontalOptions="Center"
-                               Margin="0,16,0,0"/>
-        </VerticalStackLayout>
+        </Grid>
     </ScrollView>
 </ContentPage>

@@ -10,6 +10,25 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
     maxZoom: 20
 }).addTo(map);
 
+// Dynamic Marker Zoom Scaling
+function updateMarkerScale() {
+    const zoom = map.getZoom();
+    // Default size at zoom 15, gets smaller on zoom out, grows slightly on zoom in
+    if (zoom < 11.5) {
+        document.documentElement.style.setProperty('--marker-scale', '0.001'); // essentially hid
+    } else if (zoom > 16) {
+        document.documentElement.style.setProperty('--marker-scale', '1.3');
+    } else {
+        // Linearly scale between 11.5 and 16
+        // 11.5 -> 0.1, 15 -> 1.0
+        const scale = 0.1 + ((zoom - 11.5) / 3.5) * 0.9;
+        document.documentElement.style.setProperty('--marker-scale', scale);
+    }
+}
+map.on('zoom', updateMarkerScale);
+updateMarkerScale();
+
+
 // Main Entry Point from C#
 async function loadFoods(foods, userId = 0) {
     console.log("Loading foods into map:", foods, "User:", userId);
@@ -27,8 +46,10 @@ async function loadFoods(foods, userId = 0) {
     foods.forEach(food => {
         let imgSection = '';
         const rawImgUrl = food.image_url || food.imageUrl || "";
-        if (rawImgUrl && rawImgUrl.trim().length > 0) {
-            let imgPath = rawImgUrl.trim();
+        const parsedImg = parseFirstImage(rawImgUrl);
+        
+        if (parsedImg && parsedImg.length > 0) {
+            let imgPath = parsedImg;
             if (!imgPath.startsWith('http')) {
                 if (imgPath.startsWith('/')) imgPath = imgPath.substring(1);
                 if (!imgPath.startsWith('images/')) {
@@ -142,3 +163,19 @@ async function syncVisitedHistory(userId) {
         console.error("History sync error:", e);
     }
 }
+
+// Global hook for C# routing
+window.routeToPoi = async function(id) {
+    try {
+        const detailsRes = await fetch(`${platformApiBase}/${id}?lang=${selectedLanguage}`);
+        if(detailsRes.ok) {
+            const data = await detailsRes.json();
+            if (userMarker) {
+                const userCoords = userMarker.getLatLng();
+                startNavigation(userCoords.lat, userCoords.lng, data.latitude, data.longitude);
+            } else {
+                alert("Đang xác định vị trí của bạn, vui lòng đợi chốc lát...");
+            }
+        }
+    } catch(e) { console.error("Error fetching POI for routing", e); }
+};

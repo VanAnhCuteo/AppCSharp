@@ -27,23 +27,19 @@ namespace FoodMapApp.Views
             UsernameLabel.Text = string.IsNullOrEmpty(username) ? "Khách" : username;
 
             var hour = DateTime.Now.Hour;
-            GreetingLabel.Text = hour < 12 ? "Chào buổi sáng!" :
-                                 hour < 18 ? "Chào buổi chiều!" : "Chào buổi tối!";
+            GreetingLabel.Text = hour < 12 ? "Chào buổi sáng," :
+                                 hour < 18 ? "Chào buổi chiều," : "Chào buổi tối,";
 
-            SearchEntry.Placeholder = "Tìm món ăn, quán, BBQ, nhậu...";
+            SearchEntry.Placeholder = "Tìm món ăn, quán...";
 
-            CategoryTitleLabel.Text = "Danh Mục";
+            CategoryTitleLabel.Text = "Khám Phá";
+            TopRestaurantLabel.Text = "Quán Nổi Bật";
+            SeeAllLabel.Text = "Tất cả ›";
 
-            TopRestaurantLabel.Text = "Những Quán Bạn Cần";
-            SeeAllLabel.Text = "";
-
-            EventTitleLabel.Text = "Sự Kiện & Ưu Đãi";
-            Event1Title.Text = "Happy Hour \U0001F37B";
-            Event1Desc.Text = "Giảm 30% bia tươi từ 17:00 - 19:00";
-            Event1Sub.Text = "Áp dụng toàn tuyến Bùi Viện";
-            Event2Title.Text = "Combo Ăn Vặt \U0001F354";
-            Event2Desc.Text = "Combo 2 người chỉ từ 150.000đ";
-            Event2Sub.Text = "Nhiều quán tham gia";
+            EventTitleLabel.Text = "Sự Kiện Đặc Biệt";
+            Event1Title.Text = "Signature Night";
+            Event1Desc.Text = "Giảm 30% thức uống từ 17:00 - 19:00";
+            Event1Sub.Text = "Áp dụng hội viên FoodMap";
 
             await LoadCategories();
             await LoadRestaurants();
@@ -53,18 +49,31 @@ namespace FoodMapApp.Views
         {
             try
             {
-                var client = new HttpClient();
-                var categories = await client.GetFromJsonAsync<List<CategoryItem>>($"{BackendUrl}/categories");
+                var categories = await HttpService.GetAsync<List<CategoryItem>>($"{BackendUrl}/categories");
                 if (categories != null)
                 {
                     _allCategories = categories;
-                    // Assign icons and colors
+                    // Assign elegant pastel colors & beautiful real food images
+                    var styleMap = new Dictionary<string, (string bg, string text, string img)>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "Hải sản",  ("#F0F8FF", "#5D9CEC", "https://images.unsplash.com/photo-1615141982883-c7ad0e69fd62?auto=format&fit=crop&w=300&q=80") },
+                        { "vặt",      ("#FFFBF0", "#F6BB42", "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=300&q=80") },
+                        { "Ăn vặt",   ("#FFFBF0", "#F6BB42", "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=300&q=80") },
+                        { "nướng",    ("#FFF0F3", "#ED5565", "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=300&q=80") },
+                        { "Nhậu",     ("#FFF8E1", "#FFCE54", "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=300&q=80") },
+                        { "Cafe",     ("#FDF5E6", "#D7B377", "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=300&q=80") },
+                        { "Sushi",    ("#F0FFF4", "#48CFAD", "https://images.unsplash.com/photo-1553621042-f6e147245754?auto=format&fit=crop&w=300&q=80") },
+                        { "Pizza",    ("#FFF0F0", "#FC6E51", "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=300&q=80") },
+                        { "Lẩu",      ("#FFF0F8", "#EC87C0", "https://images.unsplash.com/photo-1627993079979-4d6dcb54f590?auto=format&fit=crop&w=300&q=80") },
+                    };
                     foreach (var cat in _allCategories)
                     {
-                        if (cat.category_name.Contains("Hải sản")) { cat.Icon = "🦐"; cat.BackgroundColor = "#F0F8FF"; }
-                        else if (cat.category_name.Contains("vặt")) { cat.Icon = "🍿"; cat.BackgroundColor = "#FFFBF0"; }
-                        else if (cat.category_name.Contains("nướng")) { cat.Icon = "🍗"; cat.BackgroundColor = "#FFF0F3"; }
-                        else { cat.Icon = "🍴"; cat.BackgroundColor = "#F0FFF4"; }
+                        var normalizedCat = RemoveDiacritics(cat.category_name?.ToLower() ?? "");
+                        var matched = styleMap.FirstOrDefault(kv =>
+                            normalizedCat.Contains(RemoveDiacritics(kv.Key.ToLower())));
+                        cat.BackgroundColor = matched.Key != null ? matched.Value.bg : "#F5F5F7";
+                        cat.TextColor       = matched.Key != null ? matched.Value.text : "#A1A1B5";
+                        cat.ImageUrl        = matched.Key != null ? matched.Value.img : "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=300&q=80"; // Default restaurant img
                     }
                     CategoriesCollection.ItemsSource = _allCategories;
                 }
@@ -79,11 +88,10 @@ namespace FoodMapApp.Views
         {
             try
             {
-                var client = new HttpClient();
                 string url = $"{BackendUrl}?lang=vi";
                 if (categoryId.HasValue) url += $"&category_id={categoryId.Value}";
 
-                var foods = await client.GetFromJsonAsync<List<FoodItem>>(url);
+                var foods = await HttpService.GetAsync<List<FoodItem>>(url);
                 if (foods != null)
                 {
                     _allRestaurants = foods;
@@ -166,6 +174,16 @@ namespace FoodMapApp.Views
             SearchEntry.Unfocus();
         }
 
+        private async void OnExploreTapped(object sender, TappedEventArgs e)
+        {
+            if (e.Parameter is not FoodItem food) return;
+            MainPage.PendingOpenFoodId = food.id;
+            // Native global URI routing to bypass explicit implicit Tab gaps
+            await Shell.Current.GoToAsync("//MainPage");
+            // We rely entirely on MainPage.OnAppearing to consume the PendingOpenFoodId
+            // Calling it from here while WebView is in background drops the JS event on Android.
+        }
+
         private string RemoveDiacritics(string text)
         {
             var normalizedString = text.Normalize(NormalizationForm.FormD);
@@ -195,6 +213,54 @@ namespace FoodMapApp.Views
         public double longitude { get; set; }
         public string? open_time { get; set; }
         public string? image_url { get; set; }
+
+        public string? first_image
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(image_url)) return null;
+                
+                string? rawMatch = null;
+                try
+                {
+                    if (image_url.TrimStart().StartsWith("["))
+                    {
+                        var arr = System.Text.Json.JsonSerializer.Deserialize<string[]>(image_url);
+                        if (arr != null && arr.Length > 0) rawMatch = arr[0];
+                    }
+                }
+                catch { }
+
+                if (rawMatch == null) 
+                {
+                    var parts = image_url.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length > 0)
+                    {
+                        rawMatch = parts[0].Trim().Trim('"', '\'', '[', ']');
+                    }
+                }
+                
+                if (string.IsNullOrWhiteSpace(rawMatch))
+                    rawMatch = image_url;
+
+                // Ensure it's an absolute URL targeting the backend static files
+                if (!string.IsNullOrWhiteSpace(rawMatch) && !rawMatch.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Static files are served from the root, not from /api
+                    // Use BackendIp directly to avoid the /api suffix in BaseUrl
+                    string hostUrl = $"http://{AppConfig.BackendIp}:5000";
+                    string relative = rawMatch.TrimStart('/');
+                    
+                    if (!relative.StartsWith("images/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        relative = "images/" + relative.Split('/').Last();
+                    }
+                    return $"{hostUrl}/{relative}";
+                }
+                
+                return rawMatch;
+            }
+        }
     }
 
     public class CategoryItem
@@ -202,7 +268,8 @@ namespace FoodMapApp.Views
         public int category_id { get; set; }
         public string? category_name { get; set; }
         public string? description { get; set; }
-        public string? Icon { get; set; }
         public string? BackgroundColor { get; set; }
+        public string? TextColor { get; set; }
+        public string? ImageUrl { get; set; }
     }
 }

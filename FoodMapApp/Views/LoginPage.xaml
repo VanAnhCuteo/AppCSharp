@@ -4,115 +4,160 @@
              x:Class="FoodMapApp.Views.LoginPage"
              NavigationPage.HasNavigationBar="False"
              Shell.NavBarIsVisible="False"
-             BackgroundColor="#1A1A2E">
+             BackgroundColor="#FFF5F7">
 
-    <ScrollView VerticalOptions="Center">
-        <VerticalStackLayout Spacing="0" Padding="28,40">
+    <ScrollView VerticalOptions="FillAndExpand">
+        <Grid RowDefinitions="Auto,*,Auto" MinimumHeightRequest="700" Padding="0">
 
-            <!-- Logo -->
-            <Grid HorizontalOptions="Center" Margin="0,0,0,32">
-                <Ellipse WidthRequest="110" HeightRequest="110" HorizontalOptions="Center">
+            <!-- Top Gradient Banner -->
+            <Grid Grid.Row="0" MinimumHeightRequest="280" Padding="0,0,0,60">
+                <Grid.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#FF6A88" Offset="0.0"/>
+                        <GradientStop Color="#FF8C69" Offset="0.6"/>
+                        <GradientStop Color="#FFAD9F" Offset="1.0"/>
+                    </LinearGradientBrush>
+                </Grid.Background>
+
+                <!-- Decorative glow circles -->
+                <Ellipse WidthRequest="220" HeightRequest="220"
+                         HorizontalOptions="End" VerticalOptions="Start"
+                         Margin="0,-60,-60,0" Opacity="0.12">
                     <Ellipse.Fill>
-                        <RadialGradientBrush Center="0.5,0.5" Radius="0.5">
-                            <GradientStop Color="#4DFF6A88" Offset="0.0" />
-                            <GradientStop Color="#00FF6A88" Offset="1.0" />
-                        </RadialGradientBrush>
+                        <SolidColorBrush Color="White"/>
                     </Ellipse.Fill>
                 </Ellipse>
-                <Frame WidthRequest="88" HeightRequest="88" CornerRadius="44" Padding="0"
-                       HorizontalOptions="Center" VerticalOptions="Center"
-                       BackgroundColor="#252540" HasShadow="False">
-                    <Label x:Name="LogoLabel" FontSize="44"
-                           HorizontalOptions="Center" VerticalOptions="Center"/>
+                <Ellipse WidthRequest="120" HeightRequest="120"
+                         HorizontalOptions="Start" VerticalOptions="End"
+                         Margin="-30,0,0,30" Opacity="0.08">
+                    <Ellipse.Fill>
+                        <SolidColorBrush Color="White"/>
+                    </Ellipse.Fill>
+                </Ellipse>
+
+                <!-- Logo + App name -->
+                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center"
+                                     Spacing="12" Margin="0,30,0,0">
+                    <!-- Logo Circle with Vector Icon -->
+                    <Grid HorizontalOptions="Center">
+                        <Ellipse WidthRequest="94" HeightRequest="94"
+                                 HorizontalOptions="Center" Opacity="0.25">
+                            <Ellipse.Fill>
+                                <SolidColorBrush Color="White"/>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <Frame WidthRequest="74" HeightRequest="74" CornerRadius="37"
+                               Padding="0" HasShadow="False"
+                               BackgroundColor="White"
+                               HorizontalOptions="Center" VerticalOptions="Center">
+                               <Path Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 M11,19.92 C6.08,19.43 2.57,15.68 3.12,10.91 L8.52,16.31 L11,16.31 L11,19.92 M18.4,15.82 L16.36,13.78 L14.94,15.19 L16.98,17.23 A8.053,8.053 0 0 1 13,19.9 L13,17 L10,14 L10,12.78 L20.47,2.31 C21.14,3.22 21.65,4.28 21.92,5.41 L14.1,13.23 L15.51,14.64 L21.71,8.44 A8.026,8.026 0 0 1 18.4,15.82 Z"
+                                     Fill="#FF6A88" 
+                                     Aspect="Uniform"
+                                     HorizontalOptions="Center" VerticalOptions="Center"
+                                     WidthRequest="32" HeightRequest="32"/>
+                        </Frame>
+                    </Grid>
+                    <Label x:Name="AppTitleLabel" Text="FoodMap" FontSize="30" FontAttributes="Bold"
+                           TextColor="White" HorizontalOptions="Center"/>
+                    <Label x:Name="WelcomeLabel" Text="Khám phá ẩm thực quanh bạn" FontSize="14" TextColor="White"
+                           Opacity="0.9" HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center"/>
+                </VerticalStackLayout>
+            </Grid>
+
+            <!-- Form Card (overlaps banner) -->
+            <Grid Grid.Row="1" Margin="24,-45,24,0">
+                <Frame BackgroundColor="White" CornerRadius="32" Padding="28,36"
+                       HasShadow="False">
+                    <Frame.Shadow>
+                        <Shadow Brush="#FF6A88" Offset="0,12" Opacity="0.1" Radius="28"/>
+                    </Frame.Shadow>
+                    <VerticalStackLayout Spacing="24">
+
+                        <!-- Identifier field -->
+                        <VerticalStackLayout Spacing="8">
+                            <Label x:Name="IdentifierLabel" Text="Email hoặc Số điện thoại" FontSize="13" FontAttributes="Bold"
+                                   TextColor="#323242" Margin="6,0"/>
+                            <Frame BackgroundColor="#FFF5F7" CornerRadius="16" Padding="0"
+                                   HasShadow="False" HeightRequest="58" BorderColor="Transparent">
+                                <Grid ColumnDefinitions="4,Auto,*">
+                                    <BoxView Grid.Column="0" BackgroundColor="#FF6A88"
+                                             CornerRadius="4"/>
+                                    <!-- Email Vector -->
+                                    <Path Grid.Column="1" Data="M20,4 L4,4 C2.9,4 2.01,4.9 2.01,6 L2,18 C2,19.1 2.9,20 4,20 L20,20 C21.1,20 22,19.1 22,18 L22,6 C22,4.9 21.1,4 20,4 M20,8 L12,13 L4,8 L4,6 L12,11 L20,6 L20,8 Z"
+                                          Fill="#FF6A88" Aspect="Uniform" WidthRequest="20" HeightRequest="20"
+                                          VerticalOptions="Center" Margin="14,0,10,0"/>
+                                    <Entry Grid.Column="2" x:Name="IdentifierEntry"
+                                           TextColor="#2D2D2D" BackgroundColor="Transparent"
+                                           PlaceholderColor="#C7B2BD" Margin="0,0,14,0"
+                                           Keyboard="Email"
+                                           Placeholder="yourname@email.com"
+                                           IsTextPredictionEnabled="False"
+                                           IsSpellCheckEnabled="False"
+                                           VerticalOptions="Center"/>
+                                </Grid>
+                            </Frame>
+                        </VerticalStackLayout>
+
+                        <!-- Password field -->
+                        <VerticalStackLayout Spacing="8">
+                            <Label x:Name="PasswordLabel" Text="Mật khẩu" FontSize="13" FontAttributes="Bold"
+                                   TextColor="#323242" Margin="6,0"/>
+                            <Frame BackgroundColor="#FFF5F7" CornerRadius="16" Padding="0"
+                                   HasShadow="False" HeightRequest="58" BorderColor="Transparent">
+                                <Grid ColumnDefinitions="4,Auto,*">
+                                    <BoxView Grid.Column="0" BackgroundColor="#FFAD9F"
+                                             CornerRadius="4"/>
+                                    <!-- Lock Vector -->
+                                    <Path Grid.Column="1" Data="M18,8 L17,8 L17,6 C17,3.24 14.76,1 12,1 C9.24,1 7,3.24 7,6 L7,8 L6,8 C4.9,8 4,8.9 4,10 L4,20 C4,21.1 4.9,22 6,22 L18,22 C19.1,22 20,21.1 20,20 L20,10 C20,8.9 19.1,8 18,8 M9,6 C9,4.34 10.34,3 12,3 C13.66,3 15,4.34 15,6 L15,8 L9,8 L9,6 M12,17 C10.9,17 10,16.1 10,15 C10,13.9 10.9,13 12,17 Z"
+                                          Fill="#FFAD9F" Aspect="Uniform" WidthRequest="20" HeightRequest="20"
+                                          VerticalOptions="Center" Margin="14,0,10,0"/>
+                                    <Entry Grid.Column="2" x:Name="PasswordEntry"
+                                           Placeholder="••••••••" IsPassword="True"
+                                           TextColor="#2D2D2D" BackgroundColor="Transparent"
+                                           PlaceholderColor="#C7B2BD" Margin="0,0,14,0"
+                                           IsTextPredictionEnabled="False"
+                                           IsSpellCheckEnabled="False"
+                                           VerticalOptions="Center"/>
+                                </Grid>
+                            </Frame>
+                        </VerticalStackLayout>
+
+                        <!-- Login Button -->
+                        <Button x:Name="LoginButton" Text="Đăng nhập" Clicked="OnLoginClicked"
+                                TextColor="White" FontAttributes="Bold" FontSize="16"
+                                CornerRadius="18" HeightRequest="60"
+                                Margin="0,12,0,0" BorderWidth="0">
+                            <Button.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#FF6A88" Offset="0.0"/>
+                                    <GradientStop Color="#FF526B" Offset="1.0"/>
+                                </LinearGradientBrush>
+                            </Button.Background>
+                            <Button.Shadow>
+                                <Shadow Brush="#FF6A88" Offset="0,8" Opacity="0.3" Radius="16"/>
+                            </Button.Shadow>
+                        </Button>
+
+                        <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False"
+                                           Color="#FF6A88" HorizontalOptions="Center"/>
+
+                    </VerticalStackLayout>
                 </Frame>
             </Grid>
 
-            <!-- Title -->
-            <Label x:Name="AppTitleLabel"
-                   TextColor="White" FontSize="30" FontAttributes="Bold"
-                   HorizontalOptions="Center" Margin="0,0,0,6"/>
-            <Label x:Name="WelcomeLabel"
-                   TextColor="#9090AA" FontSize="14"
-                   HorizontalOptions="Center" HorizontalTextAlignment="Center"
-                   Margin="0,0,0,36"/>
-
-            <!-- Form Card -->
-            <Frame BackgroundColor="#252540" CornerRadius="24" Padding="24" HasShadow="False">
-                <VerticalStackLayout Spacing="20">
-
-                    <!-- Identifier -->
-                    <VerticalStackLayout Spacing="8">
-                        <Label x:Name="IdentifierLabel" TextColor="#9090AA" FontSize="12"
-                               FontAttributes="Bold" Margin="4,0"/>
-                        <Frame BackgroundColor="#1E1E38" CornerRadius="14" Padding="0"
-                               HasShadow="False" HeightRequest="52">
-                            <Grid ColumnDefinitions="4,*">
-                                <BoxView Grid.Column="0" BackgroundColor="#FF6A88"
-                                         WidthRequest="4" CornerRadius="4"/>
-                                <Entry Grid.Column="1" x:Name="IdentifierEntry"
-                                       TextColor="White" BackgroundColor="Transparent"
-                                       PlaceholderColor="#55557A" Margin="12,0"
-                                       Keyboard="Email"
-                                       IsTextPredictionEnabled="False"
-                                       IsSpellCheckEnabled="False"
-                                       VerticalOptions="Center"/>
-                            </Grid>
-                        </Frame>
-                    </VerticalStackLayout>
-
-                    <!-- Password -->
-                    <VerticalStackLayout Spacing="8">
-                        <Label x:Name="PasswordLabel" TextColor="#9090AA" FontSize="12"
-                               FontAttributes="Bold" Margin="4,0"/>
-                        <Frame BackgroundColor="#1E1E38" CornerRadius="14" Padding="0"
-                               HasShadow="False" HeightRequest="52">
-                            <Grid ColumnDefinitions="4,*">
-                                <BoxView Grid.Column="0" BackgroundColor="#FFAD9F"
-                                         WidthRequest="4" CornerRadius="4"/>
-                                <Entry Grid.Column="1" x:Name="PasswordEntry"
-                                       Placeholder="••••••••"
-                                       IsPassword="True" TextColor="White"
-                                       BackgroundColor="Transparent"
-                                       PlaceholderColor="#55557A" Margin="12,0"
-                                       IsTextPredictionEnabled="False"
-                                       IsSpellCheckEnabled="False"
-                                       VerticalOptions="Center"/>
-                            </Grid>
-                        </Frame>
-                    </VerticalStackLayout>
-
-                    <!-- Login Button -->
-                    <Button x:Name="LoginButton"
-                            Clicked="OnLoginClicked"
-                            TextColor="White"
-                            FontAttributes="Bold" FontSize="17"
-                            CornerRadius="16" HeightRequest="56"
-                            Margin="0,8,0,0">
-                        <Button.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#FF6A88" Offset="0.0"/>
-                                <GradientStop Color="#FFAD9F" Offset="1.0"/>
-                            </LinearGradientBrush>
-                        </Button.Background>
-                    </Button>
-
-                </VerticalStackLayout>
-            </Frame>
-
-            <!-- Register Link -->
-            <HorizontalStackLayout HorizontalOptions="Center" Spacing="6" Margin="0,24,0,0">
-                <Label x:Name="NoAccountLabel" TextColor="#9090AA" FontSize="14"/>
-                <Label x:Name="RegisterNowLabel" TextColor="#FF6A88"
+            <!-- Register link -->
+            <HorizontalStackLayout Grid.Row="2" HorizontalOptions="Center"
+                                   Spacing="6" Margin="0,32,0,40">
+                <Label x:Name="NoAccountLabel" Text="Bạn chưa có tài khoản?" TextColor="#A1A1B5" FontSize="14"/>
+                <Label x:Name="RegisterNowLabel" Text="Đăng ký ngay" TextColor="#FF6A88"
                        FontAttributes="Bold" FontSize="14">
                     <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnRegisterTapped" />
+                        <TapGestureRecognizer Tapped="OnRegisterTapped"/>
                     </Label.GestureRecognizers>
                 </Label>
             </HorizontalStackLayout>
 
-            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False"
-                               Color="#FF6A88" HorizontalOptions="Center"
-                               Margin="0,16,0,0"/>
-        </VerticalStackLayout>
+        </Grid>
     </ScrollView>
 </ContentPage>

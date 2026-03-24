@@ -86,27 +86,38 @@
 
 .lang-selector {
     display: flex;
-    gap: 8px;
-    margin-top: 8px;
+    gap: 12px;
+    margin-top: 10px;
 }
 
 .lang-btn {
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 8px;
-    background: var(--dark-card-deep);
-    color: var(--text-sub);
+    width: 32px;
+    height: 32px;
+    border-radius: 16px;
+    padding: 0;
+    overflow: hidden;
+    background: white;
     cursor: pointer;
-    transition: all 0.2s;
-    border: 1px solid var(--border-dim);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid transparent;
+    box-shadow: 0 4px 8px rgba(255, 106, 136, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-    .lang-btn.active {
-        background: rgba(255, 106, 136, 0.2);
-        color: var(--pink-dark);
-        border-color: rgba(255, 106, 136, 0.4);
-    }
+.lang-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lang-btn.active {
+    background: white;
+    border-color: var(--pink-dark);
+    transform: scale(1.15);
+    box-shadow: 0 6px 14px rgba(255, 106, 136, 0.3);
+}
 
 /* Images Carousel */
 .sheet-images {

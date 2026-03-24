@@ -1,4 +1,4 @@
-﻿using FoodMapApp.Services;
+using FoodMapApp.Services;
 using System.Net.Http.Json;
 using Microsoft.Maui.Storage;
 using System.Linq;
@@ -7,8 +7,6 @@ namespace FoodMapApp.Views
 {
     public partial class ProfilePage : ContentPage
     {
-        private const string BackendIp = "10.0.2.2";
-
         public ProfilePage()
         {
             InitializeComponent();
@@ -98,12 +96,11 @@ namespace FoodMapApp.Views
             int userId = Preferences.Default.Get("user_id", 0);
             if (userId == 0) return;
 
-            string baseUrl = $"http://{BackendIp}:5000/api";
+            string baseUrl = AppConfig.BaseUrl;
 
             try
             {
-                var client = new HttpClient();
-                var visits = await client.GetFromJsonAsync<List<VisitHistory>>($"{baseUrl}/food/history/{userId}");
+                var visits = await HttpService.GetAsync<List<VisitHistory>>($"{baseUrl}/food/history/{userId}");
                 if (visits != null && visits.Any())
                 {
                     HistoryCollection.ItemsSource = visits.Take(5).ToList();
@@ -115,7 +112,7 @@ namespace FoodMapApp.Views
                     VisitCountLabel.Text = "0";
                 }
 
-                var reviews = await client.GetFromJsonAsync<List<ReviewHistory>>($"{baseUrl}/food/reviews/user/{userId}");
+                var reviews = await HttpService.GetAsync<List<ReviewHistory>>($"{baseUrl}/food/reviews/user/{userId}");
                 if (reviews != null)
                 {
                     ReviewsCollection.ItemsSource = reviews;

@@ -4,11 +4,17 @@ namespace FoodMapApp
 {
     public static class AppConfig
     {
-        // Using 127.0.0.1 for Android via ADB Reverse (tcp:5000 tcp:5000)
-        // This is the most reliable way to bypass firewall issues.
-        public static string BackendIp => DeviceInfo.Platform == DevicePlatform.Android ? "10.0.2.2" : "localhost";
-        
-        public static string BaseUrl => $"http://{BackendIp}:5000/api";
+        // For Android Emulator (AVD): use 10.0.2.2
+        // For physical device on same WiFi: use your PC's local IP (e.g. 192.168.31.209)
+        private const string PhysicalDeviceIp = "172.20.10.3";
+
+        public static string BackendIp =>
+            DeviceInfo.Platform == DevicePlatform.Android &&
+            DeviceInfo.DeviceType == DeviceType.Virtual
+                ? "10.0.2.2"        // Android Emulator
+                : PhysicalDeviceIp; // Physical device on same WiFi
+
+        public static string BaseUrl    => $"http://{BackendIp}:5000/api";
         public static string FoodApiUrl => $"{BaseUrl}/Food";
         public static string AuthApiUrl => $"{BaseUrl}/Auth";
     }
