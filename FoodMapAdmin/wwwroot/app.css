@@ -1,0 +1,103 @@
+﻿:root {
+    --primary: #ff4d4d;
+    --primary-dark: #cc0000;
+    --accent: #ffcc00;
+    --bg-dark: #121212;
+    --surface: rgba(255, 255, 255, 0.05);
+    --glass: rgba(255, 255, 255, 0.1);
+    --text-main: #ffffff;
+    --text-muted: #b3b3b3;
+    --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+    background: var(--bg-dark);
+    color: var(--text-main);
+    font-family: var(--font-family);
+    margin: 0;
+    overflow-x: hidden;
+}
+
+.main-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 260px;
+    background: var(--surface);
+    backdrop-filter: blur(10px);
+    border-right: 1px solid var(--glass);
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding-left: 1rem;
+}
+
+.nav-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+    .nav-link:hover, .nav-link.active {
+        background: var(--primary);
+        color: white;
+        transform: translateX(5px);
+    }
+
+.content {
+    flex: 1;
+    padding: 2rem;
+    background: radial-gradient(circle at top right, rgba(255, 77, 77, 0.1), transparent);
+}
+
+.card {
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass);
+    border-radius: 24px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+h1, h2, h3 {
+    margin-top: 0;
+    font-weight: 700;
+}
+
+.glass-btn {
+    background: var(--primary);
+    border: none;
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+    .glass-btn:hover {
+        background: var(--primary-dark);
+        box-shadow: 0 0 20px rgba(255, 77, 77, 0.4);
+    }

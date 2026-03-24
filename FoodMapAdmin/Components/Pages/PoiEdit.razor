@@ -1,0 +1,76 @@
+﻿@page "/pois/edit/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IPoiService PoiService
+@inject ICategoryService CategoryService
+@inject NavigationManager Navigator
+@attribute [Authorize(Roles = "admin,CNH")]
+
+<PageTitle>Edit Restaurant - FoodMap Admin</PageTitle>
+
+@if (notAuthorized)
+{
+    <div class="card">
+        <h3 style="color: #ff4d4d;">Access Denied</h3>
+        <p>You do not have permission to edit this restaurant.</p>
+        <button class="glass-btn" @onclick="HandleCancel">Return</button>
+    </div>
+}
+else if (poiToEdit == null || categories == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <PoiForm CurrentPoi="poiToEdit" Categories="categories" Title="Edit Restaurant" OnSubmit="HandleSubmit" OnCancel="HandleCancel" />
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Poi? poiToEdit;
+    private List<Category>? categories;
+    private bool notAuthorized = false;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await CategoryService.GetAllCategoriesAsync();
+        poiToEdit = await PoiService.GetPoiByIdAsync(Id);
+
+        if (poiToEdit != null && AuthStateTask != null)
+        {
+            var authState = await AuthStateTask;
+            var user = authState.User;
+            
+            // Check ownership authorization
+            if (!user.IsInRole("admin"))
+            {
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(userIdStr, out var currentUserId) && poiToEdit.UserId != currentUserId)
+                {
+                    notAuthorized = true;
+                }
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (poiToEdit != null && !notAuthorized)
+        {
+            await PoiService.UpdatePoiAsync(poiToEdit);
+            Navigator.NavigateTo("/pois");
+        }
+    }
+
+    private void HandleCancel()
+    {
+        Navigator.NavigateTo("/pois");
+    }
+}

@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FoodMapApp", "FoodMapApp\Fo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapAppAPI", "MapAppAPI\MapAppAPI.csproj", "{3FB40AE7-7996-1A66-EEFE-4CAF77DC7BA7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FoodMapAdmin", "FoodMapAdmin\FoodMapAdmin.csproj", "{4060156B-7F7F-21A4-F723-49ED1EBCC625}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,6 +25,10 @@ Global
 		{3FB40AE7-7996-1A66-EEFE-4CAF77DC7BA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3FB40AE7-7996-1A66-EEFE-4CAF77DC7BA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3FB40AE7-7996-1A66-EEFE-4CAF77DC7BA7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4060156B-7F7F-21A4-F723-49ED1EBCC625}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4060156B-7F7F-21A4-F723-49ED1EBCC625}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4060156B-7F7F-21A4-F723-49ED1EBCC625}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4060156B-7F7F-21A4-F723-49ED1EBCC625}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

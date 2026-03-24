@@ -1,0 +1,100 @@
+﻿@page "/categories"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject ICategoryService CategoryService
+@attribute [Authorize(Roles = "admin")]
+
+<PageTitle>Categories - FoodMap Admin</PageTitle>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2>Category Management</h2>
+        <button class="glass-btn" @onclick="() => showAddModal = true">Add Category</button>
+    </div>
+
+    @if (categories == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; border-bottom: 1px solid var(--glass);">
+                    <th style="padding: 1rem;">ID</th>
+                    <th style="padding: 1rem;">Name</th>
+                    <th style="padding: 1rem;">Description</th>
+                    <th style="padding: 1rem;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var cat in categories)
+                {
+                    <tr style="border-bottom: 1px solid var(--glass);">
+                        <td style="padding: 1rem;">@cat.CategoryId</td>
+                        <td style="padding: 1rem;"><strong>@cat.CategoryName</strong></td>
+                        <td style="padding: 1rem; color: var(--text-muted);">@cat.Description</td>
+                        <td style="padding: 1rem;">
+                            <button style="background: transparent; border: 1px solid #ff4d4d; color: #ff4d4d; padding: 0.3rem 0.8rem; border-radius: 8px; cursor: pointer;" @onclick="() => Delete(cat.CategoryId)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@if (showAddModal)
+{
+    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+        <div class="card" style="width: 400px;">
+            <h3>Add New Category</h3>
+            <div style="margin-top: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem;">Name</label>
+                <input type="text" @bind="newCategoryName" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
+            </div>
+            <div style="margin-top: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem;">Description</label>
+                <textarea @bind="newCategoryDesc" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;"></textarea>
+            </div>
+            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button class="glass-btn" @onclick="SaveCategory">Save</button>
+                <button style="background: transparent; border: 1px solid var(--glass); color: white; padding: 0.8rem 1.5rem; border-radius: 12px; cursor: pointer;" @onclick="() => showAddModal = false">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Category>? categories;
+    private bool showAddModal = false;
+    private string newCategoryName = "";
+    private string newCategoryDesc = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await CategoryService.GetAllCategoriesAsync();
+    }
+
+    private async Task SaveCategory()
+    {
+        if (string.IsNullOrWhiteSpace(newCategoryName)) return;
+        var newCat = new Category { CategoryName = newCategoryName, Description = newCategoryDesc };
+        if (await CategoryService.CreateCategoryAsync(newCat))
+        {
+            categories = await CategoryService.GetAllCategoriesAsync();
+            showAddModal = false;
+            newCategoryName = "";
+            newCategoryDesc = "";
+        }
+    }
+
+    private async Task Delete(int id)
+    {
+        if (await CategoryService.DeleteCategoryAsync(id))
+        {
+            categories = categories?.Where(c => c.CategoryId != id).ToList();
+        }
+    }
+}

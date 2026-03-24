@@ -1,0 +1,58 @@
+﻿@page "/users"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IUserService UserService
+@attribute [Authorize(Roles = "admin")]
+
+<PageTitle>Users - FoodMap Admin</PageTitle>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2>User Management</h2>
+    </div>
+
+    @if (users == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; border-bottom: 1px solid var(--glass);">
+                    <th style="padding: 1rem;">ID</th>
+                    <th style="padding: 1rem;">Username</th>
+                    <th style="padding: 1rem;">Email</th>
+                    <th style="padding: 1rem;">Role</th>
+                    <th style="padding: 1rem;">Created At</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in users)
+                {
+                    <tr style="border-bottom: 1px solid var(--glass);">
+                        <td style="padding: 1rem;">@user.UserId</td>
+                        <td style="padding: 1rem;"><strong>@user.Username</strong></td>
+                        <td style="padding: 1rem;">@user.Email</td>
+                        <td style="padding: 1rem;">
+                            <span style="background: @(user.Role == "admin" ? "#ff4d4d" : user.Role == "CNH" ? "#ffcc00" : "#4CAF50"); color: white; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: bold;">
+                                @user.Role.ToUpper()
+                            </span>
+                        </td>
+                        <td style="padding: 1rem; color: var(--text-muted);">@user.CreatedAt?.ToString("yyyy-MM-dd")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<User>? users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = await UserService.GetAllUsersAsync();
+    }
+}

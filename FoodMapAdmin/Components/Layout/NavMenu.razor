@@ -1,0 +1,29 @@
+﻿<aside class="sidebar">
+    <div class="logo">FoodMap Admin</div>
+
+    <nav class="nav-menu">
+        <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+            <span class="bi bi-house-door-fill" aria-hidden="true"></span> Dashboard
+        </NavLink>
+
+        <NavLink class="nav-link" href="/pois">
+            <span class="bi bi-shop" aria-hidden="true"></span> Restaurants
+        </NavLink>
+
+        <AuthorizeView Roles="admin">
+            <NavLink class="nav-link" href="/categories">
+                <span class="bi bi-list-ul" aria-hidden="true"></span> Categories
+            </NavLink>
+            <NavLink class="nav-link" href="/users">
+                <span class="bi bi-people-fill" aria-hidden="true"></span> Users
+            </NavLink>
+        </AuthorizeView>
+
+        <div style="margin-top: auto;">
+            <a class="nav-link" href="/api/auth/logout" style="color: #ff4d4d;">
+                <span class="bi bi-box-arrow-right" aria-hidden="true"></span> Logout
+            </a>
+        </div>
+
+    </nav>
+</aside>

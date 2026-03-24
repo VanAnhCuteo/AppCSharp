@@ -19,7 +19,7 @@ namespace FoodMapAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<List<Food>> GetFoods([FromQuery] string lang = "vi")
+        public async Task<List<Food>> GetFoods([FromQuery] string lang = "vi", [FromQuery] int? category_id = null)
         {
             List<Food> foods = new List<Food>();
             string connStr = _configuration.GetConnectionString("DefaultConnection");
@@ -33,7 +33,16 @@ namespace FoodMapAPI.Controllers
                     // Select all from pois. We'll filter or just take the first language we find.
                     string query = "SELECT p.*, (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url FROM pois p";
 
+                    if (category_id.HasValue && category_id.Value > 0)
+                    {
+                        query += " WHERE p.category_id = @catId";
+                    }
+
                     MySqlCommand cmd = new MySqlCommand(query, conn);
+                    if (category_id.HasValue && category_id.Value > 0)
+                    {
+                        cmd.Parameters.AddWithValue("@catId", category_id.Value);
+                    }
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
@@ -160,6 +169,40 @@ namespace FoodMapAPI.Controllers
             }
 
             return Ok(details);
+        }
+
+        [HttpGet("categories")]
+        public async Task<IActionResult> GetCategories()
+        {
+            List<Category> categories = new List<Category>();
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+                    using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM categories", conn))
+                    {
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                categories.Add(new Category
+                                {
+                                    category_id = Convert.ToInt32(reader["category_id"]),
+                                    category_name = reader["category_name"].ToString() ?? "",
+                                    description = reader["description"].ToString() ?? ""
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            return Ok(categories);
         }
 
         [HttpGet("{id}/reviews")]

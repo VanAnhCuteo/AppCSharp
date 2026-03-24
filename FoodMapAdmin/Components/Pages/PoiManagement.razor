@@ -1,0 +1,89 @@
+﻿@page "/pois"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IPoiService PoiService
+@inject NavigationManager Navigator
+@attribute [Authorize(Roles = "admin,CNH")]
+
+<PageTitle>Restaurants - FoodMap Admin</PageTitle>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2>Restaurant Management</h2>
+        <button class="glass-btn" @onclick="AddNew">Add New Restaurant</button>
+    </div>
+
+    @if (pois == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; border-bottom: 1px solid var(--glass);">
+                    <th style="padding: 1rem;">ID</th>
+                    <th style="padding: 1rem;">Name</th>
+                    <th style="padding: 1rem;">Category</th>
+                    <th style="padding: 1rem;">Address</th>
+                    <th style="padding: 1rem;">Owner</th>
+                    <th style="padding: 1rem;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var poi in pois)
+                {
+                    <tr style="border-bottom: 1px solid var(--glass);">
+                        <td style="padding: 1rem;">@poi.PoiId</td>
+                        <td style="padding: 1rem;"><strong>@poi.Name</strong></td>
+                        <td style="padding: 1rem;">@(poi.Category?.CategoryName ?? "N/A")</td>
+                        <td style="padding: 1rem; color: var(--text-muted);">@poi.Address</td>
+                        <td style="padding: 1rem;">@(poi.Owner?.Username ?? "N/A")</td>
+                        <td style="padding: 1rem;">
+                            <button style="background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 0.3rem 0.8rem; border-radius: 8px; cursor: pointer; margin-right: 0.5rem;" @onclick="() => Edit(poi.PoiId)">Edit</button>
+                            <button style="background: transparent; border: 1px solid #ff4d4d; color: #ff4d4d; padding: 0.3rem 0.8rem; border-radius: 8px; cursor: pointer;" @onclick="() => Delete(poi.PoiId)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<Poi>? pois;
+    
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask != null)
+        {
+            var authState = await AuthStateTask;
+            var user = authState.User;
+
+            if (user.IsInRole("admin"))
+            {
+                pois = await PoiService.GetAllPoisAsync();
+            }
+            else if (user.IsInRole("CNH"))
+            {
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(userIdStr, out var userId))
+                {
+                    pois = await PoiService.GetPoisByOwnerAsync(userId);
+                }
+            }
+        }
+    }
+
+    private void AddNew() => Navigator.NavigateTo("/pois/add");
+    private void Edit(int id) => Navigator.NavigateTo($"/pois/edit/{id}");
+    private async Task Delete(int id) {
+        // Simple delete for demo
+        await PoiService.DeletePoiAsync(id);
+        pois = pois?.Where(p => p.PoiId != id).ToList();
+    }
+}

@@ -6,6 +6,9 @@
              BackgroundColor="#F9F1F0">
 
     <Grid RowDefinitions="Auto,*">
+        <Grid.GestureRecognizers>
+            <TapGestureRecognizer Tapped="OnBackgroundTapped" />
+        </Grid.GestureRecognizers>
 
         <Grid Grid.Row="0" Padding="20,50,20,20">
             <Grid.Background>
@@ -39,35 +42,30 @@
         </Grid>
 
         <ScrollView Grid.Row="1">
+            <ScrollView.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnBackgroundTapped" />
+            </ScrollView.GestureRecognizers>
             <VerticalStackLayout Spacing="20" Padding="20,15">
 
                 <Label x:Name="CategoryTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#333"/>
-                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
-                    <VerticalStackLayout Grid.Column="0" HorizontalOptions="Center" Spacing="6">
-                        <Frame WidthRequest="60" HeightRequest="60" CornerRadius="30" Padding="0" BackgroundColor="#FFF0F3" HasShadow="False">
-                            <Label Text="&#x1F357;" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"/>
-                        </Frame>
-                        <Label x:Name="Cat1Label" FontSize="12" HorizontalOptions="Center" TextColor="#555"/>
-                    </VerticalStackLayout>
-                    <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="6">
-                        <Frame WidthRequest="60" HeightRequest="60" CornerRadius="30" Padding="0" BackgroundColor="#F0F8FF" HasShadow="False">
-                            <Label Text="&#x1F990;" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"/>
-                        </Frame>
-                        <Label x:Name="Cat2Label" FontSize="12" HorizontalOptions="Center" TextColor="#555"/>
-                    </VerticalStackLayout>
-                    <VerticalStackLayout Grid.Column="2" HorizontalOptions="Center" Spacing="6">
-                        <Frame WidthRequest="60" HeightRequest="60" CornerRadius="30" Padding="0" BackgroundColor="#F0FFF4" HasShadow="False">
-                            <Label Text="&#x1F37A;" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"/>
-                        </Frame>
-                        <Label x:Name="Cat3Label" FontSize="12" HorizontalOptions="Center" TextColor="#555"/>
-                    </VerticalStackLayout>
-                    <VerticalStackLayout Grid.Column="3" HorizontalOptions="Center" Spacing="6">
-                        <Frame WidthRequest="60" HeightRequest="60" CornerRadius="30" Padding="0" BackgroundColor="#FFFBF0" HasShadow="False">
-                            <Label Text="&#x1F319;" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"/>
-                        </Frame>
-                        <Label x:Name="Cat4Label" FontSize="12" HorizontalOptions="Center" TextColor="#555"/>
-                    </VerticalStackLayout>
-                </Grid>
+                <CollectionView x:Name="CategoriesCollection" HeightRequest="100">
+                    <CollectionView.ItemsLayout>
+                        <GridItemsLayout Orientation="Vertical" Span="3" />
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <VerticalStackLayout HorizontalOptions="Center" Spacing="6" Padding="0,5">
+                                <VerticalStackLayout.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnCategoryTapped" CommandParameter="{Binding .}"/>
+                                </VerticalStackLayout.GestureRecognizers>
+                                <Frame WidthRequest="66" HeightRequest="66" CornerRadius="33" Padding="0" BackgroundColor="{Binding BackgroundColor}" HasShadow="False">
+                                    <Label Text="{Binding Icon}" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                </Frame>
+                                <Label Text="{Binding category_name}" FontSize="12" HorizontalOptions="Center" TextColor="#555"/>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
 
                 <HorizontalStackLayout>
                     <Label x:Name="TopRestaurantLabel" FontSize="18" FontAttributes="Bold" TextColor="#333" HorizontalOptions="StartAndExpand"/>
@@ -96,6 +94,14 @@
                     </CollectionView.ItemTemplate>
                 </CollectionView>
 
+                <Label x:Name="NoResultsLabel" 
+                       Text="Quán bạn tìm không có" 
+                       FontSize="16" 
+                       TextColor="#888" 
+                       HorizontalOptions="Center" 
+                       Padding="0,20"
+                       IsVisible="False"/>
+
                 <Label x:Name="EventTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#333"/>
 
                 <Frame BackgroundColor="#FF6A88" CornerRadius="16" Padding="18,14" HasShadow="True">
@@ -120,7 +126,7 @@
                     </Grid>
                 </Frame>
 
-                <BoxView HeightRequest="20" Color="Transparent"/>
+                <BoxView HeightRequest="20" BackgroundColor="Transparent"/>
             </VerticalStackLayout>
         </ScrollView>
     </Grid>

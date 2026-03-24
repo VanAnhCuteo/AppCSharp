@@ -1,6 +1,7 @@
 ﻿using FoodMapApp.Services;
 using System.Net.Http.Json;
 using Microsoft.Maui.Storage;
+using System.Linq;
 
 namespace FoodMapApp.Views
 {
@@ -22,9 +23,9 @@ namespace FoodMapApp.Views
             ReviewLabel.Text = "Đánh giá";
             AreaLabel.Text = "Khu vực";
             HistoryTitleLabel.Text = "Lịch Sử Foodtour";
-            HistoryEmptyLabel.Text = "chưa ghé bất kì quán";
+            HistoryEmptyLabel.Text = "Chưa ghé quán nào";
             ReviewTitleLabel.Text = "Đánh Giá Đã Viết";
-            ReviewEmptyLabel.Text = "chưa có bài đánh giá nào";
+            ReviewEmptyLabel.Text = "Chưa có lượt đánh giá nào";
             LogoutButton.Text = "Đăng Xuất";
             EditProfileButton.Text = "Chỉnh sửa";
 
@@ -103,10 +104,15 @@ namespace FoodMapApp.Views
             {
                 var client = new HttpClient();
                 var visits = await client.GetFromJsonAsync<List<VisitHistory>>($"{baseUrl}/food/history/{userId}");
-                if (visits != null)
+                if (visits != null && visits.Any())
                 {
                     HistoryCollection.ItemsSource = visits.Take(5).ToList();
                     VisitCountLabel.Text = visits.Count.ToString();
+                }
+                else
+                {
+                    HistoryCollection.ItemsSource = new List<VisitHistory>();
+                    VisitCountLabel.Text = "0";
                 }
 
                 var reviews = await client.GetFromJsonAsync<List<ReviewHistory>>($"{baseUrl}/food/reviews/user/{userId}");

@@ -35,10 +35,16 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
 
-		<!-- Optimization for Android Release -->
-		<RunAOTCompilation Condition="'$(Configuration)' == 'Release' AND $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">true</RunAOTCompilation>
+		<!-- Optimization for Android Build Speed and Performance -->
+		<AndroidEnableProfiledAot Condition="'$(Configuration)' == 'Release'">true</AndroidEnableProfiledAot>
+		<RunAOTCompilation Condition="'$(Configuration)' == 'Release' AND $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">false</RunAOTCompilation>
 		<PublishTrimmed Condition="'$(Configuration)' == 'Release'">true</PublishTrimmed>
-		<TrimMode>link</TrimMode>
+		<TrimMode>partial</TrimMode>
+		<AndroidLinkResources>true</AndroidLinkResources>
+
+		<!-- Debug Optimizations -->
+		<EmbedAssembliesIntoApk Condition="'$(Configuration)' == 'Debug'">true</EmbedAssembliesIntoApk>
+		<AndroidUseInterpreter Condition="'$(Configuration)' == 'Debug'">true</AndroidUseInterpreter>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -1,0 +1,86 @@
+﻿@using FoodMapAdmin.Models
+@using Microsoft.AspNetCore.Components.Forms
+
+<EditForm Model="CurrentPoi" OnValidSubmit="OnSubmitHandler">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="card" style="max-width: 800px; margin: 0 auto;">
+        <h3 style="margin-bottom: 2rem; color: var(--primary);">@Title</h3>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <!-- Column 1 -->
+            <div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Name</label>
+                    <InputText @bind-Value="CurrentPoi.Name" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Category</label>
+                    <InputSelect @bind-Value="CurrentPoi.CategoryId" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;">
+                        <option value="">-- Select Category --</option>
+                        @foreach (var cat in Categories)
+                        {
+                            <option value="@cat.CategoryId">@cat.CategoryName</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Address</label>
+                    <InputText @bind-Value="CurrentPoi.Address" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Open Time</label>
+                    <InputText @bind-Value="CurrentPoi.OpenTime" placeholder="e.g. 08:00 - 22:00" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
+                </div>
+            </div>
+
+            <!-- Column 2 -->
+            <div>
+                 <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem;">
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Latitude</label>
+                        <InputNumber @bind-Value="CurrentPoi.Latitude" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Longitude</label>
+                        <InputNumber @bind-Value="CurrentPoi.Longitude" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Description</label>
+                    <InputTextArea @bind-Value="CurrentPoi.Description" rows="5" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
+                </div>
+                
+                <AuthorizeView Roles="admin">
+                    <Authorized Context="authContext">
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Owner User ID</label>
+                            <InputNumber @bind-Value="CurrentPoi.UserId" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
+                            <small style="color: var(--primary);">*Admin only field*</small>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </div>
+
+        <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+            <button type="submit" class="glass-btn" style="min-width: 150px;">Save Restaurant</button>
+            <button type="button" class="glass-btn" style="background: transparent; border: 1px solid var(--glass);" @onclick="OnCancel">Cancel</button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public Poi CurrentPoi { get; set; } = new();
+    [Parameter] public List<Category> Categories { get; set; } = new();
+    [Parameter] public string Title { get; set; } = "Restaurant Form";
+    [Parameter] public EventCallback OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task OnSubmitHandler()
+    {
+        await OnSubmit.InvokeAsync();
+    }
+}

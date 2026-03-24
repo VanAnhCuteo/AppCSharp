@@ -1,0 +1,88 @@
+﻿@page "/login"
+@layout EmptyLayout
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using FoodMapAdmin.Services
+@inject IUserService UserService
+@inject NavigationManager Navigator
+
+<div class="login-container" style="display: flex; height: 100vh; align-items: center; justify-content: center; background: linear-gradient(135deg, #121212 0%, #1e1e1e 100%);">
+    <div class="card" style="width: 400px; padding: 3rem; text-align: center;">
+        <h2 style="color: var(--primary); margin-bottom: 0.5rem;">FoodMap Admin</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Login to your dashboard</p>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div style="background: rgba(255, 77, 77, 0.1); color: #ff4d4d; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid rgba(255, 77, 77, 0.2);">
+                @errorMessage
+            </div>
+        }
+
+        <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+            <div style="text-align: left; margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Username</label>
+                <InputText @bind-Value="loginModel.Username" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
+            </div>
+            <div style="text-align: left; margin-bottom: 2rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Password</label>
+                <InputText type="password" @bind-Value="loginModel.Password" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
+            </div>
+            <button type="submit" class="glass-btn" style="width: 100%;">Sign In</button>
+        </EditForm>
+
+        <p style="margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem;">&copy; 2026 FoodMap Team</p>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new();
+    private string? errorMessage;
+
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
+    private async Task HandleLogin()
+    {
+        var user = await UserService.AuthenticateAsync(loginModel.Username, loginModel.Password);
+
+        if (user != null)
+        {
+            if (user.Role == "user")
+            {
+                errorMessage = "Access denied. Users cannot enter the management portal.";
+                return;
+            }
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                new Claim(ClaimTypes.Role, user.Role),
+                new Claim("sub", user.UserId.ToString())
+            };
+
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            
+            // In Blazor Server, we can't easily SignIn here because HttpContext is usually already used or not active for SSR interactive.
+            // But we can use a redirect to an API endpoint that does the SignIn.
+            // For simplicity in this demo, let's assume we use a controller or a standard form post.
+            // However, with InteractiveServer, the best way is often to use a standard Post to a login controller.
+            
+            // For this specific implementation, I will just display a "Success" message or redirect if I can.
+            // Actually, I'll redirect to a specialized login controller endpoint.
+            Navigator.NavigateTo($"/api/auth/login-cookie?username={user.Username}&password={user.Password}", forceLoad: true);
+        }
+        else
+        {
+            errorMessage = "Invalid username or password.";
+        }
+    }
+
+    public class LoginModel
+    {
+        public string Username { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+}
+

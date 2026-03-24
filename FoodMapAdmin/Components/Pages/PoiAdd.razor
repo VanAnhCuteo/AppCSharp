@@ -1,0 +1,59 @@
+﻿@page "/pois/add"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IPoiService PoiService
+@inject ICategoryService CategoryService
+@inject NavigationManager Navigator
+@attribute [Authorize(Roles = "admin,CNH")]
+
+<PageTitle>Add Restaurant - FoodMap Admin</PageTitle>
+
+@if (categories == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <PoiForm CurrentPoi="newPoi" Categories="categories" Title="Add New Restaurant" OnSubmit="HandleSubmit" OnCancel="HandleCancel" />
+}
+
+@code {
+    private Poi newPoi = new() { CreatedAt = DateTime.Now };
+    private List<Category>? categories;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await CategoryService.GetAllCategoriesAsync();
+        
+        // Pre-fill UserId if not admin
+        if (AuthStateTask != null)
+        {
+            var authState = await AuthStateTask;
+            var user = authState.User;
+            if (!user.IsInRole("admin"))
+            {
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(userIdStr, out var userId))
+                {
+                    newPoi.UserId = userId;
+                }
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        await PoiService.CreatePoiAsync(newPoi);
+        Navigator.NavigateTo("/pois");
+    }
+
+    private void HandleCancel()
+    {
+        Navigator.NavigateTo("/pois");
+    }
+}
