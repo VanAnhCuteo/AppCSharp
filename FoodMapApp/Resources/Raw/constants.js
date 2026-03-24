@@ -3,9 +3,9 @@ let allFoodsData = [];
 const visitedFoods = new Set();
 let currentPoiId = null;
 let userMarker = null; // To store the user's location marker
-// Change this IP to your host machine's IP if using a physical device (e.g., 192.168.1.x)
-const backendIp = "10.0.2.2";
-const platformApiBase = window.navigator.userAgent.includes("Android") ? `http://${backendIp}:5000/api/food` : "http://localhost:5000/api/food";
+// Using 127.0.0.1 for Android via ADB Reverse (tcp:5000 tcp:5000)
+const backendIp = "127.0.0.1"; 
+const platformApiBase = window.navigator.userAgent.includes("Android") ? `http://${backendIp}:5000/api/Food` : "http://localhost:5000/api/Food";
 
 // Icons & SVGs
 const markerSvg = `

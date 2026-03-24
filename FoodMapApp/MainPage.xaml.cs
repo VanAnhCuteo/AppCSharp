@@ -1,4 +1,4 @@
-﻿using System.Net.Http;
+using System.Net.Http;
 using System.Text.Json;
 using System.Web;
 
@@ -7,8 +7,7 @@ namespace FoodMapApp;
 public partial class MainPage : ContentPage
 {
     // Change this to your host machine's IP if using a physical device (e.g., 192.168.1.x)
-    private const string BackendIp = "10.0.2.2";
-    private const string BackendUrl = $"http://{BackendIp}:5000/api/food";
+    private static string BackendUrl => AppConfig.FoodApiUrl;
 
     private bool _isMapLoaded = false;
     private string _foodsJson = null;

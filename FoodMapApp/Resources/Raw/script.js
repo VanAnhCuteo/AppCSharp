@@ -20,10 +20,7 @@ async function loadFoods(foods, userId = 0) {
         await syncVisitedHistory(userId);
     }
 
-    const markersGroup = L.markerClusterGroup({
-        chunkedLoading: true,
-        maxClusterRadius: 50
-    });
+    const markersGroup = L.featureGroup();
 
     foods.forEach(food => {
         let imgSection = '';

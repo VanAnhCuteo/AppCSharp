@@ -1,4 +1,4 @@
-﻿using FoodMapApp.Services;
+using FoodMapApp.Services;
 using System.Net.Http.Json;
 using System.Linq;
 using System.Text;
@@ -8,8 +8,7 @@ namespace FoodMapApp.Views
 {
     public partial class HomePage : ContentPage
     {
-        private const string BackendIp = "10.0.2.2";
-        private const string BackendUrl = $"http://{BackendIp}:5000/api/food";
+        private static string BackendUrl => AppConfig.FoodApiUrl;
         private List<FoodItem> _allRestaurants = new();
         private List<CategoryItem> _allCategories = new();
         private int? _selectedCategoryId = null;

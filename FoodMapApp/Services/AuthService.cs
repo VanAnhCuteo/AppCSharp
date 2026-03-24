@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using Microsoft.Maui.Storage;
 
 namespace FoodMapApp.Services
@@ -6,8 +6,7 @@ namespace FoodMapApp.Services
     public class AuthService
     {
         private readonly HttpClient _httpClient;
-        private const string BaseUrl = "http://10.0.2.2:5000/api/auth"; // For Android Emulator (using localhost of host machine)
-        // Note: Change to the actual IP for physical devices.
+        private static string BaseUrl => AppConfig.AuthApiUrl; 
 
         public AuthService()
         {
