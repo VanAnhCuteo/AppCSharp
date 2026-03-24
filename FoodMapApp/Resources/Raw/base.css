@@ -2,13 +2,16 @@
     --primary-pink: #FF8BA7;
     --pink-accent: #FFC2D1;
     --pink-light: #FFE5EC;
-    --pink-dark: #FB6F92;
-    --text-main: #2D3142;
-    --text-sub: #7A7C8C;
-    --bg-card: #FFFFFF;
-    --shadow-sm: 0 4px 12px rgba(251, 111, 146, 0.15);
-    --shadow-md: 0 10px 25px rgba(251, 111, 146, 0.25);
-    --shadow-lg: 0 18px 40px rgba(251, 111, 146, 0.35);
+    --pink-dark: #FF6A88;
+    --dark-bg: #1A1A2E;
+    --dark-card: #252540;
+    --dark-card-deep: #1E1E38;
+    --text-main: #F0F0FF;
+    --text-sub: #9090AA;
+    --border-dim: #333355;
+    --shadow-sm: 0 4px 12px rgba(255, 106, 136, 0.2);
+    --shadow-md: 0 10px 25px rgba(255, 106, 136, 0.3);
+    --shadow-lg: 0 18px 40px rgba(255, 106, 136, 0.4);
     --radius-md: 16px;
     --radius-lg: 20px;
 }
@@ -19,7 +22,7 @@ body, html {
     font-family: 'Outfit', sans-serif;
     height: 100vh;
     width: 100vw;
-    background-color: var(--pink-light);
+    background-color: var(--dark-bg);
     overflow: hidden;
 }
 
@@ -29,45 +32,66 @@ body, html {
     z-index: 1;
 }
 
-/* Glassmorphism Title on Map Settings */
+/* Premium Dark Search Bar on Map */
 .map-header {
     position: absolute;
     top: 25px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    padding: 12px 28px;
-    border-radius: 30px;
-    box-shadow: var(--shadow-sm);
-    color: var(--text-main);
-    font-weight: 700;
-    font-size: 16px;
-    letter-spacing: 0.5px;
+    background: rgba(37, 37, 64, 0.92);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    padding: 8px 18px;
+    border-radius: 20px;
+    box-shadow: var(--shadow-md);
     display: flex;
     align-items: center;
-    gap: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    pointer-events: none;
+    gap: 12px;
+    border: 1px solid rgba(255, 106, 136, 0.2);
+    width: 80%;
+    max-width: 340px;
+    transition: all 0.3s ease;
 }
 
-    .map-header svg {
-        color: var(--pink-dark);
-        width: 22px;
-        height: 22px;
-    }
+.map-header:focus-within {
+    box-shadow: 0 0 0 2px rgba(255, 106, 136, 0.4), var(--shadow-lg);
+    background: rgba(37, 37, 64, 0.98);
+    width: 85%;
+}
+
+#map-search-input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-main);
+    width: 100%;
+}
+
+#map-search-input::placeholder {
+    color: var(--text-sub);
+    opacity: 0.8;
+}
+
+.map-header svg {
+    color: var(--pink-dark);
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
 
 /* Locate Button */
 #locate-btn {
     position: absolute;
     bottom: 145px;
     right: 15px;
-    width: 44px;
-    height: 44px;
-    background: white;
-    border: none;
+    width: 46px;
+    height: 46px;
+    background: var(--dark-card);
+    border: 1px solid rgba(255, 106, 136, 0.3);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -80,15 +104,17 @@ body, html {
 }
 
     #locate-btn:hover {
-        background: var(--pink-light);
+        background: #2E2E50;
         transform: scale(1.1);
+        box-shadow: 0 0 20px rgba(255, 106, 136, 0.4);
     }
 
     #locate-btn svg {
-        width: 24px;
-        height: 24px;
+        width: 22px;
+        height: 22px;
     }
-/* Navigation Overlay (Google Maps Style) */
+
+/* Navigation Overlay */
 .nav-overlay {
     position: absolute;
     top: 85px;
@@ -97,16 +123,16 @@ body, html {
     z-index: 1000;
     width: 90%;
     max-width: 400px;
-    background: rgba(45, 49, 66, 0.9);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 16px;
-    padding: 12px 16px;
+    background: rgba(37, 37, 64, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 18px;
+    padding: 14px 18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     box-shadow: var(--shadow-lg);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 106, 136, 0.2);
     transition: all 0.3s ease;
 }
 
@@ -118,22 +144,22 @@ body, html {
 
 .nav-info {
     color: white;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 16px;
 }
 
 .nav-cancel-btn {
-    background: #FF4D4D;
+    background: linear-gradient(135deg, #FF4D4D, #CC2222);
     color: white;
     border: none;
-    padding: 6px 14px;
-    border-radius: 8px;
+    padding: 8px 16px;
+    border-radius: 10px;
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: opacity 0.2s;
 }
 
     .nav-cancel-btn:active {
-        background: #D43F3F;
+        opacity: 0.8;
     }

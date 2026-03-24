@@ -20,7 +20,9 @@ async function loadFoods(foods, userId = 0) {
         await syncVisitedHistory(userId);
     }
 
-    const markersGroup = L.featureGroup();
+    if (markersGroup) map.removeLayer(markersGroup);
+    mapMarkers = [];
+    markersGroup = L.featureGroup();
 
     foods.forEach(food => {
         let imgSection = '';
@@ -78,6 +80,7 @@ async function loadFoods(foods, userId = 0) {
             map.flyTo(e.latlng, map.getZoom(), { animate: true, duration: 0.5 });
         });
 
+        mapMarkers.push({ marker, food });
         markersGroup.addLayer(marker);
         markers.push([food.latitude, food.longitude]);
     });
@@ -94,6 +97,33 @@ async function loadFoods(foods, userId = 0) {
     }
 
     startGeofencing();
+    setupMapSearch();
+}
+
+function setupMapSearch() {
+    const searchInput = document.getElementById('map-search-input');
+    if (!searchInput) return;
+
+    searchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase().trim();
+        const normalizedTerm = removeDiacritics(term);
+
+        mapMarkers.forEach(({ marker, food }) => {
+            const name = removeDiacritics(food.name.toLowerCase());
+            const addr = removeDiacritics(food.address.toLowerCase());
+            const desc = removeDiacritics(food.description.toLowerCase());
+
+            if (name.includes(normalizedTerm) || addr.includes(normalizedTerm) || desc.includes(normalizedTerm)) {
+                if (!markersGroup.hasLayer(marker)) markersGroup.addLayer(marker);
+            } else {
+                if (markersGroup.hasLayer(marker)) markersGroup.removeLayer(marker);
+            }
+        });
+    });
+}
+
+function removeDiacritics(text) {
+    return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
 async function syncVisitedHistory(userId) {

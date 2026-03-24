@@ -3,6 +3,8 @@ let allFoodsData = [];
 const visitedFoods = new Set();
 let currentPoiId = null;
 let userMarker = null; // To store the user's location marker
+let mapMarkers = [];
+let markersGroup = null;
 // Using 127.0.0.1 for Android via ADB Reverse (tcp:5000 tcp:5000)
 const backendIp = "127.0.0.1"; 
 const platformApiBase = window.navigator.userAgent.includes("Android") ? `http://${backendIp}:5000/api/Food` : "http://localhost:5000/api/Food";

@@ -3,36 +3,43 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="FoodMapApp.Views.HomePage"
              NavigationPage.HasNavigationBar="False"
-             BackgroundColor="#F9F1F0">
+             BackgroundColor="#1A1A2E">
 
     <Grid RowDefinitions="Auto,*">
         <Grid.GestureRecognizers>
             <TapGestureRecognizer Tapped="OnBackgroundTapped" />
         </Grid.GestureRecognizers>
 
-        <Grid Grid.Row="0" Padding="20,50,20,20">
+        <!-- Header -->
+        <Grid Grid.Row="0" Padding="20,52,20,20">
             <Grid.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                     <GradientStop Color="#FF6A88" Offset="0.0" />
-                    <GradientStop Color="#FF99AC" Offset="1.0" />
+                    <GradientStop Color="#FFAD9F" Offset="1.0" />
                 </LinearGradientBrush>
             </Grid.Background>
             <VerticalStackLayout Spacing="14">
                 <HorizontalStackLayout>
                     <VerticalStackLayout HorizontalOptions="StartAndExpand">
-                        <Label x:Name="GreetingLabel" TextColor="White" FontSize="14" Opacity="0.9"/>
-                        <Label x:Name="UsernameLabel" TextColor="White" FontSize="22" FontAttributes="Bold"/>
+                        <Label x:Name="GreetingLabel" TextColor="#FFE8EF" FontSize="13" Opacity="0.9"/>
+                        <Label x:Name="UsernameLabel" TextColor="White" FontSize="24" FontAttributes="Bold"/>
                     </VerticalStackLayout>
-                    <Label Text="&#x1F4CD;" FontSize="30" VerticalOptions="Center" HorizontalOptions="End"/>
+                    <Frame WidthRequest="42" HeightRequest="42" CornerRadius="21" Padding="0"
+                           BackgroundColor="#33FFFFFF" HasShadow="False" VerticalOptions="Center">
+                        <Label Text="📍" FontSize="22" HorizontalOptions="Center" VerticalOptions="Center"/>
+                    </Frame>
                 </HorizontalStackLayout>
 
-                <Frame BackgroundColor="White" CornerRadius="25" Padding="15,0" HeightRequest="50" HasShadow="True">
+                <!-- Search Bar -->
+                <Frame BackgroundColor="#22FFFFFF" CornerRadius="18" Padding="14,0"
+                       HeightRequest="48" HasShadow="False">
                     <Grid ColumnDefinitions="Auto,*">
-                        <Label Grid.Column="0" Text="&#x1F50D;" FontSize="18" VerticalOptions="Center" Margin="0,0,8,0"/>
-                        <Entry Grid.Column="1"
-                               x:Name="SearchEntry"
+                        <Label Grid.Column="0" Text="🔍" FontSize="16"
+                               VerticalOptions="Center" Margin="0,0,10,0"/>
+                        <Entry Grid.Column="1" x:Name="SearchEntry"
                                TextChanged="OnSearchTextChanged"
-                               PlaceholderColor="#AAAAAA" TextColor="#333333"
+                               Placeholder="Tìm quán, địa chỉ..."
+                               PlaceholderColor="#CCFFFFFF" TextColor="White"
                                BackgroundColor="Transparent" VerticalOptions="Center"
                                IsTextPredictionEnabled="False"
                                IsSpellCheckEnabled="False"/>
@@ -41,90 +48,138 @@
             </VerticalStackLayout>
         </Grid>
 
+        <!-- Body -->
         <ScrollView Grid.Row="1">
             <ScrollView.GestureRecognizers>
                 <TapGestureRecognizer Tapped="OnBackgroundTapped" />
             </ScrollView.GestureRecognizers>
-            <VerticalStackLayout Spacing="20" Padding="20,15">
+            <VerticalStackLayout Spacing="24" Padding="0,20,0,20">
 
-                <Label x:Name="CategoryTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#333"/>
-                <CollectionView x:Name="CategoriesCollection" HeightRequest="100">
-                    <CollectionView.ItemsLayout>
-                        <GridItemsLayout Orientation="Vertical" Span="3" />
-                    </CollectionView.ItemsLayout>
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate>
-                            <VerticalStackLayout HorizontalOptions="Center" Spacing="6" Padding="0,5">
-                                <VerticalStackLayout.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnCategoryTapped" CommandParameter="{Binding .}"/>
-                                </VerticalStackLayout.GestureRecognizers>
-                                <Frame WidthRequest="66" HeightRequest="66" CornerRadius="33" Padding="0" BackgroundColor="{Binding BackgroundColor}" HasShadow="False">
-                                    <Label Text="{Binding Icon}" FontSize="28" HorizontalOptions="Center" VerticalOptions="Center"/>
-                                </Frame>
-                                <Label Text="{Binding category_name}" FontSize="12" HorizontalOptions="Center" TextColor="#555"/>
-                            </VerticalStackLayout>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
-
-                <HorizontalStackLayout>
-                    <Label x:Name="TopRestaurantLabel" FontSize="18" FontAttributes="Bold" TextColor="#333" HorizontalOptions="StartAndExpand"/>
-                    <Label x:Name="SeeAllLabel" FontSize="13" TextColor="#FF6A88" VerticalOptions="Center"/>
-                </HorizontalStackLayout>
-
-                <CollectionView x:Name="RestaurantsCollection" HeightRequest="200" ItemsLayout="HorizontalList">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate>
-                            <Frame WidthRequest="160" HeightRequest="185" CornerRadius="16" Padding="0" Margin="0,5,12,5" HasShadow="True" BackgroundColor="White">
-                                <Grid RowDefinitions="110,*">
-                                    <Frame Grid.Row="0" CornerRadius="16" Padding="0" IsClippedToBounds="True" BackgroundColor="#FFD0DC">
-                                        <Label Text="&#x1F374;" FontSize="50" HorizontalOptions="Center" VerticalOptions="Center"/>
+                <!-- Categories -->
+                <VerticalStackLayout Spacing="12" Padding="20,0">
+                    <Label x:Name="CategoryTitleLabel" FontSize="17" FontAttributes="Bold"
+                           TextColor="White"/>
+                    <CollectionView x:Name="CategoriesCollection" HeightRequest="90"
+                                    ItemsLayout="HorizontalList">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <VerticalStackLayout HorizontalOptions="Center" Spacing="6"
+                                                     Padding="6,0" WidthRequest="78">
+                                    <VerticalStackLayout.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnCategoryTapped" CommandParameter="{Binding .}"/>
+                                    </VerticalStackLayout.GestureRecognizers>
+                                    <Frame WidthRequest="58" HeightRequest="58" CornerRadius="18"
+                                           Padding="0" BackgroundColor="{Binding BackgroundColor}"
+                                           HasShadow="False" HorizontalOptions="Center">
+                                        <Label Text="{Binding Icon}" FontSize="26"
+                                               HorizontalOptions="Center" VerticalOptions="Center"/>
                                     </Frame>
-                                    <VerticalStackLayout Grid.Row="1" Padding="10,8" Spacing="2">
-                                        <Label Text="{Binding name}" FontSize="13" FontAttributes="Bold" LineBreakMode="TailTruncation" TextColor="#222"/>
-                                        <HorizontalStackLayout Spacing="4">
-                                            <Label Text="&#x2B50;" FontSize="11" TextColor="#FFB400"/>
-                                            <Label Text="4.5" FontSize="11" TextColor="#666"/>
-                                            <Label Text="| $$" FontSize="11" TextColor="#999"/>
-                                        </HorizontalStackLayout>
-                                    </VerticalStackLayout>
-                                </Grid>
-                            </Frame>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                                    <Label Text="{Binding category_name}" FontSize="11"
+                                           HorizontalOptions="Center" TextColor="#CCFFFFFF"
+                                           LineBreakMode="TailTruncation"/>
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
 
-                <Label x:Name="NoResultsLabel" 
-                       Text="Quán bạn tìm không có" 
-                       FontSize="16" 
-                       TextColor="#888" 
-                       HorizontalOptions="Center" 
-                       Padding="0,20"
+                <!-- Top Restaurants -->
+                <VerticalStackLayout Spacing="12">
+                    <HorizontalStackLayout Padding="20,0">
+                        <Label x:Name="TopRestaurantLabel" FontSize="17" FontAttributes="Bold"
+                               TextColor="White" HorizontalOptions="StartAndExpand"/>
+                        <Label x:Name="SeeAllLabel" FontSize="13" TextColor="#FF6A88"
+                               VerticalOptions="Center" FontAttributes="Bold"/>
+                    </HorizontalStackLayout>
+
+                    <CollectionView x:Name="RestaurantsCollection" HeightRequest="210"
+                                    ItemsLayout="HorizontalList">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Frame WidthRequest="165" HeightRequest="195" CornerRadius="20"
+                                       Padding="0" Margin="4,5,4,5" HasShadow="False"
+                                       BackgroundColor="#252540">
+                                    <Grid RowDefinitions="115,*">
+                                        <Frame Grid.Row="0" CornerRadius="20" Padding="0"
+                                               IsClippedToBounds="True" BackgroundColor="#3A2A40">
+                                            <Grid>
+                                                <Label Text="🍜" FontSize="52"
+                                                       HorizontalOptions="Center"
+                                                       VerticalOptions="Center"/>
+                                                <BoxView>
+                                                    <BoxView.Background>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                            <GradientStop Color="#00000000" Offset="0.4"/>
+                                                            <GradientStop Color="#AA1A1A2E" Offset="1.0"/>
+                                                        </LinearGradientBrush>
+                                                    </BoxView.Background>
+                                                </BoxView>
+                                            </Grid>
+                                        </Frame>
+                                        <VerticalStackLayout Grid.Row="1" Padding="12,8" Spacing="4">
+                                            <Label Text="{Binding name}" FontSize="13"
+                                                   FontAttributes="Bold" LineBreakMode="TailTruncation"
+                                                   TextColor="White"/>
+                                            <HorizontalStackLayout Spacing="4">
+                                                <Label Text="⭐" FontSize="11"/>
+                                                <Label Text="4.5" FontSize="11" TextColor="#FFB400"/>
+                                                <Label Text=" · Gần đây" FontSize="11" TextColor="#9090AA"/>
+                                            </HorizontalStackLayout>
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- No Results -->
+                <Label x:Name="NoResultsLabel"
+                       Text="Không tìm thấy quán phù hợp 😢"
+                       FontSize="15" TextColor="#9090AA"
+                       HorizontalOptions="Center" Padding="0,10"
                        IsVisible="False"/>
 
-                <Label x:Name="EventTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#333"/>
+                <!-- Events -->
+                <VerticalStackLayout Spacing="12" Padding="20,0">
+                    <Label x:Name="EventTitleLabel" FontSize="17" FontAttributes="Bold"
+                           TextColor="White"/>
 
-                <Frame BackgroundColor="#FF6A88" CornerRadius="16" Padding="18,14" HasShadow="True">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <VerticalStackLayout Grid.Column="0" Spacing="4">
-                            <Label x:Name="Event1Title" TextColor="White" FontSize="16" FontAttributes="Bold"/>
-                            <Label x:Name="Event1Desc" TextColor="White" FontSize="13" Opacity="0.9"/>
-                            <Label x:Name="Event1Sub" TextColor="White" FontSize="12" Opacity="0.7"/>
-                        </VerticalStackLayout>
-                        <Label Grid.Column="1" Text="&#x1F389;" FontSize="40" VerticalOptions="Center"/>
-                    </Grid>
-                </Frame>
+                    <!-- Event 1 -->
+                    <Frame BackgroundColor="#252540" CornerRadius="20" Padding="0"
+                           HasShadow="False">
+                        <Grid ColumnDefinitions="6,*,Auto">
+                            <BoxView Grid.Column="0" BackgroundColor="#FF6A88"
+                                     CornerRadius="20" WidthRequest="6"/>
+                            <VerticalStackLayout Grid.Column="1" Spacing="4" Padding="14,14">
+                                <Label x:Name="Event1Title" TextColor="White"
+                                       FontSize="15" FontAttributes="Bold"/>
+                                <Label x:Name="Event1Desc" TextColor="#CCFFFFFF" FontSize="13"/>
+                                <Label x:Name="Event1Sub" TextColor="#9090AA" FontSize="11"/>
+                            </VerticalStackLayout>
+                            <Label Grid.Column="2" Text="🎉" FontSize="36"
+                                   VerticalOptions="Center" Margin="0,0,16,0"/>
+                        </Grid>
+                    </Frame>
 
-                <Frame BackgroundColor="#FF9A8B" CornerRadius="16" Padding="18,14" HasShadow="True">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <VerticalStackLayout Grid.Column="0" Spacing="4">
-                            <Label x:Name="Event2Title" TextColor="White" FontSize="16" FontAttributes="Bold"/>
-                            <Label x:Name="Event2Desc" TextColor="White" FontSize="13" Opacity="0.9"/>
-                            <Label x:Name="Event2Sub" TextColor="White" FontSize="12" Opacity="0.7"/>
-                        </VerticalStackLayout>
-                        <Label Grid.Column="1" Text="&#x1F46B;" FontSize="40" VerticalOptions="Center"/>
-                    </Grid>
-                </Frame>
+                    <!-- Event 2 -->
+                    <Frame BackgroundColor="#252540" CornerRadius="20" Padding="0"
+                           HasShadow="False">
+                        <Grid ColumnDefinitions="6,*,Auto">
+                            <BoxView Grid.Column="0" BackgroundColor="#FFAD9F"
+                                     CornerRadius="20" WidthRequest="6"/>
+                            <VerticalStackLayout Grid.Column="1" Spacing="4" Padding="14,14">
+                                <Label x:Name="Event2Title" TextColor="White"
+                                       FontSize="15" FontAttributes="Bold"/>
+                                <Label x:Name="Event2Desc" TextColor="#CCFFFFFF" FontSize="13"/>
+                                <Label x:Name="Event2Sub" TextColor="#9090AA" FontSize="11"/>
+                            </VerticalStackLayout>
+                            <Label Grid.Column="2" Text="👫" FontSize="36"
+                                   VerticalOptions="Center" Margin="0,0,16,0"/>
+                        </Grid>
+                    </Frame>
+
+                </VerticalStackLayout>
 
                 <BoxView HeightRequest="20" BackgroundColor="Transparent"/>
             </VerticalStackLayout>
