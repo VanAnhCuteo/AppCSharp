@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodMap System — Premium PRD</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+            --primary: #fb6f92;
+            --primary-light: #ff8fab;
+            --primary-dark: #c9184a;
+            --accent: #ffb3c1;
+            --accent-soft: #ffe5ec;
+            --bg: #fff5f7;
+            --surface: #ffffff;
+            --text: #2b2d42;
+            --text-secondary: #8d99ae;
+            --border: #f0f0f0;
+            --shadow-sm: 0 2px 4px rgba(251, 111, 146, 0.05);
+            --shadow: 0 10px 30px rgba(251, 111, 146, 0.1);
+            --glass: rgba(255, 255, 255, 0.7);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ===== NAVBAR ===== */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(251, 111, 146, 0.1);
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 4rem;
+        }
+
+        .logo {
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: var(--primary-dark);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* ===== HERO ===== */
+        .hero {
+            padding: 120px 4rem 80px;
+            text-align: center;
+            background: radial-gradient(circle at top right, var(--accent-soft), transparent),
+                        radial-gradient(circle at bottom left, var(--accent-soft), transparent);
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            letter-spacing: -2px;
+        }
+
+        .hero p {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            max-width: 600px;
+            margin: 0 auto 2.5rem;
+        }
+
+        .badges {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            background: var(--surface);
+            padding: 0.6rem 1.2rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--accent-soft);
+        }
+
+        /* ===== SECTIONS ===== */
+        section {
+            padding: 60px 4rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            margin-bottom: 3rem;
+        }
+
+        .section-header span {
+            color: var(--primary);
+            font-weight: 800;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .section-header h2 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-top: 0.5rem;
+        }
+
+        /* ===== GRID ===== */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--surface);
+            padding: 2.5rem;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: var(--shadow);
+            border-color: var(--accent);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--accent-soft);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        /* ===== TABLE ===== */
+        .table-container {
+            background: var(--surface);
+            border-radius: 24px;
+            padding: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 1.2rem 1rem;
+            color: var(--primary-dark);
+            font-weight: 800;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--accent-soft);
+        }
+
+        td {
+            padding: 1.2rem 1rem;
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* ===== ARCHITECTURE ===== */
+        .arch-viz {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3rem;
+            background: var(--accent-soft);
+            border-radius: 32px;
+            margin: 2rem 0;
+            gap: 2rem;
+        }
+
+        .node {
+            background: var(--surface);
+            padding: 1.5rem 2rem;
+            border-radius: 20px;
+            text-align: center;
+            flex: 1;
+            box-shadow: var(--shadow-sm);
+            border: 2px solid transparent;
+            transition: border-color 0.3s;
+        }
+
+        .node:hover {
+            border-color: var(--primary);
+        }
+
+        .node strong {
+            display: block;
+            color: var(--primary-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .node span {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .arrow {
+            font-size: 1.5rem;
+            color: var(--primary);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.3; transform: translateX(0); }
+            50% { opacity: 1; transform: translateX(5px); }
+            100% { opacity: 0.3; transform: translateX(0); }
+        }
+
+        footer {
+            padding: 4rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <div class="logo">FoodMap — Premium PRD</div>
+        <ul class="nav-links">
+            <li><a href="#overview">Tổng quan</a></li>
+            <li><a href="#personas">Người dùng</a></li>
+            <li><a href="#architecture">Kiến trúc</a></li>
+            <li><a href="#database">Dữ liệu</a></li>
+            <li><a href="#api">API Methods</a></li>
+            <li><a href="#security">Bảo mật</a></li>
+            <li><a href="#roadmap">Lộ trình</a></li>
+        </ul>
+    </nav>
+
+    <div class="hero">
+        <h1>Hệ Thống Bản Đồ Ẩm Thực</h1>
+        <p>Tài liệu Đặc tả Sản phẩm Cao cấp dành cho hệ thống FoodMap. Tối ưu hóa trải nghiệm khách hàng và quản trị viên.</p>
+        <div class="badges">
+            <div class="badge">MAUI 8.0</div>
+            <div class="badge">C# 12</div>
+            <div class="badge">ASP.NET 8</div>
+            <div class="badge">MySQL</div>
+        </div>
+    </div>
+
+    <section id="overview">
+        <div class="section-header">
+            <span>Discovery</span>
+            <h2>1. Tổng Quan Dự Án</h2>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <div class="card-icon">🎯</div>
+                <h3>Sứ Mệnh</h3>
+                <p>Khám phá và kết nối tinh hoa ẩm thực địa phương thông qua bản đồ số thông minh, mang lại sự tiện lợi tối đa cho thực khách.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🚀</div>
+                <h3>Mobile First</h3>
+                <p>Ứng dụng di động mượt mà tích hợp WebView hiệu năng cao, tối ưu hóa cho cả Android Emulator và thiết bị thật.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🏗️</div>
+                <h3>Admin Power</h3>
+                <p>Hệ thống quản trị mạnh mẽ giúp chủ quan và quản trị viên kiểm soát dữ liệu, thống kê và cập nhật địa điểm tức thì.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="personas">
+        <div class="section-header">
+            <span>User Profiles</span>
+            <h2>2. Đối Tượng Người Dùng</h2>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <div class="card-icon">🍔</div>
+                <h3>Thực khách (User)</h3>
+                <p>Tìm kiếm địa điểm ăn uống, xem đánh giá, nhận hướng dẫn đường đi và ghi lại lịch sử ghé thăm của mình.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🏪</div>
+                <h3>Chủ quán (Owner)</h3>
+                <p>Cập nhật thông tin quán, quản lý thực đơn, theo dõi lượt khách ghé thăm và phản hồi các đánh giá từ người dùng.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">👑</div>
+                <h3>Quản trị viên (Admin)</h3>
+                <p>Kiểm duyệt nội dung, quản lý danh mục ẩm thực, gán quyền Role-based và xuất các báo cáo thống kê hệ thống.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="architecture">
+        <div class="section-header">
+            <span>Infrastructure</span>
+            <h2>3. Mô Hình Kiến Trúc</h2>
+        </div>
+        <div class="arch-viz">
+            <div class="node">
+                <strong>Mobile Client</strong>
+                <span>.NET MAUI + Leaflet.js</span>
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">
+                <strong>Backend API</strong>
+                <span>ASP.NET Core 8</span>
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">
+                <strong>Database</strong>
+                <span>MySQL 8.0</span>
+            </div>
+        </div>
+    </section>
+
+    <section id="database">
+        <div class="section-header">
+            <span>Data Structure</span>
+            <h2>4. Cơ Sở Dữ Liệu</h2>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Thực thể</th>
+                        <th>Trường dữ liệu</th>
+                        <th>Mô tả chức năng</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>POI (Foods)</strong></td>
+                        <td>id, name, address, coord, open_time</td>
+                        <td>Dữ liệu cốt lõi về các địa điểm ẩm thực và vị trí địa lý.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Auth (Users)</strong></td>
+                        <td>username, password, role, email</td>
+                        <td>Hệ thống phân quyền Role-based Access Control (RBAC).</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Engagement</strong></td>
+                        <td>reviews, visits, ratings</td>
+                        <td>Theo dõi tương tác và mức độ phổ biến của địa điểm.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Metadata</strong></td>
+                        <td>images, guides, categories</td>
+                        <td>Thông tin bổ trợ và hình ảnh đa phương tiện.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="api">
+        <div class="section-header">
+            <span>Operations</span>
+            <h2>5. Các Phương Thức API</h2>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <h3>Food Controller</h3>
+                <p>Quản lý truy vấn địa điểm, lọc theo danh mục, xử lý dịch thuật đa ngôn ngữ và thống kê lượt truy cập.</p>
+                <div style="margin-top: 1rem; color: var(--primary-dark); font-weight: 700; font-size: 0.8rem;">
+                    GET /api/Food • GET /api/Food/{id} • POST /visit
+                </div>
+            </div>
+            <div class="card">
+                <h3>Auth Controller</h3>
+                <p>Xử lý quy trình đăng ký, đăng nhập bảo mật và quản lý thông tin profile người dùng toàn hệ thống.</p>
+                <div style="margin-top: 1rem; color: var(--primary-dark); font-weight: 700; font-size: 0.8rem;">
+                    POST /login • POST /register • GET /profile
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="security">
+        <div class="section-header">
+            <span>Safety & speed</span>
+            <h2>6. Bảo Mật & Hiệu Năng</h2>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <h3>Xác thực JWT</h3>
+                <p>Sử dụng JSON Web Token để bảo mật các endpoint API, đảm bảo chỉ người dùng hợp lệ mới có thể truy cập dữ liệu nhạy cảm.</p>
+            </div>
+            <div class="card">
+                <h3>Bản đồ Vector</h3>
+                <p>Tối ưu hóa Leaflet.js với định dạng Tile Layer hiệu năng cao, giúp việc di chuyển và thu phóng bản đồ luôn mượt mà trên di động.</p>
+            </div>
+            <div class="card">
+                <h3>Data Encryption</h3>
+                <p>Mã hóa mật khẩu người dùng bằng các thuật toán băm (Hashing) mạnh mẽ trước khi lưu trữ vào cơ sở dữ liệu MySQL.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="roadmap">
+        <div class="section-header">
+            <span>Future Vision</span>
+            <h2>7. Lộ Trình Phát Triển (Roadmap)</h2>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <div class="card-icon">🔔</div>
+                <h3>Thông báo (Push)</h3>
+                <p>Tích hợp Firebase Cloud Messaging (FCM) để gửi thông báo ưu đãi từ quán đến thực khách ở gần (Geofencing).</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">💳</div>
+                <h3>Thanh toán (Payment)</h3>
+                <p>Tích hợp các cổng thanh toán (Momo, VNPay) để đặt món hoặc đặt bàn trực tiếp qua ứng dụng di động.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🤖</div>
+                <h3>AI Recommendation</h3>
+                <p>Sử dụng Machine Learning để gợi ý món ăn dựa trên sở thích và thói quen ăn uống của từng cá nhân người dùng.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        &copy; 2026 FoodMap Premium Edition. All rights reserved.<br>
+        Designed with ❤️ for premium coding experience.
+    </footer>
+</body>
+
+</html>

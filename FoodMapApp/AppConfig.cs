@@ -11,8 +11,10 @@ namespace FoodMapApp
         public static string BackendIp =>
             DeviceInfo.Platform == DevicePlatform.Android &&
             DeviceInfo.DeviceType == DeviceType.Virtual
-                ? "10.0.2.2"        // Android Emulator
-                : PhysicalDeviceIp; // Physical device on same WiFi
+                ? "10.0.2.2"           // Android Emulator
+                : (DeviceInfo.Platform == DevicePlatform.WinUI 
+                    ? "localhost"      // Windows (Local)
+                    : PhysicalDeviceIp); // Physical device on same WiFi
 
         public static string BaseUrl    => $"http://{BackendIp}:5000/api";
         public static string FoodApiUrl => $"{BaseUrl}/Food";
