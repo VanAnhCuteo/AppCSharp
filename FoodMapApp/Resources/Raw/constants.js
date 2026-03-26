@@ -1,14 +1,14 @@
 // Global State
 let allFoodsData = [];
 const visitedFoods = new Set();
+let currentUserId = 0;
 let currentPoiId = null;
 let userMarker = null; // To store the user's location marker
 let mapMarkers = [];
 let markersGroup = null;
 // Using Local Wi-Fi IP to support Physical Devices
-// IP settings: Use 10.0.2.2 for Emulator, 172.20.10.3 for Physical Device, localhost for Windows
-const backendIp = "10.0.2.2"; 
-const platformApiBase = `http://${backendIp}:5000/api/Food`;
+// IP settings: These will be overridden by C# dynamically
+let platformApiBase = ""; 
 
 // Icons & SVGs
 const markerSvg = `

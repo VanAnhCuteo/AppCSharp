@@ -1,27 +1,64 @@
-﻿@page "/pois/add"
+@page "/pois/add"
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
 @using FoodMapAdmin.Models
 @using FoodMapAdmin.Services
 @inject IPoiService PoiService
 @inject ICategoryService CategoryService
+@inject IUserService UserService
 @inject NavigationManager Navigator
 @attribute [Authorize(Roles = "admin,CNH")]
 
-<PageTitle>Add Restaurant - FoodMap Admin</PageTitle>
+<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Thêm địa điểm</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Tạo mới một quán ăn hoặc địa điểm tham quan trên bản đồ</p>
+    </div>
+    <button class="back-btn-premium transition-up" @onclick="HandleCancel" title="Quay lại">
+        <i class="bi bi-arrow-left-short"></i>
+    </button>
+</div>
 
-@if (categories == null)
+@if (categories == null || users == null)
 {
-    <p>Loading...</p>
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+    </div>
 }
 else
 {
-    <PoiForm CurrentPoi="newPoi" Categories="categories" Title="Add New Restaurant" OnSubmit="HandleSubmit" OnCancel="HandleCancel" />
+    <PoiForm CurrentPoi="newPoi" Categories="categories" Users="users" OnSubmit="HandleSubmit" OnCancel="HandleCancel" />
 }
+
+<style>
+    .back-btn-premium {
+        width: 50px;
+        height: 50px;
+        border-radius: 18px;
+        background: white;
+        border: 1px solid var(--glass-border);
+        color: var(--primary);
+        font-size: 1.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+        transition: all 0.3s ease;
+    }
+
+    .back-btn-premium:hover {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 15px 30px var(--primary-glow);
+    }
+</style>
 
 @code {
     private Poi newPoi = new() { CreatedAt = DateTime.Now };
     private List<Category>? categories;
+    private List<User>? users;
 
     [CascadingParameter]
     private Task<AuthenticationState>? AuthStateTask { get; set; }
@@ -29,8 +66,9 @@ else
     protected override async Task OnInitializedAsync()
     {
         categories = await CategoryService.GetAllCategoriesAsync();
+        var allUsers = await UserService.GetAllUsersAsync();
+        users = allUsers.Where(u => u.Role == "CNH").ToList();
         
-        // Pre-fill UserId if not admin
         if (AuthStateTask != null)
         {
             var authState = await AuthStateTask;
@@ -52,8 +90,5 @@ else
         Navigator.NavigateTo("/pois");
     }
 
-    private void HandleCancel()
-    {
-        Navigator.NavigateTo("/pois");
-    }
+    private void HandleCancel() => Navigator.NavigateTo("/pois");
 }

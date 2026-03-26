@@ -1,58 +1,171 @@
-﻿@page "/users"
+@page "/users"
 @using Microsoft.AspNetCore.Authorization
 @using FoodMapAdmin.Models
 @using FoodMapAdmin.Services
 @inject IUserService UserService
 @attribute [Authorize(Roles = "admin")]
 
-<PageTitle>Users - FoodMap Admin</PageTitle>
+<PageTitle>Quản lý Người dùng - FoodMap Admin</PageTitle>
 
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <h2>User Management</h2>
+<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Người dùng</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý tài khoản quản trị viên và chủ nhà hàng</p>
     </div>
+</div>
 
-    @if (users == null)
-    {
-        <p><em>Loading...</em></p>
-    }
-    else
-    {
-        <table style="width: 100%; border-collapse: collapse;">
+<div class="card shadow-glass border-0" style="border-radius: 30px; overflow: hidden; background: var(--surface);">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
             <thead>
-                <tr style="text-align: left; border-bottom: 1px solid var(--glass);">
-                    <th style="padding: 1rem;">ID</th>
-                    <th style="padding: 1rem;">Username</th>
-                    <th style="padding: 1rem;">Email</th>
-                    <th style="padding: 1rem;">Role</th>
-                    <th style="padding: 1rem;">Created At</th>
+                <tr style="background: rgba(255, 45, 133, 0.03);">
+                    <th style="padding: 1.5rem 1rem 1.5rem 2rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Mã số</th>
+                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Tên đăng nhập</th>
+                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Email liên hệ</th>
+                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Vai trò</th>
+                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Ngày tham gia</th>
+                    <th style="padding: 1.5rem 2rem 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var user in users)
+                @if (users == null)
                 {
-                    <tr style="border-bottom: 1px solid var(--glass);">
-                        <td style="padding: 1rem;">@user.UserId</td>
-                        <td style="padding: 1rem;"><strong>@user.Username</strong></td>
-                        <td style="padding: 1rem;">@user.Email</td>
-                        <td style="padding: 1rem;">
-                            <span style="background: @(user.Role == "admin" ? "#ff4d4d" : user.Role == "CNH" ? "#ffcc00" : "#4CAF50"); color: white; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: bold;">
-                                @user.Role.ToUpper()
-                            </span>
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
                         </td>
-                        <td style="padding: 1rem; color: var(--text-muted);">@user.CreatedAt?.ToString("yyyy-MM-dd")</td>
                     </tr>
+                }
+                else
+                {
+                    @foreach (var user in users)
+                    {
+                        <tr class="align-middle transition-all">
+                            <td style="padding-left: 2rem; color: var(--text-muted); font-weight: 600;">#@user.UserId</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar @(user.Role == "admin" ? "admin" : "owner") me-3">
+                                        <i class="bi @(user.Role == "admin" ? "bi-shield-check" : "bi-person-badge")"></i>
+                                    </div>
+                                    <span style="font-weight: 800; color: var(--text-main);">@user.Username</span>
+                                </div>
+                            </td>
+                            <td class="text-muted">@user.Email</td>
+                            <td>
+                                @if (user.Role == "admin")
+                                {
+                                    <span class="badge-custom badge-admin">Quản trị viên</span>
+                                }
+                                else if (user.Role == "CNH")
+                                {
+                                    <span class="badge-custom badge-owner">Chủ nhà hàng</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-custom badge-user">Khách hàng</span>
+                                }
+                            </td>
+                            <td class="text-muted" style="font-size: 0.9rem;">
+                                @user.CreatedAt?.ToString("dd/MM/yyyy")
+                            </td>
+                            <td style="text-align: center; padding-right: 2rem; white-space: nowrap;">
+                                <div style="display: flex !important; flex-direction: row !important; justify-content: center; align-items: center; gap: 0.75rem;">
+                                    <button class="action-btn btn-edit" title="Sửa"><i class="bi bi-pencil-fill"></i></button>
+                                    <button class="action-btn btn-delete" title="Xóa" @onclick="() => DeleteUser(user.UserId)"><i class="bi bi-trash-fill"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
                 }
             </tbody>
         </table>
-    }
+    </div>
 </div>
+
+<style>
+    .action-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+    .btn-edit { background: rgba(255, 45, 133, 0.05); color: var(--primary); }
+    .btn-edit:hover { background: var(--primary); color: white; }
+    .btn-delete { background: rgba(255, 0, 0, 0.05); color: #ff4d4f; }
+    .btn-delete:hover { background: #ff4d4f; color: white; }
+    .shadow-glass {
+        box-shadow: 0 20px 60px rgba(0,0,0,0.03) !important;
+        border: 1px solid var(--glass-border) !important;
+    }
+
+    .user-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+
+    .user-avatar.admin {
+        background: rgba(255, 45, 133, 0.1);
+        color: var(--primary);
+    }
+
+    .user-avatar.owner {
+        background: rgba(0, 184, 212, 0.1);
+        color: #00acc1;
+    }
+
+    .badge-custom {
+        padding: 0.4rem 0.9rem;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: inline-block;
+    }
+
+    .badge-admin { background: rgba(255, 45, 133, 0.08); color: var(--primary); border: 1px solid rgba(255, 45, 133, 0.1); }
+    .badge-owner { background: rgba(0, 184, 212, 0.08); color: #00acc1; border: 1px solid rgba(0, 184, 212, 0.1); }
+    .badge-user { background: rgba(0,0,0,0.05); color: var(--text-muted); border: 1px solid rgba(0,0,0,0.05); }
+
+    .transition-all { transition: all 0.3s ease; }
+    tr:hover { background: rgba(255, 45, 133, 0.01) !important; }
+</style>
+@inject IJSRuntime JSRuntime
 
 @code {
     private List<User>? users;
 
     protected override async Task OnInitializedAsync()
     {
-        users = await UserService.GetAllUsersAsync();
+        try 
+        {
+            users = await UserService.GetAllUsersAsync();
+        }
+        catch (Exception ex)
+        {
+             Console.WriteLine($"Error loading users: {ex.Message}");
+             users = new List<User>();
+        }
+    }
+
+    private async Task DeleteUser(int id)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xóa người dùng này? Thao tác này có thể ảnh hưởng đến các dữ liệu liên quan.");
+        if (confirmed && await UserService.DeleteUserAsync(id))
+        {
+            users = users?.Where(u => u.UserId != id).ToList();
+        }
     }
 }

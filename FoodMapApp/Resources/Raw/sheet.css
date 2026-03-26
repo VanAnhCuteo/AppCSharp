@@ -217,3 +217,120 @@ textarea.review-input {
     resize: none;
     height: 80px;
 }
+
+/* ── PREMIUM COMPACT AUDIO CARD ── */
+.audio-card {
+    background: linear-gradient(135deg, rgba(251, 111, 146, 0.08) 0%, rgba(251, 111, 146, 0.03) 100%);
+    border-radius: 24px;
+    padding: 12px 16px;
+    margin: 15px 0;
+    border: 1px solid rgba(251, 111, 146, 0.15);
+    box-shadow: 0 4px 15px rgba(251, 111, 146, 0.05);
+}
+
+.audio-card-body {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.audio-play-btn {
+    width: 44px;
+    height: 44px;
+    background: var(--pink-dark);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(251, 111, 146, 0.3);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    flex-shrink: 0;
+}
+
+.audio-play-btn:active { transform: scale(0.9); }
+.audio-play-btn svg { width: 24px; height: 24px; }
+
+.audio-playing .audio-play-btn {
+    animation: audioPulse 2s infinite;
+}
+
+@keyframes audioPulse {
+    0% { box-shadow: 0 4px 10px rgba(251, 111, 146, 0.3), 0 0 0 0 rgba(251, 111, 146, 0.4); }
+    70% { box-shadow: 0 4px 10px rgba(251, 111, 146, 0.3), 0 0 0 10px rgba(251, 111, 146, 0); }
+    100% { box-shadow: 0 4px 10px rgba(251, 111, 146, 0.3), 0 0 0 0 rgba(251, 111, 146, 0); }
+}
+
+.audio-card-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0; /* Enable text truncation if needed */
+}
+
+.audio-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#audio-status-text {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--pink-dark);
+    letter-spacing: -0.2px;
+}
+
+#mini-player-timer {
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    font-variant-numeric: tabular-nums;
+}
+
+.audio-progress-container {
+    padding: 2px 0;
+}
+
+.audio-progress-track {
+    height: 5px;
+    background: rgba(251, 111, 146, 0.12);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.audio-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--pink-dark);
+    border-radius: 10px;
+    transition: width 0.3s linear;
+}
+
+.audio-replay-btn {
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    color: var(--pink-dark);
+    border: 1.5px solid rgba(251, 111, 146, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.audio-replay-btn:active { transform: rotate(-45deg); background: rgba(251,111,146,0.05); }
+.audio-replay-btn svg { width: 18px; height: 18px; }
+
+.hidden { display: none !important; }
+
+/* Adjust overall layout padding */
+.sheet-content {
+    padding-bottom: 25px !important;
+}

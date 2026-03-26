@@ -1,55 +1,96 @@
-﻿@page "/"
+@page "/"
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IDashboardService DashService
 
-<PageTitle>Dashboard - FoodMap Admin</PageTitle>
+<PageTitle>Tổng quan - FoodMap Admin</PageTitle>
 
-<div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-    <div class="card">
-        <p style="color: var(--text-muted); margin-bottom: 0.5rem;">Total Restaurants</p>
-        <h2 style="font-size: 2.5rem; margin: 0;">128</h2>
-        <p style="color: #4CAF50; font-size: 0.9rem; margin-top: 0.5rem;">+12% from last month</p>
+@if (stats == null)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
     </div>
-    <div class="card">
-        <p style="color: var(--text-muted); margin-bottom: 0.5rem;">Total Reviews</p>
-        <h2 style="font-size: 2.5rem; margin: 0;">1.2k</h2>
-        <p style="color: #4CAF50; font-size: 0.9rem; margin-top: 0.5rem;">+5% from last week</p>
+}
+else
+{
+    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
+        <div class="card shadow" style="border-left: 4px solid var(--primary); background: #fff;">
+            <p style="color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">Tổng số quán ăn</p>
+            <h2 style="font-size: 2.8rem; margin: 0; color: var(--text-main);">@stats.TotalPois</h2>
+            <p style="color: #00acc1; font-size: 0.9rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="bi bi-graph-up-arrow"></i> Hoạt động ổn định
+            </p>
+        </div>
+        <div class="card shadow" style="border-left: 4px solid var(--accent); background: #fff;">
+            <p style="color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">Tổng số đánh giá</p>
+            <h2 style="font-size: 2.8rem; margin: 0; color: var(--text-main);">@stats.TotalReviews</h2>
+            <p style="color: #43a047; font-size: 0.9rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="bi bi-chat-heart"></i> Đánh giá từ khách hàng
+            </p>
+        </div>
+        <div class="card shadow" style="border-left: 4px solid #00e5ff; background: #fff;">
+            <p style="color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">Người dùng đăng ký</p>
+            <h2 style="font-size: 2.8rem; margin: 0; color: var(--text-main);">@stats.TotalUsers</h2>
+            <p style="color: var(--primary); font-size: 0.9rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="bi bi-people"></i> Hệ thống đang phát triển
+            </p>
+        </div>
     </div>
-    <div class="card">
-        <p style="color: var(--text-muted); margin-bottom: 0.5rem;">Active Users</p>
-        <h2 style="font-size: 2.5rem; margin: 0;">450</h2>
-        <p style="color: var(--primary); font-size: 0.9rem; margin-top: 0.5rem;">Ongoing promotion</p>
-    </div>
-</div>
 
-<div class="card">
-    <h3>Recent Activity</h3>
-    <table style="width: 100%; border-collapse: collapse; margin-top: 1.5rem;">
-        <thead>
-            <tr style="text-align: left; border-bottom: 1px solid var(--glass);">
-                <th style="padding: 1rem;">Action</th>
-                <th style="padding: 1rem;">User</th>
-                <th style="padding: 1rem;">Target</th>
-                <th style="padding: 1rem;">Time</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr style="border-bottom: 1px solid var(--glass);">
-                <td style="padding: 1rem;">New Review</td>
-                <td style="padding: 1rem;">Nguyen Van A</td>
-                <td style="padding: 1rem;">Oc Bui Vien</td>
-                <td style="padding: 1rem;">2 mins ago</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--glass);">
-                <td style="padding: 1rem;">Update Info</td>
-                <td style="padding: 1rem;">Chu Quan 1</td>
-                <td style="padding: 1rem;">Hai San 5KU</td>
-                <td style="padding: 1rem;">15 mins ago</td>
-            </tr>
-            <tr>
-                <td style="padding: 1rem;">New Registration</td>
-                <td style="padding: 1rem;">Admin</td>
-                <td style="padding: 1rem;">User "Tran B"</td>
-                <td style="padding: 1rem;">1 hour ago</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+    <div class="card shadow" style="background: #fff;">
+        <h3 class="mb-4" style="color: var(--text-main);">Hoạt động gần đây</h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Hành động</th>
+                        <th>Người thực hiện</th>
+                        <th>Đối tượng</th>
+                        <th>Thời gian</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (stats.RecentActivities == null || !stats.RecentActivities.Any())
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">Chưa có hoạt động nào gần đây</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var activity in stats.RecentActivities)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="badge @(activity.ActionType switch { 
+                                        "Đánh giá mới" => "badge-info", 
+                                        "Đăng ký mới" => "badge-primary",
+                                        "Thêm quán ăn mới" => "badge-primary",
+                                        "Cập nhật thông tin" => "badge-info",
+                                        "Thêm danh mục" => "badge-primary",
+                                        "Xóa quán ăn" => "btn-outline-danger",
+                                        _ => "text-muted"
+                                    })" style="font-size: 0.75rem; border: 1px solid currentColor;">@activity.ActionType</span>
+                                </td>
+                                <td><span style="font-weight: 500;">@activity.UserName</span></td>
+                                <td><strong style="color: var(--text-main);">@activity.TargetName</strong></td>
+                                <td class="text-muted">@activity.RelativeTime</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardStats? stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        stats = await DashService.GetDashboardStatsAsync();
+    }
+}

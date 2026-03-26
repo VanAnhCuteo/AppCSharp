@@ -34,6 +34,7 @@ async function loadFoods(foods, userId = 0) {
     console.log("Loading foods into map:", foods, "User:", userId);
     const markers = [];
     allFoodsData = foods;
+    currentUserId = userId;
 
     if (userId > 0) {
         await syncVisitedHistory(userId);
@@ -52,10 +53,9 @@ async function loadFoods(foods, userId = 0) {
             let imgPath = parsedImg;
             if (!imgPath.startsWith('http')) {
                 if (imgPath.startsWith('/')) imgPath = imgPath.substring(1);
-                if (!imgPath.startsWith('images/')) {
-                    const fileName = imgPath.split('/').pop();
-                    imgPath = `images/${fileName}`;
-                }
+                // Prefix with server URL
+                const serverBase = platformApiBase.split('/api')[0];
+                imgPath = `${serverBase}/${imgPath}`;
             }
             console.log(`Marker ${food.id} using image path: ${imgPath}`);
 

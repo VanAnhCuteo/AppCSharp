@@ -9,25 +9,29 @@
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
         :root {
-            --primary: #fb6f92;
-            --primary-light: #ff8fab;
-            --primary-dark: #c9184a;
-            --accent: #ffb3c1;
-            --accent-soft: #ffe5ec;
-            --bg: #fff5f7;
+            --primary: #2563eb;
+            --primary-light: #60a5fa;
+            --primary-dark: #1e40af;
+            --accent: #10b981;
+            --accent-soft: #ecfdf5;
+            --bg: #f8fafc;
             --surface: #ffffff;
-            --text: #2b2d42;
-            --text-secondary: #8d99ae;
-            --border: #f0f0f0;
-            --shadow-sm: 0 2px 4px rgba(251, 111, 146, 0.05);
-            --shadow: 0 10px 30px rgba(251, 111, 146, 0.1);
-            --glass: rgba(255, 255, 255, 0.7);
+            --text: #0f172a;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --glass: rgba(255, 255, 255, 0.8);
         }
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        html {
+            scroll-padding-top: 110px;
         }
 
         body {
@@ -38,15 +42,19 @@
             overflow-x: hidden;
         }
 
+        section {
+            scroll-margin-top: 80px;
+        }
+
         /* ===== NAVBAR ===== */
         nav {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            z-index: 1000;
-            background: var(--glass);
-            backdrop-filter: blur(12px);
+            z-index: 9999;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
             border-bottom: 1px solid rgba(251, 111, 146, 0.1);
             height: 70px;
             display: flex;
@@ -57,10 +65,20 @@
 
         .logo {
             font-weight: 800;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: var(--primary-dark);
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 2px;
         }
 
         .nav-links {
@@ -76,6 +94,14 @@
             font-size: 0.9rem;
             transition: all 0.3s;
             position: relative;
+            padding: 0.5rem 0.75rem;
+            display: inline-block;
+            border-radius: 8px;
+        }
+
+        .nav-links a:hover {
+            background: rgba(37, 99, 235, 0.05);
+            color: var(--primary);
         }
 
         .nav-links a::after {
@@ -98,18 +124,16 @@
             padding: 120px 4rem 80px;
             text-align: center;
             background: radial-gradient(circle at top right, var(--accent-soft), transparent),
-                        radial-gradient(circle at bottom left, var(--accent-soft), transparent);
+                radial-gradient(circle at bottom left, var(--accent-soft), transparent);
         }
 
         .hero h1 {
-            font-size: 3.5rem;
+            font-size: 4rem;
             font-weight: 800;
-            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 1rem;
-            letter-spacing: -2px;
+            color: var(--text);
+            margin-bottom: 1.5rem;
+            letter-spacing: -3px;
+            line-height: 1;
         }
 
         .hero p {
@@ -305,29 +329,93 @@
         }
 
         @keyframes pulse {
-            0% { opacity: 0.3; transform: translateX(0); }
-            50% { opacity: 1; transform: translateX(5px); }
-            100% { opacity: 0.3; transform: translateX(0); }
+            0% {
+                opacity: 0.3;
+                transform: translateX(0);
+            }
+
+            50% {
+                opacity: 1;
+                transform: translateX(5px);
+            }
+
+            100% {
+                opacity: 0.3;
+                transform: translateX(0);
+            }
         }
 
         footer {
-            padding: 4rem;
-            text-align: center;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
             border-top: 1px solid var(--border);
         }
+
+        .mermaid {
+            background: #f8fafc;
+            padding: 2rem 1.5rem;
+            border-radius: 16px;
+            margin: 1.5rem 0 0;
+            display: block;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            width: 100%;
+        }
+
+        .mermaid svg {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 280px;
+            display: block;
+        }
+
+        .diagram-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0.3rem 0.7rem;
+            border-radius: 50px;
+            margin-bottom: 0.75rem;
+        }
+
+        .label-activity {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .label-sequence {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .label-state {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+
+        .label-class {
+            background: #f3e8ff;
+            color: #7e22ce;
+        }
     </style>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+    </script>
 </head>
 
 <body>
     <nav>
-        <div class="logo">FoodMap — Premium PRD</div>
+        <div class="logo">FoodMap System</div>
         <ul class="nav-links">
             <li><a href="#overview">Tổng quan</a></li>
             <li><a href="#personas">Người dùng</a></li>
             <li><a href="#architecture">Kiến trúc</a></li>
-            <li><a href="#database">Dữ liệu</a></li>
+            <li><a href="#diagrams">Sơ đồ UML</a></li>
+            <li><a href="#data-section">Dữ liệu</a></li>
+            <li><a href="#decoupling">Decoupling</a></li>
             <li><a href="#api">API Methods</a></li>
             <li><a href="#security">Bảo mật</a></li>
             <li><a href="#roadmap">Lộ trình</a></li>
@@ -336,7 +424,7 @@
 
     <div class="hero">
         <h1>Hệ Thống Bản Đồ Ẩm Thực</h1>
-        <p>Tài liệu Đặc tả Sản phẩm Cao cấp dành cho hệ thống FoodMap. Tối ưu hóa trải nghiệm khách hàng và quản trị viên.</p>
+        <p>Tài liệu Đặc tả Sản phẩm dành cho hệ thống FoodMap. Tối ưu hóa trải nghiệm khách hàng và quản trị viên.</p>
         <div class="badges">
             <div class="badge">MAUI 8.0</div>
             <div class="badge">C# 12</div>
@@ -354,17 +442,20 @@
             <div class="card">
                 <div class="card-icon">🎯</div>
                 <h3>Sứ Mệnh</h3>
-                <p>Khám phá và kết nối tinh hoa ẩm thực địa phương thông qua bản đồ số thông minh, mang lại sự tiện lợi tối đa cho thực khách.</p>
+                <p>Khám phá và kết nối tinh hoa ẩm thực địa phương thông qua bản đồ số thông minh, mang lại sự tiện lợi
+                    tối đa cho thực khách.</p>
             </div>
             <div class="card">
                 <div class="card-icon">🚀</div>
                 <h3>Mobile First</h3>
-                <p>Ứng dụng di động mượt mà tích hợp WebView hiệu năng cao, tối ưu hóa cho cả Android Emulator và thiết bị thật.</p>
+                <p>Ứng dụng di động mượt mà tích hợp WebView hiệu năng cao, tối ưu hóa cho cả Android Emulator và thiết
+                    bị thật.</p>
             </div>
             <div class="card">
                 <div class="card-icon">🏗️</div>
                 <h3>Admin Power</h3>
-                <p>Hệ thống quản trị mạnh mẽ giúp chủ quan và quản trị viên kiểm soát dữ liệu, thống kê và cập nhật địa điểm tức thì.</p>
+                <p>Hệ thống quản trị mạnh mẽ giúp chủ quan và quản trị viên kiểm soát dữ liệu, thống kê và cập nhật địa
+                    điểm tức thì.</p>
             </div>
         </div>
     </section>
@@ -378,17 +469,20 @@
             <div class="card">
                 <div class="card-icon">🍔</div>
                 <h3>Thực khách (User)</h3>
-                <p>Tìm kiếm địa điểm ăn uống, xem đánh giá, nhận hướng dẫn đường đi và ghi lại lịch sử ghé thăm của mình.</p>
+                <p>Tìm kiếm địa điểm ăn uống, xem đánh giá, nhận hướng dẫn đường đi và ghi lại lịch sử ghé thăm của
+                    mình.</p>
             </div>
             <div class="card">
                 <div class="card-icon">🏪</div>
                 <h3>Chủ quán (Owner)</h3>
-                <p>Cập nhật thông tin quán, quản lý thực đơn, theo dõi lượt khách ghé thăm và phản hồi các đánh giá từ người dùng.</p>
+                <p>Cập nhật thông tin quán, quản lý thực đơn, theo dõi lượt khách ghé thăm và phản hồi các đánh giá từ
+                    người dùng.</p>
             </div>
             <div class="card">
                 <div class="card-icon">👑</div>
                 <h3>Quản trị viên (Admin)</h3>
-                <p>Kiểm duyệt nội dung, quản lý danh mục ẩm thực, gán quyền Role-based và xuất các báo cáo thống kê hệ thống.</p>
+                <p>Kiểm duyệt nội dung, quản lý danh mục ẩm thực, gán quyền Role-based và xuất các báo cáo thống kê hệ
+                    thống.</p>
             </div>
         </div>
     </section>
@@ -416,55 +510,298 @@
         </div>
     </section>
 
-    <section id="database">
+    <section id="diagrams">
+        <div class="section-header">
+            <span>Mobile App (.NET MAUI)</span>
+            <h2>4. Sơ Đồ Hoạt động Của Ứng Dụng</h2>
+        </div>
+
+        <div class="grid">
+            <!-- Activity -->
+            <div class="card" style="grid-column: span 2;">
+                <span class="diagram-label label-activity">&#9654; Activity</span>
+                <h3>Luồng người dùng tìm kiếm &amp; điến quán</h3>
+                <p style="color:var(--text-secondary);font-size:.9rem">Từ khi mở app đến khi xem chi tiết quán và nhận
+                    chỉ đường.</p>
+                <div class="mermaid">
+                    flowchart LR
+                    A([Mở App]) --> B[Màn hình Home]
+                    B --> C[Quán nổi bật]
+                    B --> D[Map Leaflet.js]
+                    C --> E{Chọn quán?}
+                    D --> F{Tap marker?}
+                    E -- Có --> G[/Bottom Sheet/]
+                    F -- Có --> G
+                    G --> H{Ảnh đứng?}
+                    H -- Đến quán --> I[Google Maps]
+                    H -- Audio guide --> J[Phát hướng dẫn]
+                    H -- Đóng --> B
+                    I --> K([Nhận chỉ đường])
+                    J --> K
+                </div>
+            </div>
+
+            <!-- Sequence -->
+            <div class="card" style="grid-column: span 2;">
+                <span class="diagram-label label-sequence">&#8646; Sequence</span>
+                <h3>Tải dữ liệu, Đăng nhập & Đăng ký</h3>
+                <p style="color:var(--text-secondary);font-size:.9rem">Gọi API bản đồ, xác thực người dùng và tương tác
+                    WebView ↔ C#.</p>
+                <div class="mermaid">
+                    sequenceDiagram
+                    actor User as Người dùng
+                    participant App as .NET MAUI
+                    participant JS as Leaflet.js
+                    participant API as ASP.NET API
+                    participant DB as MySQL
+
+                    rect rgb(236, 253, 245)
+                    Note over User,DB: 🗺️ Tải dữ liệu bản đồ
+                    User->>App: Mở Bản đồ
+                    App->>API: GET /api/Food
+                    API->>DB: SELECT pois + categories + poi_images
+                    DB-->>API: List POI JSON
+                    API-->>App: 200 OK Array
+                    App->>JS: EvaluateJs(loadFoods)
+                    JS-->>JS: Vẽ Marker trên map
+                    User->>JS: Tap marker
+                    JS->>App: InvokeAction(openDetails)
+                    App-->>User: Hiển thị Bottom Sheet
+                    end
+
+                    rect rgb(219, 234, 254)
+                    Note over User,DB: 🔐 Đăng nhập
+                    User->>App: Nhập email + mật khẩu
+                    App->>API: POST /api/Auth/login
+                    API->>DB: SELECT users WHERE email=? AND password=hash(?)
+                    DB-->>API: User record
+                    alt Thành công
+                    API-->>App: 200 OK + JWT Token
+                    App-->>User: Lưu token, vào Profile
+                    else Thất bại
+                    API-->>App: 401 Unauthorized
+                    App-->>User: Thông báo lỗi
+                    end
+                    end
+
+                    rect rgb(243, 232, 255)
+                    Note over User,DB: 📝 Đăng ký tài khoản
+                    User->>App: Nhập thông tin đăng ký
+                    App->>API: POST /api/Auth/register
+                    API->>DB: Check email tồn tại
+                    DB-->>API: Kết quả kiểm tra
+                    alt Email chưa dùng
+                    API->>DB: INSERT INTO users (hash password)
+                    DB-->>API: OK
+                    API-->>App: 201 Created
+                    App-->>User: Đăng ký thành công
+                    else Email đã tồn tại
+                    API-->>App: 409 Conflict
+                    App-->>User: Email đã được dùng
+                    end
+                    end
+                </div>
+            </div>
+
+            <!-- State -->
+            <div class="card" style="grid-column: span 2;">
+                <span class="diagram-label label-state">&#9654; State</span>
+                <h3>Trạng thái các màn hình</h3>
+                <div class="mermaid">
+                    stateDiagram-v2
+                    [*] --> Loading
+                    Loading --> HomePage
+                    HomePage --> MapPage: Tab bản đồ
+                    HomePage --> ProfilePage: Tab cá nhân
+                    MapPage --> BottomSheet: Tap Marker
+                    BottomSheet --> MapPage: Đóng
+                    BottomSheet --> AudioGuide: Nghe hướng dẫn
+                    BottomSheet --> Directions: Đến quán
+                    AudioGuide --> BottomSheet
+                    Directions --> MapPage: Xong
+                    ProfilePage --> LoginPage: Chưa đăng nhập
+                    LoginPage --> ProfilePage: Đăng nhập OK
+                </div>
+            </div>
+
+            <!-- Class -->
+            <div class="card" style="grid-column: span 2;">
+                <span class="diagram-label label-class">&#9670; Class</span>
+                <h3>Toàn bộ Model & Service Layer (Mobile)</h3>
+                <div class="mermaid">
+                    classDiagram
+                    class FoodItem {
+                    +int id
+                    +string name
+                    +string description
+                    +string address
+                    +string open_time
+                    +string first_image
+                    +string category_name
+                    +double latitude
+                    +double longitude
+                    +int range_meters
+                    }
+                    class CategoryItem {
+                    +int id
+                    +string category_name
+                    +string description
+                    }
+                    class UserModel {
+                    +int user_id
+                    +string username
+                    +string email
+                    +string role
+                    +string token
+                    }
+                    class ReviewItem {
+                    +int review_id
+                    +int poi_id
+                    +int user_id
+                    +int rating
+                    +string comment
+                    }
+                    class PoiGuideItem {
+                    +int guide_id
+                    +int poi_id
+                    +string title
+                    +string description
+                    +string language
+                    }
+                    class PoiVisitItem {
+                    +int visit_id
+                    +int poi_id
+                    +int user_id
+                    +datetime visit_time
+                    }
+                    class HttpService {
+                    -string baseUrl
+                    +GetFoodsAsync() List~FoodItem~
+                    +GetCategoriesAsync() List~CategoryItem~
+                    +GetFoodByIdAsync(id) FoodItem
+                    +LoginAsync(email, pwd) UserModel
+                    +RegisterAsync(data) bool
+                    +PostVisitAsync(poi_id) bool
+                    +GetGuidesAsync(poi_id) List~PoiGuideItem~
+                    +GetReviewsAsync(poi_id) List~ReviewItem~
+                    }
+                    class AuthService {
+                    +StoreTokenAsync(token)
+                    +GetTokenAsync() string
+                    +IsLoggedIn() bool
+                    +LogoutAsync()
+                    }
+
+                    FoodItem --> CategoryItem : thuộc danh mục
+                    FoodItem --> ReviewItem : có đánh giá
+                    FoodItem --> PoiGuideItem : có hướng dẫn
+                    FoodItem --> PoiVisitItem : có lịch sử thăm
+                    ReviewItem --> UserModel : viết bởi
+                    PoiVisitItem --> UserModel : thực hiện bởi
+                    HttpService ..> FoodItem : trả về
+                    HttpService ..> UserModel : xác thực
+                    HttpService ..> ReviewItem : trả về
+                    HttpService ..> PoiGuideItem : trả về
+                    AuthService --> UserModel : quản lý
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="data-section">
         <div class="section-header">
             <span>Data Structure</span>
-            <h2>4. Cơ Sở Dữ Liệu</h2>
+            <h2>5. Cơ Sở Dữ Liệu (MySQL Schema)</h2>
         </div>
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
-                        <th>Thực thể</th>
-                        <th>Trường dữ liệu</th>
-                        <th>Mô tả chức năng</th>
+                        <th>Bảng</th>
+                        <th>Trường quan trọng</th>
+                        <th>Mô tả</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>POI (Foods)</strong></td>
-                        <td>id, name, address, coord, open_time</td>
-                        <td>Dữ liệu cốt lõi về các địa điểm ẩm thực và vị trí địa lý.</td>
+                        <td><strong>categories</strong></td>
+                        <td>category_id, category_name</td>
+                        <td>Danh mục ẩm thực (Hải sản, Ăn vặt, Đồ nướng).</td>
                     </tr>
                     <tr>
-                        <td><strong>Auth (Users)</strong></td>
-                        <td>username, password, role, email</td>
-                        <td>Hệ thống phân quyền Role-based Access Control (RBAC).</td>
+                        <td><strong>pois</strong></td>
+                        <td>poi_id, category_id, name, latitude, longitude, user_id</td>
+                        <td>Dữ liệu chính về các địa điểm.</td>
                     </tr>
                     <tr>
-                        <td><strong>Engagement</strong></td>
-                        <td>reviews, visits, ratings</td>
-                        <td>Theo dõi tương tác và mức độ phổ biến của địa điểm.</td>
+                        <td><strong>poi_images</strong></td>
+                        <td>image_id, poi_id, image_url</td>
+                        <td>Lưu trữ nhiều ảnh cho mỗi địa điểm.</td>
                     </tr>
                     <tr>
-                        <td><strong>Metadata</strong></td>
-                        <td>images, guides, categories</td>
-                        <td>Thông tin bổ trợ và hình ảnh đa phương tiện.</td>
+                        <td><strong>poi_guides</strong></td>
+                        <td>guide_id, poi_id, language, description</td>
+                        <td>Thuyết minh âm thanh cho từng địa điểm.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>users</strong></td>
+                        <td>user_id, username, role, email</td>
+                        <td>Quản lý tài khoản (Admin, CNH, User).</td>
+                    </tr>
+                    <tr>
+                        <td><strong>reviews</strong></td>
+                        <td>review_id, poi_id, user_id, rating, comment</td>
+                        <td>Đánh giá từ thực khách.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>poi_visits</strong></td>
+                        <td>visit_id, poi_id, user_id, visit_time</td>
+                        <td>Lịch sử ghé thăm địa điểm.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>poi_pending_changes</strong></td>
+                        <td>change_id, status (pending/approved)</td>
+                        <td>Lưu các thay đổi đang chờ phê duyệt.</td>
                     </tr>
                 </tbody>
             </table>
         </div>
     </section>
 
+    <section id="decoupling">
+        <div class="section-header">
+            <span>Evolutionary Design</span>
+            <h2>6. Cơ Chế Decoupling (Tách biệt logic)</h2>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <h3>Tách biệt Website & API</h3>
+                <p>Hệ thống Admin Dashboard và Mobile API được tách thành hai dự án riêng biệt, giúp việc bảo trì và
+                    nâng cấp không gây ảnh hưởng lẫn nhau.</p>
+            </div>
+            <div class="card">
+                <h3>Interface-based Services</h3>
+                <p>Sử dụng Interface trong ASP.NET Core để triển khai Dependency Injection. Dễ dàng thay đổi Logic xử lý
+                    dữ liệu mà không cần sửa đổi Controller.</p>
+            </div>
+            <div class="card">
+                <h3>Database Abstraction</h3>
+                <p>Sử dụng Entity Framework Core làm lớp trung gian, cho phép thay đổi hệ cơ sở dữ liệu (từ MySQL sang
+                    SQL Server/PostgreSQL) một cách linh hoạt.</p>
+            </div>
+        </div>
+    </section>
+
     <section id="api">
         <div class="section-header">
             <span>Operations</span>
-            <h2>5. Các Phương Thức API</h2>
+            <h2>7. Các Phương Thức API</h2>
         </div>
         <div class="grid">
             <div class="card">
                 <h3>Food Controller</h3>
-                <p>Quản lý truy vấn địa điểm, lọc theo danh mục, xử lý dịch thuật đa ngôn ngữ và thống kê lượt truy cập.</p>
+                <p>Quản lý truy vấn địa điểm, lọc theo danh mục, xử lý dịch thuật đa ngôn ngữ và thống kê lượt truy cập.
+                </p>
                 <div style="margin-top: 1rem; color: var(--primary-dark); font-weight: 700; font-size: 0.8rem;">
                     GET /api/Food • GET /api/Food/{id} • POST /visit
                 </div>
@@ -482,20 +819,23 @@
     <section id="security">
         <div class="section-header">
             <span>Safety & speed</span>
-            <h2>6. Bảo Mật & Hiệu Năng</h2>
+            <h2>8. Bảo Mật & Hiệu Năng</h2>
         </div>
         <div class="grid">
             <div class="card">
                 <h3>Xác thực JWT</h3>
-                <p>Sử dụng JSON Web Token để bảo mật các endpoint API, đảm bảo chỉ người dùng hợp lệ mới có thể truy cập dữ liệu nhạy cảm.</p>
+                <p>Sử dụng JSON Web Token để bảo mật các endpoint API, đảm bảo chỉ người dùng hợp lệ mới có thể truy cập
+                    dữ liệu nhạy cảm.</p>
             </div>
             <div class="card">
                 <h3>Bản đồ Vector</h3>
-                <p>Tối ưu hóa Leaflet.js với định dạng Tile Layer hiệu năng cao, giúp việc di chuyển và thu phóng bản đồ luôn mượt mà trên di động.</p>
+                <p>Tối ưu hóa Leaflet.js với định dạng Tile Layer hiệu năng cao, giúp việc di chuyển và thu phóng bản đồ
+                    luôn mượt mà trên di động.</p>
             </div>
             <div class="card">
                 <h3>Data Encryption</h3>
-                <p>Mã hóa mật khẩu người dùng bằng các thuật toán băm (Hashing) mạnh mẽ trước khi lưu trữ vào cơ sở dữ liệu MySQL.</p>
+                <p>Mã hóa mật khẩu người dùng bằng các thuật toán băm (Hashing) mạnh mẽ trước khi lưu trữ vào cơ sở dữ
+                    liệu MySQL.</p>
             </div>
         </div>
     </section>
@@ -503,31 +843,60 @@
     <section id="roadmap">
         <div class="section-header">
             <span>Future Vision</span>
-            <h2>7. Lộ Trình Phát Triển (Roadmap)</h2>
+            <h2>9. Lộ Trình Phát Triển (Roadmap)</h2>
         </div>
         <div class="grid">
             <div class="card">
                 <div class="card-icon">🔔</div>
                 <h3>Thông báo (Push)</h3>
-                <p>Tích hợp Firebase Cloud Messaging (FCM) để gửi thông báo ưu đãi từ quán đến thực khách ở gần (Geofencing).</p>
+                <p>Tích hợp Firebase Cloud Messaging (FCM) để gửi thông báo ưu đãi từ quán đến thực khách ở gần
+                    (Geofencing).</p>
             </div>
             <div class="card">
                 <div class="card-icon">💳</div>
                 <h3>Thanh toán (Payment)</h3>
-                <p>Tích hợp các cổng thanh toán (Momo, VNPay) để đặt món hoặc đặt bàn trực tiếp qua ứng dụng di động.</p>
+                <p>Tích hợp các cổng thanh toán (Momo, VNPay) để đặt món hoặc đặt bàn trực tiếp qua ứng dụng di động.
+                </p>
             </div>
             <div class="card">
                 <div class="card-icon">🤖</div>
                 <h3>AI Recommendation</h3>
-                <p>Sử dụng Machine Learning để gợi ý món ăn dựa trên sở thích và thói quen ăn uống của từng cá nhân người dùng.</p>
+                <p>Sử dụng Machine Learning để gợi ý món ăn dựa trên sở thích và thói quen ăn uống của từng cá nhân
+                    người dùng.</p>
             </div>
         </div>
     </section>
 
-    <footer>
-        &copy; 2026 FoodMap Premium Edition. All rights reserved.<br>
-        Designed with ❤️ for premium coding experience.
-    </footer>
+    <script>
+        // Final robust scroll handler — bypasses CSS conflicts and timing issues
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                const href = this.getAttribute('href');
+                if (!href || !href.startsWith('#')) return;
+                
+                const targetId = href.substring(1);
+                const target = document.getElementById(targetId);
+                
+                if (target) {
+                    e.preventDefault();
+                    
+                    // Small delay to ensure click event finishes and coordinate calculation is stable
+                    setTimeout(() => {
+                        const offset = 100;
+                        const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - offset;
+                        
+                        window.scrollTo({
+                            top: targetPosition,
+                            behavior: 'smooth'
+                        });
+                        
+                        // Sync URL hash
+                        history.pushState(null, null, '#' + targetId);
+                    }, 50);
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>

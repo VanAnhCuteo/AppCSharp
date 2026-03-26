@@ -1,9 +1,19 @@
-// Bottom Sheet Logic
+/* ── GLOBAL STATE ── */
+let selectedLanguage = 'vi';
+let currentBasePoiId = null;     // Current POI ID being viewed
+let currentPoiDescription = "";  // Store current POI description for TTS
+let currentAudioGuide = null;
+let currentDestCoords = null;
+let routingLayer = null;
+let navigationActive = false;
+
+// Bottom Sheet State
 const sheet = document.getElementById('bottom-sheet');
 const dragHandle = document.getElementById('drag-handle');
 let startY = 0;
 let isDragging = false;
 
+/* ── BOTTOM SHEET LOGIC ── */
 if (dragHandle) {
     dragHandle.addEventListener('touchstart', (e) => {
         startY = e.touches[0].clientY;
@@ -34,16 +44,15 @@ if (dragHandle) {
 }
 
 function closeDetails() {
+    console.log("DEBUG: Closing details sheet");
     sheet.classList.remove('open');
     sheet.style.transform = '';
 }
 
-let currentBasePoiId = null;
-let currentDestCoords = null;
-let routingLayer = null;
-let navigationActive = false;
-
 async function setSelectedLang(lang, el) {
+    console.log(`DEBUG: Language switched to: ${lang}`);
+    const wasPlaying = isAudioSpeaking && !isAudioPaused;
+    
     selectedLanguage = lang;
     document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
     el.classList.add('active');
@@ -54,24 +63,36 @@ async function setSelectedLang(lang, el) {
     // Reload current sheet details if open and play audio
     if (currentBasePoiId) {
         await openDetails(currentBasePoiId, lang);
-        playCurrentAudio();
+        if (wasPlaying) {
+            resumeAudioProfessional();
+        }
     }
 }
 
 async function openDetails(poiId, lang = selectedLanguage) {
+    console.log(`DEBUG: openDetails(poiId=${poiId}, lang=${lang}) called.`);
+    if (!poiId) {
+        console.error("DEBUG: openDetails called with null/empty poiId");
+        return;
+    }
+
+    resetPlayerForNewPoi();
     currentBasePoiId = poiId;
+    sheet.classList.remove('hidden');
     sheet.classList.add('open');
     sheet.style.transform = 'translateY(-80vh)';
 
-    const audioBtn = document.getElementById('sheet-audio-btn');
-    if (audioBtn) audioBtn.style.display = 'none';
+    const audioSection = document.getElementById('sheet-audio-section');
+    if (audioSection) audioSection.classList.add('hidden');
 
     try {
+        console.log(`DEBUG: Fetching details from: ${platformApiBase}/${poiId}?lang=${lang}`);
         const detailsRes = await fetch(`${platformApiBase}/${poiId}?lang=${lang}`);
         if (detailsRes.ok) {
             const data = await detailsRes.json();
-            currentPoiId = data.id; // Specific row ID
-
+            console.log("DEBUG: POI details loaded successfully:", data);
+            
+            currentPoiId = data.id; 
             document.getElementById('sheet-title').innerText = data.name;
             document.getElementById('sheet-visitors').innerText = `${data.visitor_count} visits`;
             document.getElementById('sheet-address').innerText = data.address || '';
@@ -79,7 +100,7 @@ async function openDetails(poiId, lang = selectedLanguage) {
 
             currentPoiDescription = data.description || "";
             if (currentPoiDescription.trim().length > 0) {
-                if (audioBtn) audioBtn.style.display = 'inline-flex';
+                if (audioSection) audioSection.classList.remove('hidden');
             }
 
             const imgContainer = document.getElementById('sheet-images');
@@ -109,10 +130,9 @@ async function openDetails(poiId, lang = selectedLanguage) {
                 uniqueImages.forEach(imgPath => {
                     if (!imgPath.startsWith('http')) {
                         if (imgPath.startsWith('/')) imgPath = imgPath.substring(1);
-                        if (!imgPath.startsWith('images/')) {
-                            const fileName = imgPath.split('/').pop();
-                            imgPath = `images/${fileName}`;
-                        }
+                        // Prefix with server URL (platformApiBase is http://.../api/Food)
+                        const serverBase = platformApiBase.split('/api')[0];
+                        imgPath = `${serverBase}/${imgPath}`;
                     }
                     const el = document.createElement('img');
                     el.className = 'sheet-image';
@@ -129,7 +149,7 @@ async function openDetails(poiId, lang = selectedLanguage) {
         const guideRes = await fetch(`${platformApiBase}/${poiId}/guide?lang=${lang}`);
         if (guideRes.ok) {
             currentAudioGuide = await guideRes.json();
-            if (audioBtn) audioBtn.style.display = 'inline-flex';
+            if (audioSection) audioSection.classList.remove('hidden');
         } else {
             currentAudioGuide = null;
         }
@@ -151,7 +171,7 @@ async function loadReviews(poiId, lang = selectedLanguage) {
                     revContainer.innerHTML += `
                         <div class="review-item">
                             <span class="review-date">${r.created_at || 'Just now'}</span>
-                            <div class="review-rating">? ${r.rating}/5</div>
+                            <div class="review-rating">⭐ ${r.rating}/5</div>
                             <p class="review-comment">${r.comment}</p>
                         </div>
                     `;
@@ -188,9 +208,6 @@ if (submitBtn) {
 const SIMULATE_GPS = false; // Set to false to use real GPS
 let simulatedLat = 10.7672;
 let simulatedLon = 106.6931;
-let currentAudioGuide = null;
-let currentPoiDescription = ""; // Store current POI description for TTS
-let selectedLanguage = 'vi';
 
 let poiAudioTimers = {};
 let poiHistoryTimers = {};
@@ -242,6 +259,10 @@ function processLocation(position) {
         return { ...food, distance: dist, range: range };
     }).filter(f => f.distance <= f.range);
 
+    if (poisInRange.length > 0) {
+        console.log(`DEBUG: User in range of ${poisInRange.length} POIs. Closest: ${poisInRange.sort((a, b) => a.distance - b.distance)[0].name}`);
+    }
+
     let closestPoi = poisInRange.length > 0 ? poisInRange.sort((a, b) => a.distance - b.distance)[0] : null;
 
     allFoodsData.forEach(food => {
@@ -256,12 +277,16 @@ function processLocation(position) {
                     delete poiAudioTimers[food.id];
                 }, 5000);
             }
-            if (!visitedFoods.has(food.id) && !poiHistoryTimers[food.id]) {
+            if (currentUserId > 0 && !visitedFoods.has(food.id) && !poiHistoryTimers[food.id]) {
+                console.log(`DEBUG: Tracking visit duration for closest POI: ${food.name}`);
                 poiHistoryTimers[food.id] = setTimeout(() => {
-                    visitedFoods.add(food.id);
-                    handleVisit(food.id);
+                    if (currentUserId > 0 && !visitedFoods.has(food.id)) {
+                        console.log(`DEBUG: Visit detected for POI: ${food.name}`);
+                        visitedFoods.add(food.id);
+                        handleVisit(food.id);
+                    }
                     delete poiHistoryTimers[food.id];
-                }, 10000);
+                }, 1000);
             }
         } else {
             if (poiAudioTimers[food.id]) { clearTimeout(poiAudioTimers[food.id]); delete poiAudioTimers[food.id]; }
@@ -287,12 +312,21 @@ async function triggerAutoAudio(poiId) {
 }
 
 async function handleVisit(poiId) {
+    console.log(`DEBUG: handleVisit attempt for POI: ${poiId}. Authenticated User: ${currentUserId}`);
+    if (currentUserId <= 0) {
+        console.warn("DEBUG: Skipping visit log - User not authenticated.");
+        return;
+    }
+
     try {
-        await fetch(`${platformApiBase}/${poiId}/visit`, {
+        const visitUrl = `${platformApiBase}/${poiId}/visit`;
+        console.log(`DEBUG: Sending visit log to: ${visitUrl}`);
+        const res = await fetch(visitUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: 1 })
+            body: JSON.stringify({ user_id: currentUserId })
         });
+        console.log(`DEBUG: Visit log response: ${res.status}`);
         const guideRes = await fetch(`${platformApiBase}/${poiId}/guide?lang=${selectedLanguage}`);
         if (guideRes.ok) {
             const guide = await guideRes.json();
@@ -301,19 +335,177 @@ async function handleVisit(poiId) {
     } catch (e) { console.error("Geofence error", e); }
 }
 
+// ── AUDIO PLAYER LOGIC ──
+let audioTimerInterval = null;
+let audioSeconds = 0;
+let isAudioSpeaking = false;
+let isAudioPaused = false;
+
+function toggleAudioProfessional() {
+    if (isAudioSpeaking && !isAudioPaused) {
+        pauseAudioProfessional();
+    } else {
+        resumeAudioProfessional();
+    }
+}
+
+function resumeAudioProfessional() {
+    isAudioSpeaking = true;
+    isAudioPaused = false;
+    
+    const audioCard = document.querySelector('.audio-card');
+    if (audioCard) {
+        audioCard.classList.remove('hidden');
+        audioCard.classList.add('audio-playing');
+    }
+    
+    // Update play/pause icon and text
+    const playIcon = document.getElementById('main-play-icon');
+    const pauseIcon = document.getElementById('main-pause-icon');
+    const statusText = document.getElementById('audio-status-text');
+
+    if (playIcon) playIcon.classList.add('hidden');
+    if (pauseIcon) pauseIcon.classList.remove('hidden');
+    if (statusText) statusText.innerText = "Đang phát...";
+
+    startAudioTimer();
+    playCurrentAudio();
+}
+
+function pauseAudioProfessional() {
+    isAudioPaused = true;
+    const audioCard = document.querySelector('.audio-card');
+    if (audioCard) audioCard.classList.remove('audio-playing');
+    
+    const playIcon = document.getElementById('main-play-icon');
+    const pauseIcon = document.getElementById('main-pause-icon');
+    const statusText = document.getElementById('audio-status-text');
+
+    if (playIcon) playIcon.classList.remove('hidden');
+    if (pauseIcon) pauseIcon.classList.add('hidden');
+    if (statusText) statusText.innerText = "Đã tạm dừng";
+
+    stopAudioTimer();
+    window.location.href = `app-tts://stop?id=${currentPoiId}&reset=false`;
+}
+
+function stopAudioProfessional() {
+    const wasSpeaking = isAudioSpeaking || isAudioPaused;
+    isAudioSpeaking = false;
+    isAudioPaused = false;
+    
+    const audioCard = document.querySelector('.audio-card');
+    if (audioCard) {
+        // Keep it visible but remove playing animation
+        audioCard.classList.remove('audio-playing');
+    }
+
+    const playIcon = document.getElementById('main-play-icon');
+    const pauseIcon = document.getElementById('main-pause-icon');
+    const statusText = document.getElementById('audio-status-text');
+
+    if (playIcon) playIcon.classList.remove('hidden');
+    if (pauseIcon) pauseIcon.classList.add('hidden');
+    if (statusText) statusText.innerText = "Bản dịch Audio";
+    
+    resetAudioTimer();
+    const progressFill = document.getElementById('audio-progress-fill');
+    if (progressFill) progressFill.style.width = '0%';
+
+    if (wasSpeaking) {
+        window.location.href = `app-tts://stop?id=${currentPoiId}&reset=true`;
+    }
+}
+
+function restartAudio() {
+    // Send stop with reset=true to C#
+    window.location.href = `app-tts://stop?reset=true`;
+    
+    // Reset local state
+    isAudioSpeaking = false;
+    isAudioPaused = false;
+    resetAudioTimer();
+    const progressFill = document.getElementById('audio-progress-fill');
+    if (progressFill) progressFill.style.width = '0%';
+    
+    // Start fresh
+    setTimeout(() => {
+        resumeAudioProfessional();
+    }, 100);
+}
+
 function playCurrentAudio() {
+    let text = "";
     if (currentAudioGuide) {
-        playAudioGuide(`${currentAudioGuide.title}. ${currentAudioGuide.description || ''}`, currentAudioGuide.language || selectedLanguage);
+        text = `${currentAudioGuide.title}. ${currentAudioGuide.description || ''}`;
     } else if (currentPoiDescription) {
         const title = document.getElementById('sheet-title').innerText;
-        playAudioGuide(`${title}. ${currentPoiDescription}`, selectedLanguage);
+        text = `${title}. ${currentPoiDescription}`;
+    }
+
+    if (text) {
+        window.location.href = `app-tts://speak?id=${currentPoiId}&text=${encodeURIComponent(text)}&lang=${selectedLanguage}`;
     }
 }
 
 function playAudioGuide(text, language = 'vi-VN') {
     if (text) {
-        window.location.href = `app-tts://speak?text=${encodeURIComponent(text)}&lang=${language}`;
+        window.location.href = `app-tts://speak?id=${currentPoiId}&text=${encodeURIComponent(text)}&lang=${language}`;
     }
+}
+
+// Timer Logic
+function startAudioTimer() {
+    if (audioTimerInterval) return;
+    audioTimerInterval = setInterval(() => {
+        audioSeconds++;
+        const mins = Math.floor(audioSeconds / 60).toString().padStart(2, '0');
+        const secs = (audioSeconds % 60).toString().padStart(2, '0');
+        const timerEl = document.getElementById('mini-player-timer');
+        if (timerEl) timerEl.innerText = `${mins}:${secs}`;
+    }, 1000);
+}
+
+function stopAudioTimer() {
+    if (audioTimerInterval) {
+        clearInterval(audioTimerInterval);
+        audioTimerInterval = null;
+    }
+}
+
+function resetAudioTimer() {
+    stopAudioTimer();
+    audioSeconds = 0;
+    const timerEl = document.getElementById('mini-player-timer');
+    if (timerEl) timerEl.innerText = "00:00";
+}
+
+// Callbacks from C#
+window.onTtsProgress = function(index, total) {
+    console.log(`TTS Progress: ${index + 1}/${total}`);
+    const progressFill = document.getElementById('audio-progress-fill');
+    if (progressFill && total > 0) {
+        const percent = ((index + 1) / total) * 100;
+        progressFill.style.width = `${percent}%`;
+    }
+};
+
+window.onTtsFinished = function() {
+    console.log("TTS Finished");
+    stopAudioProfessional();
+};
+
+function resetPlayerForNewPoi() {
+    isAudioSpeaking = false;
+    isAudioPaused = false;
+    resetAudioTimer();
+    const audioSection = document.getElementById('sheet-audio-section');
+    if (audioSection) {
+        audioSection.classList.add('hidden');
+        audioSection.classList.remove('audio-playing');
+    }
+    const progressFill = document.getElementById('audio-progress-fill');
+    if (progressFill) progressFill.style.width = '0%';
 }
 
 function centerOnUser() {
@@ -332,7 +524,7 @@ if (directionsBtn) {
             startNavigation(userCoords.lat, userCoords.lng, currentDestCoords[0], currentDestCoords[1]);
             closeDetails();
         } else {
-            alert("?ang x�c ??nh v? tr� c?a b?n...");
+            alert("Đang xác định vị trí của bạn...");
         }
     };
 }
@@ -340,7 +532,6 @@ if (directionsBtn) {
 async function startNavigation(slat, slon, dlat, dlon) {
     if (routingLayer) map.removeLayer(routingLayer);
 
-    // OSRM expects [lon, lat]
     const url = `https://router.project-osrm.org/route/v1/driving/${slon},${slat};${dlon},${dlat}?overview=full&geometries=geojson`;
 
     try {
@@ -351,7 +542,6 @@ async function startNavigation(slat, slon, dlat, dlon) {
             const route = data.routes[0];
             const distance = (route.distance / 1000).toFixed(1); // km
 
-            // Draw Main Route
             const mainRouteLayer = L.geoJSON(route.geometry, {
                 style: {
                     color: '#FB6F92',
@@ -361,7 +551,6 @@ async function startNavigation(slat, slon, dlat, dlon) {
                 }
             });
 
-            // Add Walking Segment (Dashed Line from route end to target)
             const lastPoint = route.geometry.coordinates[route.geometry.coordinates.length - 1];
             const walkingLine = L.polyline([
                 [lastPoint[1], lastPoint[0]],
@@ -374,18 +563,15 @@ async function startNavigation(slat, slon, dlat, dlon) {
             });
 
             routingLayer = L.featureGroup([mainRouteLayer, walkingLine]).addTo(map);
-
-            // Fit bounds
             map.fitBounds(routingLayer.getBounds(), { padding: [50, 50] });
 
-            // Update UI
             document.getElementById('nav-distance').innerText = `${distance} km`;
             document.getElementById('nav-overlay').classList.remove('hidden');
             navigationActive = true;
         }
     } catch (e) {
         console.error("Routing error", e);
-        alert("Kh�ng th? t�m ???ng ?i l�c n�y.");
+        alert("Không thể tìm đường đi lúc này.");
     }
 }
 
@@ -397,4 +583,3 @@ function cancelNavigation() {
     document.getElementById('nav-overlay').classList.add('hidden');
     navigationActive = false;
 }
-

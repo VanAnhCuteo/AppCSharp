@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FoodMapAdmin.Models
@@ -21,12 +21,12 @@ namespace FoodMapAdmin.Models
         [Column("name")]
         public string Name { get; set; } = string.Empty;
 
-        [Column("description")]
-        public string? Description { get; set; }
-
         [StringLength(255)]
         [Column("address")]
         public string? Address { get; set; }
+
+        [Column("range_meters")]
+        public int RangeMeters { get; set; } = 50;
 
         [Column("latitude", TypeName = "decimal(10,7)")]
         public decimal? Latitude { get; set; }
@@ -34,8 +34,8 @@ namespace FoodMapAdmin.Models
         [Column("longitude", TypeName = "decimal(10,7)")]
         public decimal? Longitude { get; set; }
 
-        [StringLength(50)]
         [Column("open_time")]
+        [StringLength(50)]
         public string? OpenTime { get; set; }
 
         [Column("created_at")]

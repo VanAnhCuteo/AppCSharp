@@ -1,0 +1,318 @@
+@page "/audio-management"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IPoiGuideService GuideService
+@inject IPoiService PoiService
+@inject IJSRuntime JSRuntime
+@attribute [Authorize(Roles = "admin")]
+
+<PageTitle>Quản lý Audio Guide - FoodMap Admin</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Audio Guide</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý nội dung thuyết minh âm thanh cho các địa điểm</p>
+    </div>
+    <button class="glass-btn pulse-animation" style="padding: 1rem 2.2rem; font-size: 1.05rem; border-radius: 20px; box-shadow: 0 15px 35px var(--primary-glow);" @onclick="ShowAddModal">
+        <i class="bi bi-mic-fill me-2"></i> Tạo Audio mới
+    </button>
+</div>
+
+<div class="row g-4">
+    @if (guides == null)
+    {
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Đang tải...</span>
+            </div>
+        </div>
+    }
+    else if (!guides.Any())
+    {
+        <div class="col-12 text-center py-5">
+            <div class="empty-state">
+                <i class="bi bi-music-note-beamed text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                <p class="text-muted mt-3">Chưa có bản ghi Audio Guide nào được tạo.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        @foreach (var guide in guides)
+        {
+            <div class="col-xl-4 col-md-6">
+                <div class="card shadow-glass border-0 h-100 transition-up" style="border-radius: 25px; background: var(--surface); overflow: hidden;">
+                    <div class="p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <span class="badge-lang">
+                                <i class="bi bi-translate me-1"></i> @(guide.Language == "vi" ? "Tiếng Việt" : "English")
+                            </span>
+                            <div class="d-flex gap-2">
+                                <button class="mini-action-btn" @onclick="() => EditGuide(guide)"><i class="bi bi-pencil-fill"></i></button>
+                                <button class="mini-action-btn delete" @onclick="() => DeleteGuide(guide.GuideId)"><i class="bi bi-trash-fill"></i></button>
+                            </div>
+                        </div>
+                        
+                        <h5 style="font-weight: 800; color: var(--text-main); margin-bottom: 0.5rem; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">@guide.Title</h5>
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="poi-tag me-2">
+                                <i class="bi bi-geo-alt-fill me-1"></i> @(guide.Poi?.Name ?? "Không xác định")
+                            </div>
+                        </div>
+                        
+                        <p class="text-muted mb-4" style="font-size: 0.85rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.6;">
+                            @guide.Description
+                        </p>
+                        
+                        <div class="audio-status @(string.IsNullOrEmpty(guide.Description) ? "empty" : "ready")">
+                            <i class="bi @(string.IsNullOrEmpty(guide.Description) ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>
+                            @(string.IsNullOrEmpty(guide.Description) ? "Thiếu nội dung chi tiết" : "Sẵn sàng phát")
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@if (showModal)
+{
+    <div class="modal d-block" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 1050;">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0" style="border-radius: 35px; box-shadow: 0 30px 100px rgba(0,0,0,0.2);">
+                <div class="modal-header border-0 p-5 pb-0">
+                    <h5 class="modal-title" style="font-size: 1.8rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        @(isEditing ? "Cập nhật Audio Guide" : "Tạo Audio Guide mới")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body p-5">
+                    <div class="row g-4">
+                        @if (!isEditing)
+                        {
+                            <div class="col-12">
+                                <label class="form-label-premium">Chọn Quán ăn / Địa điểm</label>
+                                <select class="form-control-premium select-premium" @bind="editingGuide.PoiId">
+                                    <option value="">-- Chọn quán ăn chưa có audio --</option>
+                                    @foreach (var poi in availablePois)
+                                    {
+                                        <option value="@poi.PoiId">@poi.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                        
+                        <div class="col-md-8">
+                            <label class="form-label-premium">Tiêu đề bản thuyết minh</label>
+                            <input type="text" class="form-control-premium" @bind="editingGuide.Title" placeholder="VD: Lịch sử quán ốc qua 3 thế hệ..." />
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label-premium">Ngôn ngữ</label>
+                            <select class="form-control-premium select-premium" @bind="editingGuide.Language">
+                                <option value="vi">Tiếng Việt</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label-premium">Nội dung thuyết minh (Text-to-Speech)</label>
+                            <textarea class="form-control-premium" style="height: 180px; resize: none;" @bind="editingGuide.Description" placeholder="Nhập nội dung chi tiết để hệ thống chuyển đổi thành âm thanh..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-5 pt-0">
+                    <button type="button" class="btn-cancel-premium px-4" @onclick="CloseModal">Hủy bỏ</button>
+                    <button type="button" class="glass-btn px-5" style="box-shadow: 0 15px 30px var(--primary-glow);" @onclick="SaveGuide">
+                        <i class="bi bi-check-circle-fill me-2"></i> Lưu bản ghi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .shadow-glass {
+        box-shadow: 0 20px 60px rgba(0,0,0,0.03) !important;
+        border: 1px solid var(--glass-border) !important;
+    }
+
+    .badge-lang {
+        background: rgba(255, 45, 133, 0.08);
+        color: var(--primary);
+        padding: 0.4rem 0.9rem;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .mini-action-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        border: none;
+        background: rgba(0,0,0,0.03);
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+    }
+
+    .mini-action-btn:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    .mini-action-btn.delete:hover {
+        background: #ff4d4f;
+    }
+
+    .poi-tag {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #00acc1;
+        background: rgba(0, 184, 212, 0.05);
+        padding: 0.3rem 0.7rem;
+        border-radius: 8px;
+    }
+
+    .audio-status {
+        padding: 0.7rem 1.2rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+    }
+
+    .audio-status.ready {
+        background: rgba(46, 213, 115, 0.05);
+        color: #2ed573;
+    }
+
+    .audio-status.empty {
+        background: rgba(255, 165, 2, 0.05);
+        color: #ffa502;
+    }
+
+    .form-label-premium {
+        display: block;
+        margin-bottom: 0.6rem;
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-weight: 800;
+    }
+
+    .form-control-premium {
+        width: 100%;
+        padding: 0.9rem 1.2rem;
+        border-radius: 16px;
+        background: #f8f9fa;
+        border: 1px solid rgba(0,0,0,0.05);
+        color: var(--text-main);
+        font-size: 1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .form-control-premium:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 10px 25px var(--primary-glow);
+    }
+</style>
+
+@code {
+    private List<PoiGuide>? guides;
+    private List<Poi> availablePois = new();
+    private bool showModal = false;
+    private bool isEditing = false;
+    private PoiGuide editingGuide = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadGuides();
+    }
+
+    private async Task LoadGuides()
+    {
+        try 
+        {
+            guides = await GuideService.GetAllGuidesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading guides: {ex.Message}");
+            guides = new List<PoiGuide>();
+        }
+    }
+
+    private async Task ShowAddModal()
+    {
+        editingGuide = new PoiGuide { Language = "vi" };
+        var allPois = await PoiService.GetAllPoisAsync();
+        // Only show POIs that don't have a guide yet
+        availablePois = allPois.Where(p => !guides!.Any(g => g.PoiId == p.PoiId)).ToList();
+        
+        isEditing = false;
+        showModal = true;
+    }
+
+    private void EditGuide(PoiGuide guide)
+    {
+        editingGuide = new PoiGuide
+        {
+            GuideId = guide.GuideId,
+            PoiId = guide.PoiId,
+            Title = guide.Title,
+            Description = guide.Description,
+            Language = guide.Language
+        };
+        isEditing = true;
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    private async Task SaveGuide()
+    {
+        if ((editingGuide.PoiId == null || editingGuide.PoiId == 0) && !isEditing) return;
+        if (string.IsNullOrEmpty(editingGuide.Title)) return;
+
+        bool success = isEditing 
+            ? await GuideService.UpdateGuideAsync(editingGuide) 
+            : await GuideService.CreateGuideAsync(editingGuide);
+
+        if (success)
+        {
+            await LoadGuides();
+            showModal = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteGuide(int id)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xóa Audio Guide này không?");
+        if (confirmed)
+        {
+            if (await GuideService.DeleteGuideAsync(id))
+            {
+                await LoadGuides();
+                StateHasChanged();
+            }
+        }
+    }
+}

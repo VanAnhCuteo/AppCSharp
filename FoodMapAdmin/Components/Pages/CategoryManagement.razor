@@ -1,100 +1,196 @@
-﻿@page "/categories"
+@page "/categories"
 @using Microsoft.AspNetCore.Authorization
 @using FoodMapAdmin.Models
 @using FoodMapAdmin.Services
 @inject ICategoryService CategoryService
+@inject IJSRuntime JSRuntime
 @attribute [Authorize(Roles = "admin")]
 
-<PageTitle>Categories - FoodMap Admin</PageTitle>
+<PageTitle>Quản lý Danh mục - FoodMap Admin</PageTitle>
 
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <h2>Category Management</h2>
-        <button class="glass-btn" @onclick="() => showAddModal = true">Add Category</button>
+<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Danh mục</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Phân loại các địa điểm ăn uống trên toàn hệ thống</p>
     </div>
+    <button class="glass-btn pulse-animation" style="padding: 1rem 2.2rem; font-size: 1.05rem; border-radius: 20px; box-shadow: 0 15px 35px var(--primary-glow);" @onclick="() => ShowAddModal()">
+        <i class="bi bi-tag-fill me-2"></i> Thêm danh mục
+    </button>
+</div>
 
-    @if (categories == null)
-    {
-        <p><em>Loading...</em></p>
-    }
-    else
-    {
-        <table style="width: 100%; border-collapse: collapse;">
+<div class="card shadow-glass border-0 p-0" style="border-radius: 30px; overflow: hidden; background: var(--surface);">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
             <thead>
-                <tr style="text-align: left; border-bottom: 1px solid var(--glass);">
-                    <th style="padding: 1rem;">ID</th>
-                    <th style="padding: 1rem;">Name</th>
-                    <th style="padding: 1rem;">Description</th>
-                    <th style="padding: 1rem;">Actions</th>
+                <tr style="background: rgba(255, 45, 133, 0.03);">
+                    <th style="padding: 1.5rem 1rem 1.5rem 2rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Mã số</th>
+                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Tên danh mục</th>
+                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Mô tả chi tiết</th>
+                    <th style="padding: 1.5rem 2rem 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var cat in categories)
+                @if (categories == null)
                 {
-                    <tr style="border-bottom: 1px solid var(--glass);">
-                        <td style="padding: 1rem;">@cat.CategoryId</td>
-                        <td style="padding: 1rem;"><strong>@cat.CategoryName</strong></td>
-                        <td style="padding: 1rem; color: var(--text-muted);">@cat.Description</td>
-                        <td style="padding: 1rem;">
-                            <button style="background: transparent; border: 1px solid #ff4d4d; color: #ff4d4d; padding: 0.3rem 0.8rem; border-radius: 8px; cursor: pointer;" @onclick="() => Delete(cat.CategoryId)">Delete</button>
+                    <tr>
+                        <td colspan="4" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
                         </td>
                     </tr>
                 }
+                else
+                {
+                    @foreach (var cat in categories)
+                    {
+                        <tr class="align-middle transition-all">
+                            <td style="padding-left: 2rem; color: var(--text-muted); font-weight: 600;">#@cat.CategoryId</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="cat-icon me-3">
+                                        <i class="bi bi-bookmark-star-fill"></i>
+                                    </div>
+                                    <span style="font-weight: 800; color: var(--text-main); font-size: 1.05rem;">@cat.CategoryName</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="text-muted" style="font-size: 0.9rem;">@cat.Description</span>
+                            </td>
+                            <td style="text-align: center; padding-right: 2rem; white-space: nowrap;">
+                                <div style="display: flex !important; flex-direction: row !important; justify-content: center; align-items: center; gap: 0.75rem;">
+                                    <button class="action-btn btn-edit" @onclick="() => Edit(cat)"><i class="bi bi-pencil-fill"></i></button>
+                                    <button class="action-btn btn-delete" @onclick="() => Delete(cat.CategoryId)"><i class="bi bi-trash-fill"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
             </tbody>
         </table>
-    }
+    </div>
 </div>
 
-@if (showAddModal)
+@if (showModal)
 {
-    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000;">
-        <div class="card" style="width: 400px;">
-            <h3>Add New Category</h3>
-            <div style="margin-top: 1.5rem;">
-                <label style="display: block; margin-bottom: 0.5rem;">Name</label>
-                <input type="text" @bind="newCategoryName" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
-            </div>
-            <div style="margin-top: 1rem;">
-                <label style="display: block; margin-bottom: 0.5rem;">Description</label>
-                <textarea @bind="newCategoryDesc" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;"></textarea>
-            </div>
-            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
-                <button class="glass-btn" @onclick="SaveCategory">Save</button>
-                <button style="background: transparent; border: 1px solid var(--glass); color: white; padding: 0.8rem 1.5rem; border-radius: 12px; cursor: pointer;" @onclick="() => showAddModal = false">Cancel</button>
+    <div class="modal d-block" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 1050;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-glass" style="border-radius: 35px; background: white;">
+                <div class="modal-header border-0 p-5 pb-0">
+                    <h5 class="modal-title" style="font-size: 1.8rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        @(isEditing ? "Cập nhật danh mục" : "Tạo danh mục mới")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body p-5">
+                    <div class="mb-4">
+                        <label class="form-label-premium">Tên danh mục</label>
+                        <input type="text" class="form-control-premium" @bind="editCat.CategoryName" placeholder="VD: Đặc sản vùng miền..." />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label-premium">Mô tả (Không bắt buộc)</label>
+                        <textarea class="form-control-premium" style="height: 120px; resize: none;" @bind="editCat.Description"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-5 pt-0">
+                    <button type="button" class="btn-cancel-premium px-4" @onclick="CloseModal">Hủy bỏ</button>
+                    <button type="button" class="glass-btn px-5" style="box-shadow: 0 15px 30px var(--primary-glow);" @onclick="HandleSubmit">
+                        <i class="bi bi-check-circle-fill me-2"></i> Lưu dữ liệu
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 }
 
+<style>
+    .cat-icon {
+        width: 38px;
+        height: 38px;
+        background: rgba(45, 133, 255, 0.08);
+        color: #2d85ff;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+
+    .form-label-premium {
+        display: block;
+        margin-bottom: 0.6rem;
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-weight: 800;
+    }
+
+    .form-control-premium {
+        width: 100%;
+        padding: 0.9rem 1.2rem;
+        border-radius: 16px;
+        background: #f8f9fa;
+        border: 1px solid rgba(0,0,0,0.05);
+        color: var(--text-main);
+        font-size: 1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .form-control-premium:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 10px 25px var(--primary-glow);
+    }
+    
+    .action-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+    .btn-edit { background: rgba(255, 45, 133, 0.05); color: var(--primary); }
+    .btn-edit:hover { background: var(--primary); color: white; }
+    .btn-delete { background: rgba(255, 0, 0, 0.05); color: #ff4d4f; }
+    .btn-delete:hover { background: #ff4d4f; color: white; }
+    
+    tr:hover { background: rgba(255, 45, 133, 0.01) !important; }
+</style>
+
 @code {
     private List<Category>? categories;
-    private bool showAddModal = false;
-    private string newCategoryName = "";
-    private string newCategoryDesc = "";
+    private bool showModal = false;
+    private bool isEditing = false;
+    private Category editCat = new();
 
     protected override async Task OnInitializedAsync()
     {
-        categories = await CategoryService.GetAllCategoriesAsync();
+        await LoadData();
     }
 
-    private async Task SaveCategory()
+    private async Task LoadData() => categories = await CategoryService.GetAllCategoriesAsync();
+
+    private void ShowAddModal() { editCat = new(); isEditing = false; showModal = true; }
+    private void Edit(Category cat) { editCat = new Category { CategoryId = cat.CategoryId, CategoryName = cat.CategoryName, Description = cat.Description }; isEditing = true; showModal = true; }
+    private void CloseModal() => showModal = false;
+
+    private async Task HandleSubmit()
     {
-        if (string.IsNullOrWhiteSpace(newCategoryName)) return;
-        var newCat = new Category { CategoryName = newCategoryName, Description = newCategoryDesc };
-        if (await CategoryService.CreateCategoryAsync(newCat))
-        {
-            categories = await CategoryService.GetAllCategoriesAsync();
-            showAddModal = false;
-            newCategoryName = "";
-            newCategoryDesc = "";
-        }
+        if (string.IsNullOrEmpty(editCat.CategoryName)) return;
+        bool res = isEditing ? await CategoryService.UpdateCategoryAsync(editCat) : await CategoryService.CreateCategoryAsync(editCat);
+        if (res) { await LoadData(); showModal = false; }
     }
 
     private async Task Delete(int id)
     {
-        if (await CategoryService.DeleteCategoryAsync(id))
-        {
-            categories = categories?.Where(c => c.CategoryId != id).ToList();
-        }
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc muốn xóa danh mục này?");
+        if (confirmed && await CategoryService.DeleteCategoryAsync(id)) await LoadData();
     }
 }

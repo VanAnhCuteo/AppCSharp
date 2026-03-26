@@ -1,4 +1,4 @@
-﻿using FoodMapAdmin.Models;
+using FoodMapAdmin.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Reflection.Emit;
@@ -19,6 +19,7 @@ namespace FoodMapAdmin.Data
         public DbSet<PoiGuide> PoiGuides { get; set; }
         public DbSet<PoiVisit> PoiVisits { get; set; }
         public DbSet<Review> Reviews { get; set; }
+        public DbSet<ActivityLog> ActivityLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

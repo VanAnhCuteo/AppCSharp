@@ -1,4 +1,4 @@
-﻿using FoodMapAdmin.Data;
+using FoodMapAdmin.Data;
 using FoodMapAdmin.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +9,7 @@ namespace FoodMapAdmin.Services
         Task<User?> AuthenticateAsync(string username, string password);
         Task<List<User>> GetAllUsersAsync();
         Task<User?> GetUserByIdAsync(int id);
+        Task<bool> DeleteUserAsync(int id);
     }
 
     public class UserService : IUserService
@@ -36,6 +37,14 @@ namespace FoodMapAdmin.Services
         public async Task<User?> GetUserByIdAsync(int id)
         {
             return await _context.Users.FindAsync(id);
+        }
+
+        public async Task<bool> DeleteUserAsync(int id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return false;
+            _context.Users.Remove(user);
+            return await _context.SaveChangesAsync() > 0;
         }
     }
 }

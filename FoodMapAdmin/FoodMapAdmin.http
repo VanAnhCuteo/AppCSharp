@@ -1,6 +1,6 @@
 @FoodMapAdmin_HostAddress = http://localhost:5084
 
-GET {{FoodMapAdmin_HostAddress}}/weatherforecast/
+GET {{FoodMapAdmin_HostAddress}}/api/Food
 Accept: application/json
 
 ###

@@ -140,21 +140,22 @@
                                             <Border.StrokeShape><RoundRectangle CornerRadius="28"/></Border.StrokeShape>
                                             
                                             <!-- We use AspectFill so it looks premium -->
-                                            <Image Source="{Binding first_image}" Aspect="AspectFill" 
-                                                   WidthRequest="195" HeightRequest="130"
-                                                   HorizontalOptions="Fill" VerticalOptions="Fill" />
-                                            
-                                            <!-- Fallback vector if image_url is missing (stacked behind but visible if image fails) -->
-                                            <Path Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 M12,20 C7.58,20 4,16.42 4,12 C4,7.58 7.58,4 12,4 C16.42,4 20,7.58 20,12 C20,16.42 16.42,20 12,20 M12,6 C8.69,6 6,8.69 6,12 C6,15.31 8.69,18 12,18 C15.31,18 18,15.31 18,12 C18,8.69 15.31,6 12,6 Z"
-                                                  Fill="#FFAD9F" Aspect="Uniform" WidthRequest="40" HeightRequest="40"
-                                                  HorizontalOptions="Center" VerticalOptions="Center" ZIndex="-1"/>
+                                            <!-- We use AspectFill so it looks premium -->
+                                            <Grid>
+                                                <!-- Fallback vector (visible if image is transparent or fails) -->
+                                                <Path Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 M12,20 C7.58,20 4,16.42 4,12 C4,7.58 7.58,4 12,4 C16.42,4 20,7.58 20,12 C20,16.42 16.42,20 12,20 M12,6 C8.69,6 6,8.69 6,12 C6,15.31 8.69,18 12,18 C15.31,18 18,15.31 18,12 C18,8.69 15.31,6 12,6 Z"
+                                                      Fill="#FFF0F3" Aspect="Uniform" WidthRequest="40" HeightRequest="40"
+                                                      HorizontalOptions="Center" VerticalOptions="Center" />
+                                                
+                                                <Image Source="{Binding first_image}" Aspect="AspectFill" 
+                                                       WidthRequest="195" HeightRequest="130"
+                                                       HorizontalOptions="Fill" VerticalOptions="Fill" />
+                                            </Grid>
                                         </Border>
-
-                                        <!-- Info area -->
-                                        <VerticalStackLayout Grid.Row="1" Padding="14,10" Spacing="4">
-                                            <Label Text="{Binding name}" FontSize="14"
-                                                   FontAttributes="Bold" TextColor="#323242"
-                                                   LineBreakMode="TailTruncation"/>
+                                         <VerticalStackLayout Grid.Row="1" Padding="14,10" Spacing="4">
+                                             <Label Text="{Binding name}" FontSize="14"
+                                                    FontAttributes="Bold" TextColor="#323242"
+                                                    LineBreakMode="TailTruncation"/>
                                             <HorizontalStackLayout Spacing="4">
                                                 <!-- Small Star Vector -->
                                                 <Path Data="M12,17.27 L18.18,21 L16.54,13.97 L22,9.24 L14.81,8.63 L12,2 L9.19,8.63 L2,9.24 L7.46,13.97 L5.82,21 L12,17.27 Z"

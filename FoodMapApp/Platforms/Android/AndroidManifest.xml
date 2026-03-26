@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
 	<!-- Cho phép internet -->
@@ -17,6 +17,7 @@
         android:icon="@mipmap/appicon"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
 		android:label="FoodMapApp">
 
 	</application>

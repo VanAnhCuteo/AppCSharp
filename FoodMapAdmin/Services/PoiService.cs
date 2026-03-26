@@ -1,6 +1,8 @@
-﻿using FoodMapAdmin.Data;
+using FoodMapAdmin.Data;
 using FoodMapAdmin.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Components.Authorization;
+using System.Security.Claims;
 
 namespace FoodMapAdmin.Services
 {
@@ -17,10 +19,22 @@ namespace FoodMapAdmin.Services
     public class PoiService : IPoiService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IActivityLogger _logger;
+        private readonly AuthenticationStateProvider _authStateProvider;
 
-        public PoiService(ApplicationDbContext context)
+        public PoiService(ApplicationDbContext context, IActivityLogger logger, AuthenticationStateProvider authStateProvider)
         {
             _context = context;
+            _logger = logger;
+            _authStateProvider = authStateProvider;
+        }
+
+        private async Task<int?> GetCurrentUserIdAsync()
+        {
+            var authState = await _authStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == ClaimTypes.NameIdentifier)?.Value;
+            return int.TryParse(userIdStr, out var id) ? id : null;
         }
 
         public async Task<List<Poi>> GetAllPoisAsync()
@@ -48,21 +62,41 @@ namespace FoodMapAdmin.Services
         public async Task<bool> UpdatePoiAsync(Poi poi)
         {
             _context.Pois.Update(poi);
-            return await _context.SaveChangesAsync() > 0;
+            var result = await _context.SaveChangesAsync() > 0;
+            if (result)
+            {
+                var userId = await GetCurrentUserIdAsync();
+                await _logger.LogAsync(userId, "Cập nhật thông tin", poi.Name, $"Đã sửa dữ liệu của {poi.Name}");
+            }
+            return result;
         }
 
         public async Task<bool> DeletePoiAsync(int id)
         {
             var poi = await _context.Pois.FindAsync(id);
             if (poi == null) return false;
+            
+            var name = poi.Name;
             _context.Pois.Remove(poi);
-            return await _context.SaveChangesAsync() > 0;
+            var result = await _context.SaveChangesAsync() > 0;
+            if (result)
+            {
+                var userId = await GetCurrentUserIdAsync();
+                await _logger.LogAsync(userId, "Xóa quán ăn", name, $"Đã xóa {name} khỏi hệ thống");
+            }
+            return result;
         }
 
         public async Task<bool> CreatePoiAsync(Poi poi)
         {
             _context.Pois.Add(poi);
-            return await _context.SaveChangesAsync() > 0;
+            var result = await _context.SaveChangesAsync() > 0;
+            if (result)
+            {
+                var userId = await GetCurrentUserIdAsync();
+                await _logger.LogAsync(userId, "Thêm quán ăn mới", poi.Name, $"Đã tạo mới {poi.Name}");
+            }
+            return result;
         }
     }
 }

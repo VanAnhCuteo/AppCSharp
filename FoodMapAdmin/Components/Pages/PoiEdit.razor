@@ -1,31 +1,72 @@
-﻿@page "/pois/edit/{Id:int}"
+@page "/pois/edit/{Id:int}"
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
 @using FoodMapAdmin.Models
 @using FoodMapAdmin.Services
 @inject IPoiService PoiService
 @inject ICategoryService CategoryService
+@inject IUserService UserService
 @inject NavigationManager Navigator
 @attribute [Authorize(Roles = "admin,CNH")]
 
-<PageTitle>Edit Restaurant - FoodMap Admin</PageTitle>
+<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Sửa địa điểm</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Cập nhật thông tin chi tiết và vị trí của "@(poiToEdit?.Name ?? "...")" trên bản đồ</p>
+    </div>
+    <button class="back-btn-premium transition-up" @onclick="HandleCancel" title="Quay lại">
+        <i class="bi bi-arrow-left-short"></i>
+    </button>
+</div>
 
 @if (notAuthorized)
 {
-    <div class="card">
-        <h3 style="color: #ff4d4d;">Access Denied</h3>
-        <p>You do not have permission to edit this restaurant.</p>
-        <button class="glass-btn" @onclick="HandleCancel">Return</button>
+    <div class="card shadow-glass text-center py-5" style="border-radius: 35px; background: white; border: 1px solid rgba(255, 77, 77, 0.1);">
+        <div class="mb-4" style="width: 80px; height: 80px; background: rgba(255, 77, 79, 0.1); color: #ff4d4f; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 2.5rem;">
+            <i class="bi bi-shield-lock-fill"></i>
+        </div>
+        <h3 class="text-danger" style="font-weight: 900;">Truy cập bị từ chối</h3>
+        <p class="text-muted mb-4 px-5">Bạn không có quyền chỉnh sửa thông tin cho địa điểm này. Vui lòng liên hệ Quản trị viên nếu đây là một lỗi.</p>
+        <button class="glass-btn px-5" style="border-radius: 15px;" @onclick="HandleCancel">
+            <i class="bi bi-arrow-left me-2"></i> Quay lại trang chủ
+        </button>
     </div>
 }
-else if (poiToEdit == null || categories == null)
+else if (poiToEdit == null || categories == null || users == null)
 {
-    <p>Loading...</p>
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+    </div>
 }
 else
 {
-    <PoiForm CurrentPoi="poiToEdit" Categories="categories" Title="Edit Restaurant" OnSubmit="HandleSubmit" OnCancel="HandleCancel" />
+    <PoiForm CurrentPoi="poiToEdit" Categories="categories" Users="users" OnSubmit="HandleSubmit" OnCancel="HandleCancel" />
 }
+
+<style>
+    .back-btn-premium {
+        width: 50px;
+        height: 50px;
+        border-radius: 18px;
+        background: white;
+        border: 1px solid var(--glass-border);
+        color: var(--primary);
+        font-size: 1.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+        transition: all 0.3s ease;
+    }
+
+    .back-btn-premium:hover {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 15px 30px var(--primary-glow);
+    }
+</style>
 
 @code {
     [Parameter]
@@ -33,6 +74,7 @@ else
 
     private Poi? poiToEdit;
     private List<Category>? categories;
+    private List<User>? users;
     private bool notAuthorized = false;
 
     [CascadingParameter]
@@ -40,23 +82,32 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        categories = await CategoryService.GetAllCategoriesAsync();
-        poiToEdit = await PoiService.GetPoiByIdAsync(Id);
-
-        if (poiToEdit != null && AuthStateTask != null)
+        try 
         {
-            var authState = await AuthStateTask;
-            var user = authState.User;
-            
-            // Check ownership authorization
-            if (!user.IsInRole("admin"))
+            categories = await CategoryService.GetAllCategoriesAsync();
+            var allUsers = await UserService.GetAllUsersAsync();
+            users = allUsers.Where(u => u.Role == "CNH").ToList();
+            poiToEdit = await PoiService.GetPoiByIdAsync(Id);
+
+            if (poiToEdit != null && AuthStateTask != null)
             {
-                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == ClaimTypes.NameIdentifier)?.Value;
-                if (int.TryParse(userIdStr, out var currentUserId) && poiToEdit.UserId != currentUserId)
+                var authState = await AuthStateTask;
+                var user = authState.User;
+                
+                if (!user.IsInRole("admin"))
                 {
-                    notAuthorized = true;
+                    var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == ClaimTypes.NameIdentifier)?.Value;
+                    if (int.TryParse(userIdStr, out var currentUserId) && poiToEdit.UserId != currentUserId)
+                    {
+                        notAuthorized = true;
+                    }
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading POI: {ex.Message}");
+            Navigator.NavigateTo("/pois");
         }
     }
 
@@ -64,13 +115,10 @@ else
     {
         if (poiToEdit != null && !notAuthorized)
         {
-            await PoiService.UpdatePoiAsync(poiToEdit);
-            Navigator.NavigateTo("/pois");
+            bool success = await PoiService.UpdatePoiAsync(poiToEdit);
+            if (success) Navigator.NavigateTo("/pois");
         }
     }
 
-    private void HandleCancel()
-    {
-        Navigator.NavigateTo("/pois");
-    }
+    private void HandleCancel() => Navigator.NavigateTo("/pois");
 }

@@ -33,14 +33,6 @@ namespace FoodMapApp.Views
             SearchEntry.Placeholder = "Tìm món ăn, quán...";
 
             CategoryTitleLabel.Text = "Khám Phá";
-            TopRestaurantLabel.Text = "Quán Nổi Bật";
-            SeeAllLabel.Text = "Tất cả ›";
-
-            EventTitleLabel.Text = "Sự Kiện Đặc Biệt";
-            Event1Title.Text = "Signature Night";
-            Event1Desc.Text = "Giảm 30% thức uống từ 17:00 - 19:00";
-            Event1Sub.Text = "Áp dụng hội viên FoodMap";
-
             await LoadCategories();
             await LoadRestaurants();
         }
@@ -52,7 +44,9 @@ namespace FoodMapApp.Views
                 var categories = await HttpService.GetAsync<List<CategoryItem>>($"{BackendUrl}/categories");
                 if (categories != null)
                 {
-                    _allCategories = categories;
+                    _allCategories.Clear();
+                    foreach (var c in categories) _allCategories.Add(c);
+
                     // Assign elegant pastel colors & beautiful real food images
                     var styleMap = new Dictionary<string, (string bg, string text, string img)>(StringComparer.OrdinalIgnoreCase)
                     {
@@ -60,17 +54,14 @@ namespace FoodMapApp.Views
                         { "vặt",      ("#FFFBF0", "#F6BB42", "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=300&q=80") },
                         { "Ăn vặt",   ("#FFFBF0", "#F6BB42", "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=300&q=80") },
                         { "nướng",    ("#FFF0F3", "#ED5565", "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=300&q=80") },
-                        { "Nhậu",     ("#FFF8E1", "#FFCE54", "https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=300&q=80") },
-                        { "Cafe",     ("#FDF5E6", "#D7B377", "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=300&q=80") },
-                        { "Sushi",    ("#F0FFF4", "#48CFAD", "https://images.unsplash.com/photo-1553621042-f6e147245754?auto=format&fit=crop&w=300&q=80") },
-                        { "Pizza",    ("#FFF0F0", "#FC6E51", "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=300&q=80") },
-                        { "Lẩu",      ("#FFF0F8", "#EC87C0", "https://images.unsplash.com/photo-1627993079979-4d6dcb54f590?auto=format&fit=crop&w=300&q=80") },
                     };
+
                     foreach (var cat in _allCategories)
                     {
                         var normalizedCat = RemoveDiacritics(cat.category_name?.ToLower() ?? "");
-                        var matched = styleMap.FirstOrDefault(kv =>
+                        var matched = styleMap.FirstOrDefault(kv => 
                             normalizedCat.Contains(RemoveDiacritics(kv.Key.ToLower())));
+
                         cat.BackgroundColor = matched.Key != null ? matched.Value.bg : "#F5F5F7";
                         cat.TextColor       = matched.Key != null ? matched.Value.text : "#A1A1B5";
                         cat.ImageUrl        = matched.Key != null ? matched.Value.img : "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=300&q=80"; // Default restaurant img
@@ -176,12 +167,36 @@ namespace FoodMapApp.Views
 
         private async void OnExploreTapped(object sender, TappedEventArgs e)
         {
-            if (e.Parameter is not FoodItem food) return;
+            if (e.Parameter is not FoodItem food) 
+            {
+                Console.WriteLine("DEBUG: Explore tapped but parameter is not FoodItem");
+                return;
+            }
+
+            Console.WriteLine($"DEBUG: Explore tapped for food ID: {food.id}");
             MainPage.PendingOpenFoodId = food.id;
-            // Native global URI routing to bypass explicit implicit Tab gaps
-            await Shell.Current.GoToAsync("//MainPage");
-            // We rely entirely on MainPage.OnAppearing to consume the PendingOpenFoodId
-            // Calling it from here while WebView is in background drops the JS event on Android.
+
+            try 
+            {
+                // Native global URI routing to bypass explicit implicit Tab gaps
+                await Shell.Current.GoToAsync("//MainPage");
+                
+                // Force immediate check if already on MainPage or navigation logic needs a kick
+                if (MainPage.Instance != null)
+                {
+                    _ = MainPage.Instance.TryOpenPendingDetail();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DEBUG: Navigation error: {ex.Message}");
+                // Fallback to absolute route
+                await Shell.Current.GoToAsync("///MainPage");
+                if (MainPage.Instance != null)
+                {
+                    _ = MainPage.Instance.TryOpenPendingDetail();
+                }
+            }
         }
 
         private string RemoveDiacritics(string text)
@@ -223,6 +238,7 @@ namespace FoodMapApp.Views
                 string? rawMatch = null;
                 try
                 {
+                    // Handle JSON array format
                     if (image_url.TrimStart().StartsWith("["))
                     {
                         var arr = System.Text.Json.JsonSerializer.Deserialize<string[]>(image_url);
@@ -231,6 +247,7 @@ namespace FoodMapApp.Views
                 }
                 catch { }
 
+                // Handle comma/semicolon separated list
                 if (rawMatch == null) 
                 {
                     var parts = image_url.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
@@ -246,16 +263,14 @@ namespace FoodMapApp.Views
                 // Ensure it's an absolute URL targeting the backend static files
                 if (!string.IsNullOrWhiteSpace(rawMatch) && !rawMatch.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Static files are served from the root, not from /api
-                    // Use BackendIp directly to avoid the /api suffix in BaseUrl
-                    string hostUrl = $"http://{AppConfig.BackendIp}:5000";
-                    string relative = rawMatch.TrimStart('/');
+                    // Use the central BaseURL and remove the /api suffix to get the host root
+                    string hostUrl = AppConfig.BaseUrl.Replace("/api", "").TrimEnd('/');
                     
-                    if (!relative.StartsWith("images/", StringComparison.OrdinalIgnoreCase))
-                    {
-                        relative = "images/" + relative.Split('/').Last();
-                    }
-                    return $"{hostUrl}/{relative}";
+                    // Safely get the filename only, regardless of existing path segments or separators
+                    string fileName = System.IO.Path.GetFileName(rawMatch);
+                    
+                    // All restaurant images are served from the /images/ folder on the backend
+                    return $"{hostUrl}/images/{fileName}";
                 }
                 
                 return rawMatch;

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FoodMapAdmin.Models
@@ -24,5 +24,13 @@ namespace FoodMapAdmin.Models
 
         [Column("visit_time")]
         public DateTime? VisitTime { get; set; }
+
+        [Column("poi_name")]
+        [StringLength(200)]
+        public string? PoiName { get; set; }
+
+        [Column("poi_address")]
+        [StringLength(255)]
+        public string? PoiAddress { get; set; }
     }
 }

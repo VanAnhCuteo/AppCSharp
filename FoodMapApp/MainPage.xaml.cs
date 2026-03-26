@@ -13,74 +13,237 @@ namespace FoodMapApp;
         // Change this to your host machine's IP if using a physical device (e.g., 192.168.1.x)
         private static string BackendUrl => AppConfig.FoodApiUrl;
 
+        private CancellationTokenSource _ttsCts;
+        private CancellationTokenSource _currentSentenceCts;
+        private readonly SemaphoreSlim _ttsSemaphore = new SemaphoreSlim(1, 1);
+        private bool _isPaused = false;
+        private TaskCompletionSource<bool> _pauseTcs;
+
+        private string[] _currentSentences = Array.Empty<string>();
+        private int _currentSentenceIndex = 0;
+        private string _lastSpokenText = "";
+        private string _lastPoiId = "";
         private bool _isMapLoaded = false;
         private string _foodsJson = null;
+
+        private string NormalizeText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return "";
+            return System.Text.RegularExpressions.Regex.Replace(text.Trim().ToLower(), @"\s+", " ");
+        }
 
         public MainPage()
         {
             InitializeComponent();
             Instance = this;
 
-        mapView.Navigated += async (s, e) =>
-        {
-            _isMapLoaded = true;
-            if (_foodsJson != null)
+            mapView.Navigated += async (s, e) =>
             {
-                int userId = Preferences.Default.Get("user_id", 0);
-                await mapView.EvaluateJavaScriptAsync($"loadFoods({_foodsJson}, {userId});");
-                await TryOpenPendingDetail();
-                await TryStartPendingRoute();
-            }
-        };
+                // Only initialize if we're on the map page, not for cancelled custom protocols 
+                // that some platforms might still trigger a 'Navigated' event for.
+                if (!e.Url.Contains("map.html")) return;
 
-        mapView.Source = "map.html";
+                _isMapLoaded = true;
+                Console.WriteLine($"DEBUG: WebView Navigated to {e.Url}. Result: {e.Result}");
+                
+                // Inject dynamic API base URL from C# config to JS
+                await mapView.EvaluateJavaScriptAsync($"platformApiBase = '{AppConfig.FoodApiUrl}';");
 
-        mapView.Navigating += async (s, e) =>
-        {
-            if (e.Url.StartsWith("app-tts://speak?"))
-            {
-                e.Cancel = true;
-
-                var uri = new Uri(e.Url);
-                var query = HttpUtility.ParseQueryString(uri.Query);
-                string text = query["text"] ?? "";
-                string lang = query["lang"] ?? "vi-VN";
-
-                if (!string.IsNullOrWhiteSpace(text))
+                if (_foodsJson != null)
                 {
-                    SpeechOptions options = new SpeechOptions();
+                    int userId = Preferences.Default.Get("user_id", 0);
+                    await mapView.EvaluateJavaScriptAsync($"loadFoods({_foodsJson}, {userId});");
+                    await TryOpenPendingDetail();
+                    await TryStartPendingRoute();
+                }
+            };
 
+            mapView.Source = "map.html";
+
+            mapView.Navigating += async (s, e) =>
+            {
+                if (e.Url.StartsWith("app-tts://speak?"))
+                {
+                    e.Cancel = true;
+                    var uri = new Uri(e.Url);
+                    var query = HttpUtility.ParseQueryString(uri.Query);
+                    string text = query["text"] ?? "";
+                    string lang = query["lang"] ?? "vi-VN";
+                    string id = query["id"] ?? "";
+
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        string normalizedText = NormalizeText(text);
+                        bool textChanged = normalizedText != _lastSpokenText;
+                        bool poiChanged = id != _lastPoiId;
+                        
+                        Console.WriteLine($"DEBUG: TTS Request. ID: {id}. POI Changed: {poiChanged}. Text Changed: {textChanged}. Current Index: {_currentSentenceIndex}. IsPaused: {_isPaused}");
+
+                        if (poiChanged || (textChanged && _currentSentenceIndex == 0))
+                        {
+                            StopSpeech(true); // Full reset for new content or POI
+                            _lastPoiId = id;
+                            _lastSpokenText = normalizedText;
+                            _currentSentences = text.Split(new[] { '.', '!', '?', ';', ':', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                                                    .Select(s => s.Trim())
+                                                    .Where(s => s.Length > 0)
+                                                    .ToArray();
+                            _currentSentenceIndex = 0;
+                            Console.WriteLine($"DEBUG: New content loaded. Sentence count: {_currentSentences.Length}");
+                            _ = SpeakWithChunksAsync(lang);
+                        }
+                        else if (_isPaused)
+                        {
+                            Console.WriteLine("DEBUG: Resuming from pause.");
+                            _isPaused = false;
+                            _pauseTcs?.TrySetResult(true);
+                        }
+                        else 
+                        {
+                            // If not paused and not changed, maybe it's already playing or we just want to ensure it's playing
+                            _ = SpeakWithChunksAsync(lang);
+                        }
+                    }
+                }
+                else if (e.Url.StartsWith("app-tts://stop"))
+                {
+                    e.Cancel = true;
+                    var uri = new Uri(e.Url);
+                    var query = HttpUtility.ParseQueryString(uri.Query);
+                    bool fullReset = (query["reset"] == "true");
+                    
+                    Console.WriteLine($"DEBUG: TTS STOP Request. Reset: {fullReset}. Current Index: {_currentSentenceIndex}");
+                    
+                    if (fullReset)
+                    {
+                        StopSpeech(true);
+                        _currentSentenceIndex = 0;
+                        _lastSpokenText = "";
+                        _lastPoiId = "";
+                    }
+                    else
+                    {
+                        // Pause logic
+                        _isPaused = true;
+                        _currentSentenceCts?.Cancel();
+                        Console.WriteLine($"DEBUG: TTS Paused at index {_currentSentenceIndex}");
+                    }
+                }
+                else if (e.Url.StartsWith("app-request-reload://markers?"))
+                {
+                    e.Cancel = true;
+                    var uri = new Uri(e.Url);
+                    var query = HttpUtility.ParseQueryString(uri.Query);
+                    string lang = query["lang"] ?? "vi";
+                    
+                    // Reset audio on language change
+                    StopSpeech();
+                    _currentSentenceIndex = 0;
+                    _lastSpokenText = "";
+                    _lastPoiId = "";
+
+                    LoadFoods(lang);
+                }
+            };
+
+            LoadFoods();
+        }
+
+        private void StopSpeech(bool fullReset = false)
+        {
+            _currentSentenceCts?.Cancel();
+            if (fullReset)
+            {
+                _ttsCts?.Cancel();
+                _isPaused = false;
+                _pauseTcs?.TrySetResult(false);
+            }
+        }
+
+        private async Task SpeakWithChunksAsync(string lang)
+        {
+            // Ensure only one TTS loop is active
+            await _ttsSemaphore.WaitAsync();
+
+            try
+            {
+                _ttsCts = new CancellationTokenSource();
+                var mainToken = _ttsCts.Token;
+                _isPaused = false;
+
+                SpeechOptions options = new SpeechOptions();
+                var locales = await TextToSpeech.Default.GetLocalesAsync();
+                options.Locale = locales.FirstOrDefault(l => l.Language.Equals(lang, StringComparison.OrdinalIgnoreCase)) ??
+                                 locales.FirstOrDefault(l => l.Language.StartsWith(lang.Split('-')[0], StringComparison.OrdinalIgnoreCase));
+
+                Console.WriteLine($"DEBUG: SpeakWithChunks loop started. From index {_currentSentenceIndex}/{_currentSentences.Length}");
+
+                while (_currentSentenceIndex < _currentSentences.Length && !mainToken.IsCancellationRequested)
+                {
+                    if (_isPaused)
+                    {
+                        Console.WriteLine($"DEBUG: Loop waiting for resume at index {_currentSentenceIndex}");
+                        _pauseTcs = new TaskCompletionSource<bool>();
+                        bool resume = await _pauseTcs.Task;
+                        if (!resume || mainToken.IsCancellationRequested) break;
+                        Console.WriteLine($"DEBUG: Loop resuming at index {_currentSentenceIndex}");
+                    }
+
+                    _currentSentenceCts = CancellationTokenSource.CreateLinkedTokenSource(mainToken);
+                    string sentence = _currentSentences[_currentSentenceIndex];
+                    
                     try
                     {
-                        var locales = await TextToSpeech.Default.GetLocalesAsync();
-                        var locale = locales.FirstOrDefault(l => l.Language.Equals(lang, StringComparison.OrdinalIgnoreCase)) ??
-                                     locales.FirstOrDefault(l => l.Language.StartsWith(lang.Split('-')[0], StringComparison.OrdinalIgnoreCase));
-
-                        if (locale != null)
-                        {
-                            options.Locale = locale;
-                        }
+                        Console.WriteLine($"DEBUG: Speaking index {_currentSentenceIndex}: {(sentence.Length > 20 ? sentence.Substring(0, 20) : sentence)}...");
+                        
+                        // We update progress ONLY at the start/after completion? 
+                        // User said: "Update progress only after a sentence is fully spoken."
+                        // But we want the progress bar to move. 
+                        // Let's update it to show we are ON this sentence.
+                        // Actually, if we update ONLY after, it might feel laggy.
+                        // "Update progress only after a sentence is fully spoken." -> index + 1
+                        
+                        await TextToSpeech.Default.SpeakAsync(sentence, options, _currentSentenceCts.Token);
+                        
+                        _currentSentenceIndex++;
+                        Console.WriteLine($"DEBUG: Finished index {_currentSentenceIndex - 1}, incremented to {_currentSentenceIndex}");
+                        
+                        // Update JS with progress AFTER completion
+                        await mapView.EvaluateJavaScriptAsync($"if(window.onTtsProgress) window.onTtsProgress({_currentSentenceIndex}, {_currentSentences.Length});");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Console.WriteLine($"DEBUG: Sentence at index {_currentSentenceIndex} was cancelled. IsPaused: {_isPaused}");
+                        // Do NOT increment _currentSentenceIndex so it restarts this sentence on resume
+                        if (!_isPaused) break; // If not paused, it's a real cancellation
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error getting locales: {ex.Message}");
+                        Console.WriteLine($"DEBUG: Error at index {_currentSentenceIndex}: {ex.Message}");
+                        _currentSentenceIndex++; // Skip problematic sentence?
                     }
+                    finally
+                    {
+                        _currentSentenceCts?.Dispose();
+                        _currentSentenceCts = null;
+                    }
+                }
 
-                    await TextToSpeech.Default.SpeakAsync(text, options);
+                if (_currentSentenceIndex >= _currentSentences.Length && !mainToken.IsCancellationRequested)
+                {
+                    Console.WriteLine("DEBUG: TTS reached end of text naturally.");
+                    _currentSentenceIndex = 0;
+                    _lastSpokenText = "";
+                    _lastPoiId = "";
+                    await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
                 }
             }
-            else if (e.Url.StartsWith("app-request-reload://markers?"))
+            finally
             {
-                e.Cancel = true;
-                var uri = new Uri(e.Url);
-                var query = HttpUtility.ParseQueryString(uri.Query);
-                string lang = query["lang"] ?? "vi";
-                LoadFoods(lang);
+                _ttsSemaphore.Release();
+                Console.WriteLine("DEBUG: TTS loop exited and semaphore released.");
             }
-        };
-
-        LoadFoods();
-    }
+        }
 
     protected override async void OnAppearing()
     {
@@ -89,6 +252,7 @@ namespace FoodMapApp;
         
         if (_isMapLoaded)
         {
+            LoadFoods(); // Refresh markers and user ID
             await TryOpenPendingDetail();
             await TryStartPendingRoute();
         }
@@ -102,20 +266,28 @@ namespace FoodMapApp;
             PendingOpenFoodId = null; // Clear it so it only opens once
             
             // Aggressive retry loop to wait for Android WebView to strictly thaw and expose features.js
+            Console.WriteLine($"DEBUG: Attempting to open pending food detail for ID: {id}");
             for (int i = 0; i < 20; i++)
             {
-                await Task.Delay(150);
+                await Task.Delay(200);
                 try
                 {
                     string typeofRes = await mapView.EvaluateJavaScriptAsync("typeof openDetails");
+                    Console.WriteLine($"DEBUG: WebView openDetails type check (Attempt {i+1}): {typeofRes}");
+                    
                     if (typeofRes != null && typeofRes.Contains("function"))
                     {
+                        Console.WriteLine($"DEBUG: Calling JS openDetails({id}) now.");
                         await mapView.EvaluateJavaScriptAsync($"openDetails({id})");
-                        break;
+                        return;
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"DEBUG: EvaluateJS Error (Attempt {i+1}): {ex.Message}");
+                }
             }
+            Console.WriteLine("DEBUG: Failed to open pending detail after all retries.");
         }
     }
 
@@ -142,6 +314,10 @@ namespace FoodMapApp;
             {
                 int userId = Preferences.Default.Get("user_id", 0);
                 await mapView.EvaluateJavaScriptAsync($"loadFoods({_foodsJson}, {userId});");
+                
+                // Ensure pending actions are consumed even if LoadFoods finished after Navigated
+                await TryOpenPendingDetail();
+                await TryStartPendingRoute();
             }
         }
         catch (Exception ex)

@@ -1,86 +1,249 @@
-﻿@using FoodMapAdmin.Models
-@using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime JSRuntime
+@implements IDisposable
 
 <EditForm Model="CurrentPoi" OnValidSubmit="OnSubmitHandler">
     <DataAnnotationsValidator />
-    <ValidationSummary />
-
-    <div class="card" style="max-width: 800px; margin: 0 auto;">
-        <h3 style="margin-bottom: 2rem; color: var(--primary);">@Title</h3>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <!-- Column 1 -->
-            <div>
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Name</label>
-                    <InputText @bind-Value="CurrentPoi.Name" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
-                </div>
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Category</label>
-                    <InputSelect @bind-Value="CurrentPoi.CategoryId" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;">
-                        <option value="">-- Select Category --</option>
-                        @foreach (var cat in Categories)
-                        {
-                            <option value="@cat.CategoryId">@cat.CategoryName</option>
-                        }
-                    </InputSelect>
-                </div>
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Address</label>
-                    <InputText @bind-Value="CurrentPoi.Address" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
-                </div>
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Open Time</label>
-                    <InputText @bind-Value="CurrentPoi.OpenTime" placeholder="e.g. 08:00 - 22:00" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
-                </div>
-            </div>
-
-            <!-- Column 2 -->
-            <div>
-                 <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem;">
-                    <div style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Latitude</label>
-                        <InputNumber @bind-Value="CurrentPoi.Latitude" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
+    
+    <div class="card shadow-glass border-0 transition-up" style="max-width: 1100px; margin: 0 auto; border-radius: 40px; background: var(--surface); overflow: hidden;">
+        <div class="row g-0">
+            <!-- Cột 1: Form nhập liệu -->
+            <div class="col-lg-5 p-5" style="border-right: 1px solid rgba(255, 45, 133, 0.05);">
+                <div class="form-section">
+                    <h5 class="mb-4 d-flex align-items-center" style="font-size: 0.9rem; color: var(--primary); font-weight: 800; letter-spacing: 2px; text-transform: uppercase;">
+                        <span class="icon-blob me-3"><i class="bi bi-info-circle-fill"></i></span> Thông tin cơ bản
+                    </h5>
+                    
+                    <div class="mb-4">
+                        <label class="form-label-premium">Tên quán ăn</label>
+                        <InputText @bind-Value="CurrentPoi.Name" class="form-control-premium" placeholder="Ví dụ: Ốc Bùi Viện..." />
+                        <ValidationMessage For="@(() => CurrentPoi.Name)" />
                     </div>
-                    <div style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Longitude</label>
-                        <InputNumber @bind-Value="CurrentPoi.Longitude" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
+                    
+                    <div class="mb-4">
+                        <label class="form-label-premium">Danh mục</label>
+                        <InputSelect @bind-Value="CurrentPoi.CategoryId" class="form-control-premium select-premium">
+                            <option value="">-- Chọn danh mục --</option>
+                            @foreach (var cat in Categories)
+                            {
+                                <option value="@cat.CategoryId">@cat.CategoryName</option>
+                            }
+                        </InputSelect>
                     </div>
-                </div>
-                
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Description</label>
-                    <InputTextArea @bind-Value="CurrentPoi.Description" rows="5" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
-                </div>
-                
-                <AuthorizeView Roles="admin">
-                    <Authorized Context="authContext">
-                        <div style="margin-bottom: 1.5rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Owner User ID</label>
-                            <InputNumber @bind-Value="CurrentPoi.UserId" style="width: 100%; padding: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass); color: white;" />
-                            <small style="color: var(--primary);">*Admin only field*</small>
+                    
+                    <div class="mb-4">
+                        <label class="form-label-premium">Địa chỉ</label>
+                        <InputText @bind-Value="CurrentPoi.Address" class="form-control-premium" placeholder="Địa chỉ chi tiết..." />
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label-premium">Giờ mở cửa</label>
+                        <InputText @bind-Value="CurrentPoi.OpenTime" class="form-control-premium" placeholder="VD: 08:00 - 22:00" />
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <label class="form-label-premium">Vĩ độ (Lat)</label>
+                            <InputNumber @bind-Value="CurrentPoi.Latitude" @bind-Value:after="OnPositionInputChanged" class="form-control-premium" step="0.0000001" />
                         </div>
-                    </Authorized>
-                </AuthorizeView>
-            </div>
-        </div>
+                        <div class="col-6">
+                            <label class="form-label-premium">Kinh độ (Lng)</label>
+                            <InputNumber @bind-Value="CurrentPoi.Longitude" @bind-Value:after="OnPositionInputChanged" class="form-control-premium" step="0.0000001" />
+                        </div>
+                    </div>
 
-        <div style="margin-top: 2rem; display: flex; gap: 1rem;">
-            <button type="submit" class="glass-btn" style="min-width: 150px;">Save Restaurant</button>
-            <button type="button" class="glass-btn" style="background: transparent; border: 1px solid var(--glass);" @onclick="OnCancel">Cancel</button>
+                    <div class="mb-4">
+                        <label class="form-label-premium">Bán kính quét (Mét)</label>
+                        <InputNumber @bind-Value="CurrentPoi.RangeMeters" class="form-control-premium" />
+                    </div>
+                    
+                    <AuthorizeView Roles="admin">
+                        <Authorized Context="authContext">
+                            <div class="mb-0">
+                                <label class="form-label-premium">Chủ sở hữu</label>
+                                <InputSelect @bind-Value="CurrentPoi.UserId" class="form-control-premium select-premium">
+                                    <option value="">-- Chọn chủ sở hữu --</option>
+                                    @foreach (var user in Users)
+                                    {
+                                        <option value="@user.UserId">@user.Username</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+
+            <!-- Cột 2: Bản đồ & Thao tác chính -->
+            <div class="col-lg-7 d-flex flex-column">
+                <div class="map-container-wrapper p-3 flex-grow-1">
+                    <div id="map" style="height: 100%; min-height: 500px; width: 100%; border-radius: 30px; border: 1px solid rgba(0,0,0,0.05); z-index: 1;"></div>
+                    <div class="map-overlay-hint">
+                        <i class="bi bi-cursor-fill me-2"></i> Click vào bản đồ để lấy tọa độ
+                    </div>
+                </div>
+                
+                <div class="p-5 mt-auto" style="background: rgba(255, 45, 133, 0.02); border-top: 1px solid rgba(255, 45, 133, 0.05);">
+                    <div class="d-flex gap-3 justify-content-end align-items-center flex-nowrap">
+                        <button type="button" class="btn-cancel-premium px-5" @onclick="OnCancel" style="white-space: nowrap;">
+                            Hủy bỏ
+                        </button>
+                        <button type="submit" class="glass-btn px-5" style="box-shadow: 0 15px 30px var(--primary-glow); white-space: nowrap;">
+                            <i class="bi bi-cloud-arrow-up-fill me-2"></i> Lưu dữ liệu
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </EditForm>
 
+<style>
+    .shadow-glass {
+        box-shadow: 0 30px 80px rgba(0,0,0,0.05) !important;
+        border: 1px solid var(--glass-border) !important;
+    }
+
+    .icon-blob {
+        width: 38px;
+        height: 38px;
+        background: rgba(255, 45, 133, 0.1);
+        color: var(--primary);
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+
+    .form-label-premium {
+        display: block;
+        margin-bottom: 0.6rem;
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-weight: 800;
+    }
+
+    .form-control-premium {
+        width: 100%;
+        padding: 0.9rem 1.2rem;
+        border-radius: 16px;
+        background: #ffffff;
+        border: 1px solid rgba(0,0,0,0.07);
+        color: var(--text-main);
+        font-size: 1rem;
+        font-weight: 500;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .form-control-premium:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-glow);
+        background: #fff;
+    }
+
+    .select-premium {
+        height: 56px;
+        cursor: pointer;
+    }
+
+    .map-container-wrapper {
+        position: relative;
+        background: #fdfdfd;
+    }
+
+    .map-overlay-hint {
+        position: absolute;
+        bottom: 30px;
+        right: 30px;
+        background: rgba(255,255,255,0.9);
+        backdrop-filter: blur(10px);
+        padding: 0.6rem 1.2rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text-main);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        z-index: 100;
+        pointer-events: none;
+    }
+
+    .btn-cancel-premium {
+        background: rgba(0,0,0,0.03);
+        border: 1px solid rgba(0,0,0,0.05);
+        color: var(--text-muted);
+        font-weight: 700;
+        border-radius: 18px;
+        height: 56px;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 140px;
+    }
+
+    .btn-cancel-premium:hover {
+        background: rgba(0,0,0,0.08);
+        color: var(--text-main);
+    }
+    
+    .transition-up {
+        transition: transform 0.4s ease;
+    }
+    
+    .transition-up:hover {
+        transform: translateY(-5px);
+    }
+</style>
+
 @code {
     [Parameter] public Poi CurrentPoi { get; set; } = new();
     [Parameter] public List<Category> Categories { get; set; } = new();
+    [Parameter] public List<User> Users { get; set; } = new();
     [Parameter] public string Title { get; set; } = "Restaurant Form";
     [Parameter] public EventCallback OnSubmit { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
 
+    private DotNetObjectReference<PoiForm>? dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+            // Default to Bùi Viện, HCM if coordinates are zero/null
+            var lat = (double?)CurrentPoi.Latitude ?? 10.7669676;
+            var lng = (double?)CurrentPoi.Longitude ?? 106.6930774;
+            
+            await JSRuntime.InvokeVoidAsync("mapHelper.initMap", "map", lat, lng, 16, dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public void UpdateCoordinates(double lat, double lng)
+    {
+        CurrentPoi.Latitude = (decimal)Math.Round(lat, 7);
+        CurrentPoi.Longitude = (decimal)Math.Round(lng, 7);
+        StateHasChanged();
+    }
+
+    private async Task OnPositionInputChanged()
+    {
+        if (CurrentPoi.Latitude.HasValue && CurrentPoi.Longitude.HasValue)
+        {
+            await JSRuntime.InvokeVoidAsync("mapHelper.setMarkerPosition", (double)CurrentPoi.Latitude.Value, (double)CurrentPoi.Longitude.Value);
+        }
+    }
+
     private async Task OnSubmitHandler()
     {
         await OnSubmit.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
     }
 }
