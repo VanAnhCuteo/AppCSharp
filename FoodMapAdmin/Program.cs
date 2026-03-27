@@ -31,6 +31,8 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IPoiGuideService, PoiGuideService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ITranslationService, TranslationService>();
 
 // CORS
 builder.Services.AddCors(options =>

@@ -149,6 +149,8 @@ namespace FoodMapApp;
             LoadFoods();
         }
 
+        private IEnumerable<Locale> _cachedLocales = null;
+
         private void StopSpeech(bool fullReset = false)
         {
             _currentSentenceCts?.Cancel();
@@ -172,9 +174,16 @@ namespace FoodMapApp;
                 _isPaused = false;
 
                 SpeechOptions options = new SpeechOptions();
-                var locales = await TextToSpeech.Default.GetLocalesAsync();
-                options.Locale = locales.FirstOrDefault(l => l.Language.Equals(lang, StringComparison.OrdinalIgnoreCase)) ??
-                                 locales.FirstOrDefault(l => l.Language.StartsWith(lang.Split('-')[0], StringComparison.OrdinalIgnoreCase));
+                
+                // Cache locales to avoid repeated slow calls
+                if (_cachedLocales == null)
+                {
+                    _cachedLocales = await TextToSpeech.Default.GetLocalesAsync();
+                    Console.WriteLine($"DEBUG: Cached {_cachedLocales.Count()} locales.");
+                }
+
+                options.Locale = _cachedLocales.FirstOrDefault(l => l.Language.Equals(lang, StringComparison.OrdinalIgnoreCase)) ??
+                                 _cachedLocales.FirstOrDefault(l => l.Language.StartsWith(lang.Split('-')[0], StringComparison.OrdinalIgnoreCase));
 
                 Console.WriteLine($"DEBUG: SpeakWithChunks loop started. From index {_currentSentenceIndex}/{_currentSentences.Length}");
 
@@ -196,31 +205,21 @@ namespace FoodMapApp;
                     {
                         Console.WriteLine($"DEBUG: Speaking index {_currentSentenceIndex}: {(sentence.Length > 20 ? sentence.Substring(0, 20) : sentence)}...");
                         
-                        // We update progress ONLY at the start/after completion? 
-                        // User said: "Update progress only after a sentence is fully spoken."
-                        // But we want the progress bar to move. 
-                        // Let's update it to show we are ON this sentence.
-                        // Actually, if we update ONLY after, it might feel laggy.
-                        // "Update progress only after a sentence is fully spoken." -> index + 1
-                        
                         await TextToSpeech.Default.SpeakAsync(sentence, options, _currentSentenceCts.Token);
                         
                         _currentSentenceIndex++;
-                        Console.WriteLine($"DEBUG: Finished index {_currentSentenceIndex - 1}, incremented to {_currentSentenceIndex}");
                         
                         // Update JS with progress AFTER completion
                         await mapView.EvaluateJavaScriptAsync($"if(window.onTtsProgress) window.onTtsProgress({_currentSentenceIndex}, {_currentSentences.Length});");
                     }
                     catch (OperationCanceledException)
                     {
-                        Console.WriteLine($"DEBUG: Sentence at index {_currentSentenceIndex} was cancelled. IsPaused: {_isPaused}");
-                        // Do NOT increment _currentSentenceIndex so it restarts this sentence on resume
-                        if (!_isPaused) break; // If not paused, it's a real cancellation
+                        if (!_isPaused) break;
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"DEBUG: Error at index {_currentSentenceIndex}: {ex.Message}");
-                        _currentSentenceIndex++; // Skip problematic sentence?
+                        _currentSentenceIndex++;
                     }
                     finally
                     {
@@ -231,7 +230,6 @@ namespace FoodMapApp;
 
                 if (_currentSentenceIndex >= _currentSentences.Length && !mainToken.IsCancellationRequested)
                 {
-                    Console.WriteLine("DEBUG: TTS reached end of text naturally.");
                     _currentSentenceIndex = 0;
                     _lastSpokenText = "";
                     _lastPoiId = "";
@@ -241,7 +239,6 @@ namespace FoodMapApp;
             finally
             {
                 _ttsSemaphore.Release();
-                Console.WriteLine("DEBUG: TTS loop exited and semaphore released.");
             }
         }
 

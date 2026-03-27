@@ -16,25 +16,25 @@
 else
 {
     <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
-        <div class="card shadow" style="border-left: 4px solid var(--primary); background: #fff;">
+        <div class="card shadow" style="border-left: 4px solid var(--primary); background: #fff; text-align: center;">
             <p style="color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">Tổng số quán ăn</p>
             <h2 style="font-size: 2.8rem; margin: 0; color: var(--text-main);">@stats.TotalPois</h2>
-            <p style="color: #00acc1; font-size: 0.9rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            <p style="color: #00acc1; font-size: 0.9rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; justify-content: center;">
                 <i class="bi bi-graph-up-arrow"></i> Hoạt động ổn định
             </p>
         </div>
-        <div class="card shadow" style="border-left: 4px solid var(--accent); background: #fff;">
+        <div class="card shadow" style="border-left: 4px solid var(--accent); background: #fff; text-align: center;">
             <p style="color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">Tổng số đánh giá</p>
             <h2 style="font-size: 2.8rem; margin: 0; color: var(--text-main);">@stats.TotalReviews</h2>
-            <p style="color: #43a047; font-size: 0.9rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            <p style="color: #43a047; font-size: 0.9rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; justify-content: center;">
                 <i class="bi bi-chat-heart"></i> Đánh giá từ khách hàng
             </p>
         </div>
-        <div class="card shadow" style="border-left: 4px solid #00e5ff; background: #fff;">
+        <div class="card shadow" style="border-left: 4px solid #00e5ff; background: #fff; text-align: center;">
             <p style="color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">Người dùng đăng ký</p>
             <h2 style="font-size: 2.8rem; margin: 0; color: var(--text-main);">@stats.TotalUsers</h2>
-            <p style="color: var(--primary); font-size: 0.9rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                <i class="bi bi-people"></i> Hệ thống đang phát triển
+            <p style="color: var(--primary); font-size: 0.9rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; justify-content: center;">
+                <i class="bi bi-people"></i> Hệ thống đang phát triển .
             </p>
         </div>
     </div>
@@ -42,13 +42,13 @@ else
     <div class="card shadow" style="background: #fff;">
         <h3 class="mb-4" style="color: var(--text-main);">Hoạt động gần đây</h3>
         <div class="table-responsive">
-            <table class="table">
+            <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%;">
                 <thead>
-                    <tr>
-                        <th>Hành động</th>
-                        <th>Người thực hiện</th>
-                        <th>Đối tượng</th>
-                        <th>Thời gian</th>
+                    <tr style="background: rgba(255, 45, 133, 0.02); text-align: center;">
+                        <th style="width: 22%; padding: 1.2rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Hành động</th>
+                        <th style="width: 23%; padding: 1.2rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Người thực hiện</th>
+                        <th style="width: 35%; padding: 1.2rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Đối tượng</th>
+                        <th style="width: 20%; padding: 1.2rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Thời gian</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -62,21 +62,21 @@ else
                     {
                         @foreach (var activity in stats.RecentActivities)
                         {
-                            <tr>
-                                <td>
-                                    <span class="badge @(activity.ActionType switch { 
-                                        "Đánh giá mới" => "badge-info", 
-                                        "Đăng ký mới" => "badge-primary",
-                                        "Thêm quán ăn mới" => "badge-primary",
-                                        "Cập nhật thông tin" => "badge-info",
-                                        "Thêm danh mục" => "badge-primary",
-                                        "Xóa quán ăn" => "btn-outline-danger",
-                                        _ => "text-muted"
-                                    })" style="font-size: 0.75rem; border: 1px solid currentColor;">@activity.ActionType</span>
+                            <tr class="align-middle" style="text-align: center;">
+                                <td style="padding: 1.2rem 1rem;">
+                                    <span class="badge-activity @(activity.ActionType switch { 
+                                        "Đánh giá mới" => "activity-cyan", 
+                                        "Đăng ký mới" => "activity-pink",
+                                        "Thêm quán ăn mới" => "activity-pink",
+                                        "Cập nhật thông tin" => "activity-cyan",
+                                        "Thêm danh mục" => "activity-pink",
+                                        "Xóa quán ăn" => "activity-red",
+                                        _ => "activity-gray"
+                                    })">@activity.ActionType</span>
                                 </td>
-                                <td><span style="font-weight: 500;">@activity.UserName</span></td>
-                                <td><strong style="color: var(--text-main);">@activity.TargetName</strong></td>
-                                <td class="text-muted">@activity.RelativeTime</td>
+                                <td style="padding: 1.2rem 1rem;"><span style="font-weight: 600; color: var(--text-main);">@activity.UserName</span></td>
+                                <td style="padding: 1.2rem 1rem;"><span class="text-truncate d-block" style="max-width: 100%; font-weight: 500;" title="@activity.TargetName">@activity.TargetName</span></td>
+                                <td style="padding: 1.2rem 1rem;" class="text-muted small">@activity.RelativeTime</td>
                             </tr>
                         }
                     }
@@ -84,6 +84,26 @@ else
             </table>
         </div>
     </div>
+
+    <style>
+        .badge-activity {
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+        }
+        .activity-pink { background: rgba(255, 45, 133, 0.08); color: var(--primary); border: 1px solid rgba(255, 45, 133, 0.1); }
+        .activity-cyan { background: rgba(0, 184, 212, 0.08); color: #00acc1; border: 1px solid rgba(0, 184, 212, 0.1); }
+        .activity-red { background: rgba(255, 77, 79, 0.08); color: #ff4d4f; border: 1px solid rgba(255, 77, 79, 0.1); }
+        .activity-gray { background: rgba(0, 0, 0, 0.05); color: #888; border: 1px solid rgba(0, 0, 0, 0.05); }
+        
+        .table-hover tbody tr:hover {
+            background-color: rgba(255, 45, 133, 0.01) !important;
+        }
+    </style>
 }
 
 @code {

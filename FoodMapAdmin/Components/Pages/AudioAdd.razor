@@ -1,0 +1,164 @@
+@page "/audio-add"
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@using Microsoft.AspNetCore.Authorization
+@inject IPoiGuideService GuideService
+@inject IPoiService PoiService
+@inject IPoiService PoiService
+@inject NavigationManager Navigation
+@inject ITranslationService TranslationService
+@attribute [Authorize(Roles = "admin")]
+
+<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Tạo Audio Guide</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Thêm nội dung thuyết minh mới cho địa điểm</p>
+    </div>
+    <button class="back-btn-premium transition-up" @onclick="GoBack" title="Quay lại">
+        <i class="bi bi-arrow-left-short"></i>
+    </button>
+</div>
+
+@if (availablePois == null || isSaving)
+{
+    <div class="modern-loading-zone animate-fade-in">
+        <div class="loading-orb"></div>
+        <h3>@(isSaving ? "Đang xử lý kịch bản..." : "Đang chuẩn bị...")</h3>
+        @if (isSaving)
+        {
+            <p>Hệ thống đang tự động dịch sang Tiếng Anh & Tiếng Trung để đảm bảo trải nghiệm đa ngôn ngữ. Vui lòng đợi trong giây lát...</p>
+        }
+    </div>
+}
+else
+{
+    <AudioForm 
+        Guide="newGuide" 
+        AvailablePois="availablePois" 
+        IsAddMode="true" 
+        Title="Thông tin bản thuyết minh mới"
+        OnSubmit="HandleSubmit" 
+        OnCancel="GoBack" />
+}
+
+<style>
+    .back-btn-premium {
+        width: 50px;
+        height: 50px;
+        border-radius: 18px;
+        background: white;
+        border: 1px solid var(--glass-border);
+        color: var(--primary);
+        font-size: 1.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+        transition: all 0.3s ease;
+    }
+
+    .back-btn-premium:hover {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 15px 30px var(--primary-glow);
+    }
+
+    .modern-loading-zone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 5rem 2rem;
+        text-align: center;
+    }
+
+    .loading-orb {
+        width: 80px;
+        height: 80px;
+        background: var(--primary-gradient);
+        border-radius: 50%;
+        margin-bottom: 2rem;
+        animation: pulse-orb 2s infinite ease-in-out;
+        box-shadow: 0 0 40px rgba(255, 45, 133, 0.4);
+    }
+
+    @@keyframes pulse-orb {
+        0%, 100% { transform: scale(0.8); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 1; }
+    }
+
+    .modern-loading-zone h3 { font-weight: 800; margin-bottom: 1rem; }
+    .modern-loading-zone p { color: #888; max-width: 500px; font-weight: 500; }
+</style>
+
+@code {
+    private PoiGuide newGuide = new() { Language = "vi" };
+    private List<Poi>? availablePois;
+    private bool isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var allPois = await PoiService.GetAllPoisAsync();
+        var allGuides = await GuideService.GetAllGuidesAsync();
+        
+        // Only show POIs that don't have a guide yet
+        availablePois = allPois.Where(p => !allGuides.Any(g => g.PoiId == p.PoiId)).ToList();
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (newGuide.PoiId == null || newGuide.PoiId == 0)
+        {
+            await GuideService.GetAllGuidesAsync(); // Refresh just in case
+            return;
+        }
+
+        if (string.IsNullOrEmpty(newGuide.Title)) return;
+
+        isSaving = true;
+        StateHasChanged();
+
+        try 
+        {
+            // 1. Save Vietnamese record
+            bool success = await GuideService.CreateGuideAsync(newGuide);
+            if (success)
+            {
+                // 2. Auto-translate and save for other languages
+                var targetLangs = new[] { "en", "zh" };
+                foreach (var lang in targetLangs)
+                {
+                    try 
+                    {
+                        var tTitle = await TranslationService.TranslateAsync(newGuide.Title, lang);
+                        var tDesc = await TranslationService.TranslateAsync(newGuide.Description ?? "", lang);
+                        
+                        var tGuide = new PoiGuide {
+                            PoiId = newGuide.PoiId,
+                            Title = tTitle,
+                            Description = tDesc,
+                            Language = lang
+                        };
+                        await GuideService.CreateGuideAsync(tGuide);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Auto-translation error for {lang}: {ex.Message}");
+                    }
+                }
+                
+                Navigation.NavigateTo("/audio-management");
+            }
+        }
+        finally 
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/audio-management");
+    }
+}

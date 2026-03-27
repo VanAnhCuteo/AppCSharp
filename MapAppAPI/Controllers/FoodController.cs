@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using FoodMapAPI.Models;
 using FoodMapAPI.Services;
@@ -308,9 +308,13 @@ namespace FoodMapAPI.Controllers
                 using (MySqlConnection conn = new MySqlConnection(connStr))
                 {
                     await conn.OpenAsync();
-                    using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM poi_guides WHERE poi_id = @id LIMIT 1", conn))
+                    
+                    // Try to find the guide for the specific language first
+                    string query = "SELECT * FROM poi_guides WHERE poi_id = @id AND language = @lang LIMIT 1";
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
+                        cmd.Parameters.AddWithValue("@lang", lang);
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
                             if (await reader.ReadAsync())
@@ -326,6 +330,41 @@ namespace FoodMapAPI.Controllers
                             }
                         }
                     }
+
+                    // Fallback to Vietnamese if requested language not found
+                    if (guide == null && lang != "vi")
+                    {
+                        using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM poi_guides WHERE poi_id = @id AND language = 'vi' LIMIT 1", conn))
+                        {
+                            cmd.Parameters.AddWithValue("@id", id);
+                            using (var reader = await cmd.ExecuteReaderAsync())
+                            {
+                                if (await reader.ReadAsync())
+                                {
+                                    guide = new Guide
+                                    {
+                                        guide_id = Convert.ToInt32(reader["guide_id"]),
+                                        poi_id = Convert.ToInt32(reader["poi_id"]),
+                                        title = reader["title"].ToString() ?? "",
+                                        description = reader["description"].ToString() ?? "",
+                                        language = reader["language"].ToString() ?? "",
+                                    };
+                                }
+                            }
+                        }
+
+                        // Translate the Vietnamese fallback
+                        if (guide != null)
+                        {
+                            try
+                            {
+                                guide.title = await _translator.TranslateAsync(guide.title, lang);
+                                guide.description = await _translator.TranslateAsync(guide.description, lang);
+                                guide.language = lang;
+                            }
+                            catch { }
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -335,16 +374,6 @@ namespace FoodMapAPI.Controllers
 
             if (guide != null)
             {
-                if (lang != "vi")
-                {
-                    try
-                    {
-                        guide.title = await _translator.TranslateAsync(guide.title, lang);
-                        guide.description = await _translator.TranslateAsync(guide.description, lang);
-                        guide.language = lang;
-                    }
-                    catch { }
-                }
                 return Ok(guide);
             }
             return NotFound();

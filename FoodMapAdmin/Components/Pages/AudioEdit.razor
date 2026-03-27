@@ -1,0 +1,173 @@
+@page "/audio-edit/{GuideId:int}"
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@using Microsoft.AspNetCore.Authorization
+@inject IPoiGuideService GuideService
+@inject NavigationManager Navigation
+@inject ITranslationService TranslationService
+@attribute [Authorize(Roles = "admin")]
+
+<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Chỉnh sửa Audio Guide</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Cập nhật nội dung thuyết minh cho địa điểm</p>
+    </div>
+    <button class="back-btn-premium transition-up" @onclick="GoBack" title="Quay lại">
+        <i class="bi bi-arrow-left-short"></i>
+    </button>
+</div>
+
+@if (editingGuide == null || isSaving)
+{
+    <div class="modern-loading-zone animate-fade-in">
+        <div class="loading-orb"></div>
+        <h3>@(isSaving ? "Đang cập nhật kịch bản..." : "Đang tải dữ liệu...")</h3>
+        @if (isSaving)
+        {
+            <p>Hệ thống đang đồng bộ hóa các bản dịch liên quan. Vui lòng đợi trong giây lát...</p>
+        }
+    </div>
+}
+else
+{
+    <AudioForm 
+        Guide="editingGuide" 
+        IsAddMode="false" 
+        Title="Cập nhật bản thuyết minh"
+        OnSubmit="HandleSubmit" 
+        OnCancel="GoBack" />
+}
+
+<style>
+    .back-btn-premium {
+        width: 50px;
+        height: 50px;
+        border-radius: 18px;
+        background: white;
+        border: 1px solid var(--glass-border);
+        color: var(--primary);
+        font-size: 1.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+        transition: all 0.3s ease;
+    }
+
+    .back-btn-premium:hover {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 15px 30px var(--primary-glow);
+    }
+
+    .modern-loading-zone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 5rem 2rem;
+        text-align: center;
+    }
+
+    .loading-orb {
+        width: 80px;
+        height: 80px;
+        background: var(--primary-gradient);
+        border-radius: 50%;
+        margin-bottom: 2rem;
+        animation: pulse-orb 2s infinite ease-in-out;
+        box-shadow: 0 0 40px rgba(255, 45, 133, 0.4);
+    }
+
+    @@keyframes pulse-orb {
+        0%, 100% { transform: scale(0.8); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 1; }
+    }
+
+    .modern-loading-zone h3 { font-weight: 800; margin-bottom: 1rem; }
+    .modern-loading-zone p { color: #888; max-width: 500px; font-weight: 500; }
+</style>
+
+@code {
+    [Parameter] public int GuideId { get; set; }
+    private PoiGuide? editingGuide;
+    private bool isSaving = false;
+
+    protected override async Task OnInitializedAsync() {
+        var guides = await GuideService.GetAllGuidesAsync();
+        editingGuide = guides.FirstOrDefault(g => g.GuideId == GuideId);
+        
+        if (editingGuide == null) {
+            Navigation.NavigateTo("/audio-management");
+            return;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (editingGuide == null) return;
+        if (string.IsNullOrEmpty(editingGuide.Title)) return;
+
+        isSaving = true;
+        StateHasChanged();
+
+        try 
+        {
+            // 1. Update the current (presumably Vietnamese) record
+            bool success = await GuideService.UpdateGuideAsync(editingGuide);
+            if (success)
+            {
+                // 2. Automate update for other languages if this was a VI guide
+                if (editingGuide.Language == "vi")
+                {
+                    var allGuides = await GuideService.GetAllGuidesAsync();
+                    var poiGuides = allGuides.Where(g => g.PoiId == editingGuide.PoiId).ToList();
+                    // 2. Update/Create translations for other languages
+                    var targetLangs = new[] { "en", "zh" };
+            foreach (var langCode in targetLangs)
+                    {
+                        try 
+                        {
+                            var tTitle = await TranslationService.TranslateAsync(editingGuide.Title, langCode);
+                            var tDesc = await TranslationService.TranslateAsync(editingGuide.Description ?? "", langCode);
+                            
+                            var existing = poiGuides.FirstOrDefault(g => g.Language == langCode);
+                            if (existing != null)
+                            {
+                                existing.Title = tTitle;
+                                existing.Description = tDesc;
+                                await GuideService.UpdateGuideAsync(existing);
+                            }
+                            else 
+                            {
+                                var newT = new PoiGuide {
+                                    PoiId = editingGuide.PoiId,
+                                    Title = tTitle,
+                                    Description = tDesc,
+                                    Language = langCode
+                                };
+                                await GuideService.CreateGuideAsync(newT);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Auto-update translation error for {langCode}: {ex.Message}");
+                        }
+                    }
+                }
+                
+                Navigation.NavigateTo("/audio-management");
+            }
+        }
+        finally 
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/audio-management");
+    }
+}

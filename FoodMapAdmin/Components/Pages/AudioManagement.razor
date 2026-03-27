@@ -4,315 +4,402 @@
 @using FoodMapAdmin.Services
 @inject IPoiGuideService GuideService
 @inject IPoiService PoiService
+@inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Quản lý Audio Guide - FoodMap Admin</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+<div class="d-flex justify-content-between align-items-center mb-5 mt-2 animate-fade-in">
     <div>
-        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Audio Guide</h2>
-        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý nội dung thuyết minh âm thanh cho các địa điểm</p>
+        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Quản lí Audio</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý thuyết minh đa ngôn ngữ cho các địa điểm</p>
     </div>
-    <button class="glass-btn pulse-animation" style="padding: 1rem 2.2rem; font-size: 1.05rem; border-radius: 20px; box-shadow: 0 15px 35px var(--primary-glow);" @onclick="ShowAddModal">
-        <i class="bi bi-mic-fill me-2"></i> Tạo Audio mới
+    <button class="glass-btn pulse-animation" style="padding: 1rem 2.2rem; font-size: 1.05rem; border-radius: 20px; box-shadow: 0 15px 35px var(--primary-glow);" @onclick="@(() => Navigation.NavigateTo("/audio-add"))">
+        <i class="bi bi-plus-lg me-2"></i> Thêm Audio mới
     </button>
 </div>
 
-<div class="row g-4">
-    @if (guides == null)
-    {
-        <div class="col-12 text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Đang tải...</span>
-            </div>
-        </div>
-    }
-    else if (!guides.Any())
-    {
-        <div class="col-12 text-center py-5">
-            <div class="empty-state">
-                <i class="bi bi-music-note-beamed text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
-                <p class="text-muted mt-3">Chưa có bản ghi Audio Guide nào được tạo.</p>
-            </div>
-        </div>
-    }
-    else
-    {
-        @foreach (var guide in guides)
-        {
-            <div class="col-xl-4 col-md-6">
-                <div class="card shadow-glass border-0 h-100 transition-up" style="border-radius: 25px; background: var(--surface); overflow: hidden;">
-                    <div class="p-4">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <span class="badge-lang">
-                                <i class="bi bi-translate me-1"></i> @(guide.Language == "vi" ? "Tiếng Việt" : "English")
-                            </span>
-                            <div class="d-flex gap-2">
-                                <button class="mini-action-btn" @onclick="() => EditGuide(guide)"><i class="bi bi-pencil-fill"></i></button>
-                                <button class="mini-action-btn delete" @onclick="() => DeleteGuide(guide.GuideId)"><i class="bi bi-trash-fill"></i></button>
-                            </div>
-                        </div>
-                        
-                        <h5 style="font-weight: 800; color: var(--text-main); margin-bottom: 0.5rem; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">@guide.Title</h5>
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="poi-tag me-2">
-                                <i class="bi bi-geo-alt-fill me-1"></i> @(guide.Poi?.Name ?? "Không xác định")
-                            </div>
-                        </div>
-                        
-                        <p class="text-muted mb-4" style="font-size: 0.85rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.6;">
-                            @guide.Description
-                        </p>
-                        
-                        <div class="audio-status @(string.IsNullOrEmpty(guide.Description) ? "empty" : "ready")">
-                            <i class="bi @(string.IsNullOrEmpty(guide.Description) ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>
-                            @(string.IsNullOrEmpty(guide.Description) ? "Thiếu nội dung chi tiết" : "Sẵn sàng phát")
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
-    }
-</div>
-
-@if (showModal)
-{
-    <div class="modal d-block" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 1050;">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content border-0" style="border-radius: 35px; box-shadow: 0 30px 100px rgba(0,0,0,0.2);">
-                <div class="modal-header border-0 p-5 pb-0">
-                    <h5 class="modal-title" style="font-size: 1.8rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                        @(isEditing ? "Cập nhật Audio Guide" : "Tạo Audio Guide mới")
-                    </h5>
-                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
-                </div>
-                <div class="modal-body p-5">
-                    <div class="row g-4">
-                        @if (!isEditing)
-                        {
-                            <div class="col-12">
-                                <label class="form-label-premium">Chọn Quán ăn / Địa điểm</label>
-                                <select class="form-control-premium select-premium" @bind="editingGuide.PoiId">
-                                    <option value="">-- Chọn quán ăn chưa có audio --</option>
-                                    @foreach (var poi in availablePois)
-                                    {
-                                        <option value="@poi.PoiId">@poi.Name</option>
-                                    }
-                                </select>
-                            </div>
-                        }
-                        
-                        <div class="col-md-8">
-                            <label class="form-label-premium">Tiêu đề bản thuyết minh</label>
-                            <input type="text" class="form-control-premium" @bind="editingGuide.Title" placeholder="VD: Lịch sử quán ốc qua 3 thế hệ..." />
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <label class="form-label-premium">Ngôn ngữ</label>
-                            <select class="form-control-premium select-premium" @bind="editingGuide.Language">
-                                <option value="vi">Tiếng Việt</option>
-                                <option value="en">English</option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-12">
-                            <label class="form-label-premium">Nội dung thuyết minh (Text-to-Speech)</label>
-                            <textarea class="form-control-premium" style="height: 180px; resize: none;" @bind="editingGuide.Description" placeholder="Nhập nội dung chi tiết để hệ thống chuyển đổi thành âm thanh..."></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 p-5 pt-0">
-                    <button type="button" class="btn-cancel-premium px-4" @onclick="CloseModal">Hủy bỏ</button>
-                    <button type="button" class="glass-btn px-5" style="box-shadow: 0 15px 30px var(--primary-glow);" @onclick="SaveGuide">
-                        <i class="bi bi-check-circle-fill me-2"></i> Lưu bản ghi
-                    </button>
-                </div>
-            </div>
+<!-- Stats / Filters -->
+<div class="stats-row mb-4 animate-slide-up">
+    <div class="stat-glass">
+        <div class="stat-icon"><i class="bi bi-geo-alt-fill"></i></div>
+        <div class="stat-info">
+            <span class="sv">@(poiGroups?.Count ?? 0)</span>
+            <span class="sl">Địa điểm</span>
         </div>
     </div>
-}
+    <div class="stat-glass">
+        <div class="stat-icon vi">🇻🇳</div>
+        <div class="stat-info">
+            <span class="sv">@(poiGroups?.Count(g => g.Guides.Any(gu => gu.Language == "vi")) ?? 0)</span>
+            <span class="sl">Tiếng Việt</span>
+        </div>
+    </div>
+    <div class="stat-glass">
+        <div class="stat-icon en">🇬🇧</div>
+        <div class="stat-info">
+            <span class="sv">@(poiGroups?.Count(g => g.Guides.Any(gu => gu.Language == "en")) ?? 0)</span>
+            <span class="sl">Tiếng Anh</span>
+        </div>
+    </div>
+    <div class="stat-glass">
+        <div class="stat-icon zh">🇨🇳</div>
+        <div class="stat-info">
+            <span class="sv">@(poiGroups?.Count(g => g.Guides.Any(gu => gu.Language == "zh")) ?? 0)</span>
+            <span class="sl">Tiếng Trung</span>
+        </div>
+    </div>
+</div>
+
+<!-- Table Section -->
+<div class="card shadow-glass border-0 animate-stagger" style="border-radius: 30px; overflow: hidden; background: var(--surface);">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr style="background: rgba(255, 45, 133, 0.03);">
+                    <th style="padding: 1.5rem 2rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Địa điểm / Thuyết minh</th>
+                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Ngôn ngữ hỗ trợ</th>
+                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Nghe thử</th>
+                    <th style="padding: 1.5rem 2rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (poiGroups == null) {
+                    <tr>
+                        <td colspan="4" class="text-center py-5">
+                            <div class="loader-spinner"></div>
+                            <p class="mt-3 text-muted">Đang tải dữ liệu thuyết minh...</p>
+                        </td>
+                    </tr>
+                } else if (!poiGroups.Any()) {
+                    <tr>
+                        <td colspan="4" class="text-center py-5">
+                            <div class="empty-state py-4">
+                                <i class="bi bi-mic-mute text-muted" style="font-size: 4rem; opacity: 0.2;"></i>
+                                <h4 class="mt-3 font-weight-bold">Chưa có bản thuyết minh nào</h4>
+                                <p class="text-muted">Hãy bắt đầu bằng việc thêm bản thuyết minh cho các địa điểm.</p>
+                            </div>
+                        </td>
+                    </tr>
+                } else {
+                    @foreach (var group in poiGroups) {
+                        <tr class="align-middle">
+                            <td style="padding: 1.2rem 2rem;">
+                                <div class="d-flex align-items-center">
+                                    <div class="poi-avatar-modern me-3">
+                                        @(group.Poi.Name.Substring(0, 1).ToUpper())
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 800; color: var(--text-main); font-size: 1.1rem;">@group.Poi.Name</div>
+                                        <div class="text-muted" style="font-size: 0.85rem; font-weight: 500;">
+                                            <i class="bi bi-bookmark-fill me-1" style="color: var(--primary); opacity: 0.6;"></i>
+                                            @(group.GetActiveGuide()?.Title ?? "Chưa có tiêu đề")
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="text-align: center;">
+                                <div class="lang-status-row">
+                                    <div class="lang-dot @(group.Guides.Any(g => g.Language == "vi") ? "active" : "")" title="Tiếng Việt">VI</div>
+                                    <div class="lang-dot @(group.Guides.Any(g => g.Language == "en") ? "active" : "")" title="Tiếng Anh">EN</div>
+                                    <div class="lang-dot @(group.Guides.Any(g => g.Language == "zh") ? "active" : "")" title="Tiếng Trung">ZH</div>
+                                </div>
+                            </td>
+                            <td style="text-align: center;">
+                                <div class="play-action-btns">
+                                    <button class="btn-play-mini vi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "vi" && isActuallyPlaying ? "playing" : "")" 
+                                            disabled="@(!group.Guides.Any(g => g.Language == "vi"))"
+                                            @onclick="@(() => PlayAudio(group, "vi"))">
+                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "vi" && isActuallyPlaying ? "bi-stop-fill" : "bi-play-fill")"></i>
+                                    </button>
+                                    <button class="btn-play-mini en @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "en" && isActuallyPlaying ? "playing" : "")" 
+                                            disabled="@(!group.Guides.Any(g => g.Language == "en"))"
+                                            @onclick="@(() => PlayAudio(group, "en"))">
+                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "en" && isActuallyPlaying ? "bi-stop-fill" : "bi-play-fill")"></i>
+                                    </button>
+                                    <button class="btn-play-mini zh @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "zh" && isActuallyPlaying ? "playing" : "")" 
+                                            disabled="@(!group.Guides.Any(g => g.Language == "zh"))"
+                                            @onclick="@(() => PlayAudio(group, "zh"))">
+                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "zh" && isActuallyPlaying ? "bi-stop-fill" : "bi-play-fill")"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td style="padding-right: 2rem;">
+                                <div class="d-flex justify-content-center gap-2">
+                                    <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick="() => NavigateToEdit(group)">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <button class="action-btn btn-delete" title="Xóa" @onclick="() => DeleteGuide(group)">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
 
 <style>
+    /* Stats Layout */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .stat-glass {
+        background: white;
+        padding: 1.2rem 1.5rem;
+        border-radius: 24px;
+        border: 1px solid var(--glass-border);
+        display: flex;
+        align-items: center;
+        gap: 1.2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: #f8f9fb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        color: var(--primary);
+    }
+    .stat-icon.vi { background: rgba(255, 45, 133, 0.05); }
+    .stat-icon.en { background: rgba(0, 150, 255, 0.05); }
+    .stat-icon.zh { background: rgba(255, 100, 0, 0.05); }
+
+    .stat-info .sv { display: block; font-size: 1.6rem; font-weight: 900; color: var(--text-main); line-height: 1; }
+    .stat-info .sl { font-size: 0.75rem; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Table & Card */
     .shadow-glass {
         box-shadow: 0 20px 60px rgba(0,0,0,0.03) !important;
         border: 1px solid var(--glass-border) !important;
     }
 
-    .badge-lang {
-        background: rgba(255, 45, 133, 0.08);
-        color: var(--primary);
-        padding: 0.4rem 0.9rem;
-        border-radius: 10px;
-        font-size: 0.75rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .mini-action-btn {
-        width: 32px;
-        height: 32px;
-        border-radius: 10px;
-        border: none;
-        background: rgba(0,0,0,0.03);
-        color: var(--text-muted);
+    .poi-avatar-modern {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+        border-radius: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.9rem;
-        transition: all 0.2s ease;
+        font-weight: 900;
+        font-size: 1.3rem;
+        box-shadow: 0 8px 18px var(--primary-glow);
     }
 
-    .mini-action-btn:hover {
-        background: var(--primary);
-        color: white;
-    }
-
-    .mini-action-btn.delete:hover {
-        background: #ff4d4f;
-    }
-
-    .poi-tag {
-        font-size: 0.8rem;
-        font-weight: 700;
-        color: #00acc1;
-        background: rgba(0, 184, 212, 0.05);
-        padding: 0.3rem 0.7rem;
+    /* Language Status Dots */
+    .lang-status-row { display: flex; gap: 0.6rem; justify-content: center; }
+    .lang-dot {
+        width: 28px;
+        height: 28px;
         border-radius: 8px;
-    }
-
-    .audio-status {
-        padding: 0.7rem 1.2rem;
-        border-radius: 15px;
-        font-size: 0.8rem;
-        font-weight: 700;
+        background: #f0f2f5;
+        color: #BCC;
+        font-size: 0.65rem;
+        font-weight: 800;
         display: flex;
         align-items: center;
+        justify-content: center;
+        transition: all 0.3s;
+    }
+    .lang-dot.active {
+        background: rgba(255, 45, 133, 0.1);
+        color: var(--primary);
+        border: 1px solid rgba(255, 45, 133, 0.2);
     }
 
-    .audio-status.ready {
-        background: rgba(46, 213, 115, 0.05);
-        color: #2ed573;
+    /* Mini Play Buttons */
+    .play-action-btns { display: flex; gap: 0.5rem; justify-content: center; }
+    .btn-play-mini {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        background: #f0f2f5;
+        color: #999;
+        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .btn-play-mini:hover:not(:disabled) { transform: scale(1.15); }
+    .btn-play-mini.vi:hover:not(:disabled) { background: #E6FFFA; color: #38B2AC; }
+    .btn-play-mini.en:hover:not(:disabled) { background: #EBF4FF; color: #4299E1; }
+    .btn-play-mini.zh:hover:not(:disabled) { background: #FFF5F5; color: #E53E3E; }
+    .btn-play-mini.ja:hover:not(:disabled) { background: #FFF0F0; color: #FF0000; }
+    
+    .btn-play-mini.playing {
+        background: var(--primary) !important;
+        color: white !important;
+        box-shadow: 0 5px 15px var(--primary-glow);
+        animation: mini-pulse 1.5s infinite;
     }
 
-    .audio-status.empty {
-        background: rgba(255, 165, 2, 0.05);
-        color: #ffa502;
+    @@keyframes mini-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
     }
 
-    .form-label-premium {
-        display: block;
-        margin-bottom: 0.6rem;
-        color: var(--text-muted);
-        font-size: 0.72rem;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        font-weight: 800;
-    }
+    .btn-play-mini:disabled { opacity: 0.3; cursor: not-allowed; }
 
-    .form-control-premium {
-        width: 100%;
-        padding: 0.9rem 1.2rem;
-        border-radius: 16px;
-        background: #f8f9fa;
-        border: 1px solid rgba(0,0,0,0.05);
-        color: var(--text-main);
-        font-size: 1rem;
-        font-weight: 500;
-        transition: all 0.3s ease;
+    /* Action Buttons */
+    .action-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        font-size: 1.1rem;
     }
+    .btn-edit { background: rgba(0, 150, 255, 0.05); color: #0084ff; }
+    .btn-edit:hover { background: #0084ff; color: white; transform: translateY(-2px); }
+    .btn-delete { background: rgba(255, 0, 0, 0.05); color: #ff4d4f; }
+    .btn-delete:hover { background: #ff4d4f; color: white; transform: translateY(-2px); }
 
-    .form-control-premium:focus {
-        outline: none;
-        border-color: var(--primary);
-        background: white;
-        box-shadow: 0 10px 25px var(--primary-glow);
+    /* Animations */
+    .animate-fade-in { animation: fadeIn 0.6s ease-out; }
+    .animate-slide-up { animation: slideUp 0.7s cubic-bezier(0.19, 1, 0.22, 1); }
+    .animate-stagger > * { animation: slideUp 0.6s cubic-bezier(0.19, 1, 0.22, 1) both; }
+    .animate-stagger > *:nth-child(1) { animation-delay: 0.1s; }
+    .animate-stagger > *:nth-child(2) { animation-delay: 0.2s; }
+    
+    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .loader-spinner {
+        width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary);
+        border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;
     }
+    @@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 </style>
 
 @code {
-    private List<PoiGuide>? guides;
-    private List<Poi> availablePois = new();
-    private bool showModal = false;
-    private bool isEditing = false;
-    private PoiGuide editingGuide = new();
+    private List<PoiGroup>? poiGroups;
+    private DotNetObjectReference<AudioManagement>? dotNetHelper;
+    private bool isJsInitialized = false;
+    private Poi? currentPlayingPoi;
+    private string currentLang = "vi";
+    private int ttsProgress = 0;
+    private bool isPlayerVisible = false;
+    private bool isActuallyPlaying = false;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadGuides();
+    public class PoiGroup {
+        public Poi Poi { get; set; } = null!;
+        public List<PoiGuide> Guides { get; set; } = new();
+
+        public PoiGuide? GetActiveGuide() =>
+            Guides.FirstOrDefault(g => g.Language == "vi") ?? Guides.FirstOrDefault();
     }
 
-    private async Task LoadGuides()
-    {
-        try 
-        {
-            guides = await GuideService.GetAllGuidesAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading guides: {ex.Message}");
-            guides = new List<PoiGuide>();
-        }
+    protected override async Task OnInitializedAsync() {
+        await LoadData();
     }
 
-    private async Task ShowAddModal()
-    {
-        editingGuide = new PoiGuide { Language = "vi" };
-        var allPois = await PoiService.GetAllPoisAsync();
-        // Only show POIs that don't have a guide yet
-        availablePois = allPois.Where(p => !guides!.Any(g => g.PoiId == p.PoiId)).ToList();
-        
-        isEditing = false;
-        showModal = true;
-    }
-
-    private void EditGuide(PoiGuide guide)
-    {
-        editingGuide = new PoiGuide
-        {
-            GuideId = guide.GuideId,
-            PoiId = guide.PoiId,
-            Title = guide.Title,
-            Description = guide.Description,
-            Language = guide.Language
-        };
-        isEditing = true;
-        showModal = true;
-    }
-
-    private void CloseModal()
-    {
-        showModal = false;
-    }
-
-    private async Task SaveGuide()
-    {
-        if ((editingGuide.PoiId == null || editingGuide.PoiId == 0) && !isEditing) return;
-        if (string.IsNullOrEmpty(editingGuide.Title)) return;
-
-        bool success = isEditing 
-            ? await GuideService.UpdateGuideAsync(editingGuide) 
-            : await GuideService.CreateGuideAsync(editingGuide);
-
-        if (success)
-        {
-            await LoadGuides();
-            showModal = false;
-            StateHasChanged();
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("ttsHelper.init", dotNetHelper);
         }
     }
 
-    private async Task DeleteGuide(int id)
-    {
-        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xóa Audio Guide này không?");
-        if (confirmed)
-        {
-            if (await GuideService.DeleteGuideAsync(id))
-            {
-                await LoadGuides();
-                StateHasChanged();
-            }
+    private async Task LoadData() {
+        try {
+            var guides = await GuideService.GetAllGuidesAsync();
+            var allPois = await PoiService.GetAllPoisAsync();
+            poiGroups = allPois
+                .Where(p => guides.Any(g => g.PoiId == p.PoiId))
+                .Select(p => new PoiGroup {
+                    Poi = p,
+                    Guides = guides.Where(g => g.PoiId == p.PoiId).ToList()
+                })
+                .ToList();
+        } catch (Exception ex) {
+            Console.WriteLine($"LoadData error: {ex.Message}");
+            poiGroups = new();
+        }
+    }
+
+    [JSInvokable]
+    public void OnTtsProgress(int progress) {
+        ttsProgress = progress;
+        isActuallyPlaying = progress > 0 && progress < 100;
+        InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public void OnTtsFinished() {
+        isActuallyPlaying = false;
+        ttsProgress = 100;
+        Task.Delay(2200).ContinueWith(_ => {
+            isPlayerVisible = false;
+            currentPlayingPoi = null;
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private async Task PlayAudio(PoiGroup group, string lang) {
+        if (currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == lang && isActuallyPlaying) {
+            await StopAudio();
+            return;
+        }
+
+        var guide = group.Guides.FirstOrDefault(g => g.Language == lang);
+        if (guide == null || string.IsNullOrEmpty(guide.Description)) return;
+
+        currentPlayingPoi = group.Poi;
+        currentLang = lang;
+        ttsProgress = 0;
+        isPlayerVisible = true;
+        isActuallyPlaying = true;
+        StateHasChanged();
+
+        await JSRuntime.InvokeVoidAsync("ttsHelper.speak", guide.Description, lang);
+    }
+
+    private async Task StopAudio() {
+        await JSRuntime.InvokeVoidAsync("ttsHelper.stop");
+        isPlayerVisible = false;
+        isActuallyPlaying = false;
+        ttsProgress = 0;
+        StateHasChanged();
+    }
+
+    private void NavigateToEdit(PoiGroup group) {
+        var guide = group.Guides.FirstOrDefault(g => g.Language == "vi") ?? group.Guides.FirstOrDefault();
+        if (guide != null) Navigation.NavigateTo($"/audio-edit/{guide.GuideId}");
+    }
+
+    private async Task DeleteGuide(PoiGroup group) {
+        var ok = await JSRuntime.InvokeAsync<bool>("confirm", $"Xóa toàn bộ thuyết minh của \"{group.Poi.Name}\"?");
+        if (!ok) return;
+        foreach (var g in group.Guides) await GuideService.DeleteGuideAsync(g.GuideId);
+        await LoadData();
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync() {
+        if (dotNetHelper != null) {
+            try { await JSRuntime.InvokeVoidAsync("ttsHelper.stop"); } catch { }
+            dotNetHelper.Dispose();
         }
     }
 }

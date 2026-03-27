@@ -82,12 +82,12 @@
                     </div>
                 </div>
                 
-                <div class="p-5 mt-auto" style="background: rgba(255, 45, 133, 0.02); border-top: 1px solid rgba(255, 45, 133, 0.05);">
-                    <div class="d-flex gap-3 justify-content-end align-items-center flex-nowrap">
-                        <button type="button" class="btn-cancel-premium px-5" @onclick="OnCancel" style="white-space: nowrap;">
+                <div class="p-4 mt-auto" style="background: rgba(255, 45, 133, 0.02); border-top: 1px solid rgba(255, 45, 133, 0.05);">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: center; max-width: 500px; margin: 0 auto;">
+                        <button type="button" class="btn-cancel-premium" @onclick="OnCancel" style="width: 100%; margin: 0;">
                             Hủy bỏ
                         </button>
-                        <button type="submit" class="glass-btn px-5" style="box-shadow: 0 15px 30px var(--primary-glow); white-space: nowrap;">
+                        <button type="submit" class="glass-btn btn-save-premium" style="box-shadow: 0 15px 30px var(--primary-glow); width: 100%; margin: 0;">
                             <i class="bi bi-cloud-arrow-up-fill me-2"></i> Lưu dữ liệu
                         </button>
                     </div>
@@ -171,8 +171,8 @@
     }
 
     .btn-cancel-premium {
-        background: rgba(0,0,0,0.03);
-        border: 1px solid rgba(0,0,0,0.05);
+        background: rgba(0,0,0,0.05);
+        border: 1px solid rgba(0,0,0,0.08);
         color: var(--text-muted);
         font-weight: 700;
         border-radius: 18px;
@@ -181,12 +181,22 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        min-width: 140px;
+        width: 100%;
     }
 
     .btn-cancel-premium:hover {
         background: rgba(0,0,0,0.08);
         color: var(--text-main);
+    }
+    
+    .btn-save-premium {
+        height: 56px;
+        border-radius: 18px;
+        width: 100%;
+        justify-content: center;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
     }
     
     .transition-up {

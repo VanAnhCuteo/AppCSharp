@@ -1,0 +1,192 @@
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IJSRuntime JSRuntime
+@inject ITranslationService TranslationService
+
+<EditForm Model="Guide" OnValidSubmit="HandleValidSubmit" class="af-container">
+    <DataAnnotationsValidator />
+
+    <div class="af-card animate-fade-in">
+        <!-- Header -->
+        <div class="af-card-header">
+            <div>
+                <span class="af-tag">@Title.ToUpper()</span>
+                <h2 class="af-card-title">@(Guide.Poi?.Name ?? "Nội dung thuyết minh")</h2>
+            </div>
+            <div class="af-stats">
+                <div class="af-stat">
+                    <span class="af-stat-val">@WordCount</span>
+                    <span class="af-stat-label">Từ</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Body: Single Column Center -->
+        <div class="af-body-clean">
+            @if (IsAddMode) {
+                <div class="af-field">
+                    <label>CHỌN ĐỊA ĐIỂM THUYẾT MINH</label>
+                    <InputSelect @bind-Value="Guide.PoiId" class="af-select">
+                        <option value="">-- Chọn quán ăn --</option>
+                        @foreach (var poi in AvailablePois) {
+                            <option value="@poi.PoiId">@poi.Name</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(()=>Guide.PoiId)" />
+                </div>
+            }
+
+            <div class="af-field">
+                <label>TIÊU ĐỀ KỊCH BẢN (TIẾNG VIỆT)</label>
+                <InputText @bind-Value="Guide.Title" class="af-input"
+                           placeholder="Nhập tiêu đề hấp dẫn..." />
+                <ValidationMessage For="@(()=>Guide.Title)" />
+            </div>
+
+            <div class="af-field">
+                <label>NỘI DUNG THUYẾT MINH (TIẾNG VIỆT)</label>
+                <InputTextArea @bind-Value="Guide.Description"
+                              @oninput="OnContentInput"
+                              class="af-textarea"
+                              placeholder="Ghi lại câu chuyện của quán ăn bằng Tiếng Việt... Hệ thống sẽ tự động đồng bộ sang các ngôn ngữ khác sau khi lưu." />
+                <div class="af-footer-info">
+                    <p class="af-hint"><i class="bi bi-magic me-1"></i> Tự động dịch Anh & Trung khi bạn nhấn Lưu.</p>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="af-actions-row">
+                <button type="button" class="af-btn-sec" @onclick="OnCancelClick">Hủy bỏ</button>
+                <button type="submit" class="af-btn-pri">
+                    <i class="bi bi-cloud-arrow-up-fill me-1"></i> Lưu và Tự động Dịch
+                </button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+<style>
+    .af-container { max-width: 850px; margin: 0 auto; }
+
+    .af-card {
+        background: white;
+        border-radius: 35px;
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: 0 40px 100px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .af-card-header {
+        padding: 2.5rem 3rem;
+        background: rgba(255, 45, 133, 0.02);
+        border-bottom: 1px solid #F0F0F0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .af-tag { font-size: 0.68rem; font-weight: 800; color: #FF2D85; letter-spacing: 2.5px; }
+    .af-card-title { margin: 0.5rem 0 0; font-weight: 950; letter-spacing: -1px; font-size: 1.8rem; color: #1A1A1A; }
+    .af-stat { display: flex; flex-direction: column; align-items: flex-end; }
+    .af-stat-val { font-size: 1.8rem; font-weight: 950; color: var(--primary); line-height: 1; }
+    .af-stat-label { font-size: 0.7rem; font-weight: 800; color: #AAA; text-transform: uppercase; margin-top: 5px; }
+
+    .af-body-clean {
+        padding: 3rem;
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .af-field { display: flex; flex-direction: column; gap: 0.8rem; }
+    .af-field label {
+        font-size: 0.72rem; font-weight: 900; color: #666; letter-spacing: 1.5px; text-transform: uppercase;
+    }
+
+    .af-input, .af-select, .af-textarea {
+        width: 100%;
+        background: #F8F9FC;
+        border: 1.5px solid transparent;
+        border-radius: 20px;
+        padding: 1.2rem 1.5rem;
+        font-weight: 600;
+        color: #1A1A1A;
+        transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+        font-size: 1rem;
+    }
+    .af-textarea {
+        height: 350px;
+        resize: none;
+        line-height: 1.8;
+    }
+    .af-input:focus, .af-textarea:focus, .af-select:focus {
+        outline: none;
+        background: #FFF;
+        border-color: #FF2D85;
+        box-shadow: 0 0 0 6px rgba(255,45,133,0.06);
+    }
+    
+    .af-footer-info { display: flex; justify-content: flex-end; margin-top: -0.5rem; }
+    .af-hint { font-size: 0.82rem; color: #888; margin: 0; font-weight: 600; display: flex; align-items: center; }
+
+    .af-actions-row { 
+        display: flex; 
+        gap: 1.2rem; 
+        margin-top: 1.5rem; 
+        padding-top: 2rem; 
+        border-top: 1px dashed #EEE; 
+    }
+    
+    .af-btn-pri {
+        flex: 3;
+        background: linear-gradient(135deg, #FF2D85, #FF7EB3);
+        color: white;
+        border: none;
+        padding: 1.2rem;
+        border-radius: 22px;
+        font-weight: 900;
+        font-size: 1.1rem;
+        display: flex; align-items: center; justify-content: center; gap: 0.8rem;
+        cursor: pointer;
+        box-shadow: 0 15px 35px rgba(255,45,133,0.25);
+        transition: all 0.3s;
+    }
+    .af-btn-pri:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 20px 45px rgba(255,45,133,0.35); }
+    .af-btn-sec {
+        flex: 1;
+        background: #F3F5F9;
+        border: none;
+        padding: 1.2rem;
+        border-radius: 22px;
+        font-weight: 800;
+        color: #777;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .af-btn-sec:hover { background: #EEE; color: #333; }
+
+    .animate-fade-in { animation: fadeIn 0.8s cubic-bezier(0.19, 1, 0.22, 1); }
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+@code {
+    [Parameter] public PoiGuide Guide { get; set; } = new();
+    [Parameter] public List<Poi> AvailablePois { get; set; } = new();
+    [Parameter] public bool IsAddMode { get; set; } = true;
+    [Parameter] public string Title { get; set; } = "Thông tin Audio Guide";
+    [Parameter] public EventCallback OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private int WordCount => string.IsNullOrEmpty(Guide.Description)
+        ? 0 : Guide.Description.Split(new[] { ' ', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+
+    private void OnContentInput(ChangeEventArgs e) {
+        Guide.Description = e.Value?.ToString();
+        StateHasChanged();
+    }
+
+    private async Task HandleValidSubmit() => await OnSubmit.InvokeAsync();
+
+    private async Task OnCancelClick() {
+        await OnCancel.InvokeAsync();
+    }
+}
