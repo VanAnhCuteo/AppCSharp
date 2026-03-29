@@ -1,0 +1,130 @@
+@page "/users/edit/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IUserService UserService
+@inject NavigationManager Navigator
+@attribute [Authorize(Roles = "admin")]
+
+<PageTitle>Chỉnh sửa Người dùng - FoodMap Admin</PageTitle>
+
+@if (user == null)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+        <div>
+            <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Sửa người dùng</h2>
+            <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý quyền hạn và trạng thái của tài khoản "@user.Username"</p>
+        </div>
+        <button class="back-btn-premium transition-up" @onclick="Cancel" title="Quay lại">
+            <i class="bi bi-arrow-left-short"></i>
+        </button>
+    </div>
+
+    <div class="card shadow-glass border-0" style="border-radius: 35px; background: white; overflow: hidden;">
+        <div class="card-body p-5">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="mb-4">
+                        <label class="form-label-premium">Tên đăng nhập</label>
+                        <input type="text" class="form-control-premium" value="@user.Username" disabled />
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label-premium">Email liên hệ</label>
+                        <input type="text" class="form-control-premium" value="@user.Email" disabled />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-4">
+                        <label class="form-label-premium">Vai trò hệ thống</label>
+                        <select class="form-control-premium" @bind="user.Role">
+                            <option value="admin">Quản trị viên (Admin)</option>
+                            <option value="CNH">Chủ nhà hàng (CNH)</option>
+                            <option value="user">Người dùng (User)</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label-premium">Trạng thái tài khoản</label>
+                        <div class="d-flex align-items-center gap-3">
+                            @if (user.IsBlocked)
+                            {
+                                <span class="badge-blocked"><i class="bi bi-lock-fill me-1"></i> Đang bị chặn</span>
+                                <button class="btn-unblock" @onclick="ToggleBlock">
+                                    <i class="bi bi-unlock-fill me-1"></i> Bỏ chặn
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="badge-active"><i class="bi bi-check-circle-fill me-1"></i> Hoạt động</span>
+                                <button class="btn-block" @onclick="ToggleBlock">
+                                    <i class="bi bi-slash-circle-fill me-1"></i> Chặn người dùng
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-3 mt-5 pt-3 border-top">
+                <button type="button" class="btn-cancel-premium px-4" @onclick="Cancel">Hủy bỏ</button>
+                <button type="button" class="glass-btn px-5" style="box-shadow: 0 15px 30px var(--primary-glow);" @onclick="HandleSubmit">
+                    <i class="bi bi-check-circle-fill me-2"></i> Cập nhật quyền hạn
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .back-btn-premium {
+        width: 50px; height: 50px; border-radius: 18px; background: white; border: 1px solid var(--glass-border);
+        color: var(--primary); font-size: 1.8rem; display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.03); transition: all 0.3s ease;
+    }
+    .back-btn-premium:hover { background: var(--primary); color: white; box-shadow: 0 15px 30px var(--primary-glow); }
+
+    .form-label-premium { display: block; margin-bottom: 0.6rem; color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800; }
+    .form-control-premium { width: 100%; padding: 0.9rem 1.2rem; border-radius: 16px; background: #f8f9fa; border: 1px solid rgba(0,0,0,0.05); color: var(--text-main); font-size: 1rem; font-weight: 500; transition: all 0.3s ease; }
+    .form-control-premium:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 10px 25px var(--primary-glow); }
+
+    .badge-blocked { padding: 0.6rem 1.2rem; border-radius: 12px; background: rgba(255, 77, 79, 0.1); color: #ff4d4f; font-weight: 800; font-size: 0.85rem; }
+    .badge-active { padding: 0.6rem 1.2rem; border-radius: 12px; background: rgba(82, 196, 26, 0.1); color: #52c41a; font-weight: 800; font-size: 0.85rem; }
+
+    .btn-block { padding: 0.6rem 1.2rem; border-radius: 12px; background: #ff4d4f; color: white; border: none; font-weight: 700; transition: all 0.2s; box-shadow: 0 8px 15px rgba(255, 77, 79, 0.2); }
+    .btn-block:hover { background: #d9363e; transform: translateY(-2px); }
+
+    .btn-unblock { padding: 0.6rem 1.2rem; border-radius: 12px; background: #52c41a; color: white; border: none; font-weight: 700; transition: all 0.2s; box-shadow: 0 8px 15px rgba(82, 196, 26, 0.2); }
+    .btn-unblock:hover { background: #389e0d; transform: translateY(-2px); }
+
+    .btn-cancel-premium { background: transparent; border: 1px solid rgba(0,0,0,0.05); color: #777; font-weight: 700; padding: 0.8rem 1.5rem; border-radius: 15px; transition: all 0.2s; }
+</style>
+
+@code {
+    [Parameter] public int id { get; set; }
+    private User? user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await UserService.GetUserByIdAsync(id);
+        if (user == null) Navigator.NavigateTo("/users");
+    }
+
+    private void ToggleBlock() => user!.IsBlocked = !user.IsBlocked;
+
+    private async Task HandleSubmit()
+    {
+        if (user != null && await UserService.UpdateUserAsync(user))
+        {
+            Navigator.NavigateTo("/users");
+        }
+    }
+
+    private void Cancel() => Navigator.NavigateTo("/users");
+}

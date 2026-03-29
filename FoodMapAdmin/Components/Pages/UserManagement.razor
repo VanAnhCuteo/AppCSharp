@@ -3,6 +3,7 @@
 @using FoodMapAdmin.Models
 @using FoodMapAdmin.Services
 @inject IUserService UserService
+@inject NavigationManager Navigator
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Quản lý Người dùng - FoodMap Admin</PageTitle>
@@ -54,7 +55,11 @@
                             </td>
                             <td class="text-muted">@user.Email</td>
                             <td>
-                                @if (user.Role == "admin")
+                                @if (user.IsBlocked)
+                                {
+                                    <span class="badge-custom badge-blocked-mini" title="Tài khoản bị khóa"><i class="bi bi-lock-fill"></i> Bị chặn</span>
+                                }
+                                else if (user.Role == "admin")
                                 {
                                     <span class="badge-custom badge-admin">Quản trị viên</span>
                                 }
@@ -72,7 +77,9 @@
                             </td>
                             <td style="text-align: center; padding-right: 2rem; white-space: nowrap;">
                                 <div style="display: flex !important; flex-direction: row !important; justify-content: center; align-items: center; gap: 0.75rem;">
-                                    <button class="action-btn btn-edit" title="Sửa"><i class="bi bi-pencil-fill"></i></button>
+                                    <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick='() => Navigator.NavigateTo($"/users/edit/{user.UserId}")'>
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
                                     <button class="action-btn btn-delete" title="Xóa" @onclick="() => DeleteUser(user.UserId)"><i class="bi bi-trash-fill"></i></button>
                                 </div>
                             </td>
@@ -86,20 +93,21 @@
 
 <style>
     .action-btn {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
         border: none;
         display: flex;
         align-items: center;
         justify-content: center;
         transition: all 0.2s ease;
+        font-size: 1.1rem;
     }
 
     .btn-edit { background: rgba(255, 45, 133, 0.05); color: var(--primary); }
-    .btn-edit:hover { background: var(--primary); color: white; }
+    .btn-edit:hover { background: var(--primary); color: white; transform: translateY(-2px); }
     .btn-delete { background: rgba(255, 0, 0, 0.05); color: #ff4d4f; }
-    .btn-delete:hover { background: #ff4d4f; color: white; }
+    .btn-delete:hover { background: #ff4d4f; color: white; transform: translateY(-2px); }
     .shadow-glass {
         box-shadow: 0 20px 60px rgba(0,0,0,0.03) !important;
         border: 1px solid var(--glass-border) !important;
@@ -138,6 +146,7 @@
     .badge-admin { background: rgba(255, 45, 133, 0.08); color: var(--primary); border: 1px solid rgba(255, 45, 133, 0.1); }
     .badge-owner { background: rgba(0, 184, 212, 0.08); color: #00acc1; border: 1px solid rgba(0, 184, 212, 0.1); }
     .badge-user { background: rgba(0,0,0,0.05); color: var(--text-muted); border: 1px solid rgba(0,0,0,0.05); }
+    .badge-blocked-mini { background: rgba(255, 77, 79, 0.1); color: #ff4d4f; border: 1px solid rgba(255, 77, 79, 0.1); }
 
     .transition-all { transition: all 0.3s ease; }
     tr:hover { background: rgba(255, 45, 133, 0.01) !important; }
@@ -151,7 +160,8 @@
     {
         try 
         {
-            users = await UserService.GetAllUsersAsync();
+            var allUsers = await UserService.GetAllUsersAsync();
+            users = allUsers?.Where(u => u.Role != "admin").ToList();
         }
         catch (Exception ex)
         {

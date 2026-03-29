@@ -4,6 +4,7 @@
 @using FoodMapAdmin.Services
 @inject ICategoryService CategoryService
 @inject IJSRuntime JSRuntime
+@inject NavigationManager Navigator
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Quản lý Danh mục - FoodMap Admin</PageTitle>
@@ -13,7 +14,7 @@
         <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Danh mục</h2>
         <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Phân loại các địa điểm ăn uống trên toàn hệ thống</p>
     </div>
-    <button class="glass-btn pulse-animation" style="padding: 1rem 2.2rem; font-size: 1.05rem; border-radius: 20px; box-shadow: 0 15px 35px var(--primary-glow);" @onclick="() => ShowAddModal()">
+    <button class="glass-btn pulse-animation" style="padding: 1rem 2.2rem; font-size: 1.05rem; border-radius: 20px; box-shadow: 0 15px 35px var(--primary-glow);" @onclick='() => Navigator.NavigateTo("/categories/add")'>
         <i class="bi bi-tag-fill me-2"></i> Thêm danh mục
     </button>
 </div>
@@ -23,10 +24,10 @@
         <table class="table table-hover mb-0">
             <thead>
                 <tr style="background: rgba(255, 45, 133, 0.03);">
-                    <th style="padding: 1.5rem 1rem 1.5rem 2rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Mã số</th>
-                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Tên danh mục</th>
+                    <th style="padding: 1.5rem 1rem 1.5rem 2rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; width: 120px;">Mã số</th>
+                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; width: 300px;">Tên danh mục</th>
                     <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Mô tả chi tiết</th>
-                    <th style="padding: 1.5rem 2rem 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Thao tác</th>
+                    <th style="padding: 1.5rem 2rem 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center; width: 180px;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
@@ -59,8 +60,12 @@
                             </td>
                             <td style="text-align: center; padding-right: 2rem; white-space: nowrap;">
                                 <div style="display: flex !important; flex-direction: row !important; justify-content: center; align-items: center; gap: 0.75rem;">
-                                    <button class="action-btn btn-edit" @onclick="() => Edit(cat)"><i class="bi bi-pencil-fill"></i></button>
-                                    <button class="action-btn btn-delete" @onclick="() => Delete(cat.CategoryId)"><i class="bi bi-trash-fill"></i></button>
+                                    <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick='() => Navigator.NavigateTo($"/categories/edit/{cat.CategoryId}")'>
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <button class="action-btn btn-delete" title="Xóa" @onclick="() => Delete(cat.CategoryId)">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -70,38 +75,6 @@
         </table>
     </div>
 </div>
-
-@if (showModal)
-{
-    <div class="modal d-block" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 1050;">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-glass" style="border-radius: 35px; background: white;">
-                <div class="modal-header border-0 p-5 pb-0">
-                    <h5 class="modal-title" style="font-size: 1.8rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                        @(isEditing ? "Cập nhật danh mục" : "Tạo danh mục mới")
-                    </h5>
-                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
-                </div>
-                <div class="modal-body p-5">
-                    <div class="mb-4">
-                        <label class="form-label-premium">Tên danh mục</label>
-                        <input type="text" class="form-control-premium" @bind="editCat.CategoryName" placeholder="VD: Đặc sản vùng miền..." />
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label-premium">Mô tả (Không bắt buộc)</label>
-                        <textarea class="form-control-premium" style="height: 120px; resize: none;" @bind="editCat.Description"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 p-5 pt-0">
-                    <button type="button" class="btn-cancel-premium px-4" @onclick="CloseModal">Hủy bỏ</button>
-                    <button type="button" class="glass-btn px-5" style="box-shadow: 0 15px 30px var(--primary-glow);" @onclick="HandleSubmit">
-                        <i class="bi bi-check-circle-fill me-2"></i> Lưu dữ liệu
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
 
 <style>
     .cat-icon {
@@ -166,9 +139,6 @@
 
 @code {
     private List<Category>? categories;
-    private bool showModal = false;
-    private bool isEditing = false;
-    private Category editCat = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -176,17 +146,6 @@
     }
 
     private async Task LoadData() => categories = await CategoryService.GetAllCategoriesAsync();
-
-    private void ShowAddModal() { editCat = new(); isEditing = false; showModal = true; }
-    private void Edit(Category cat) { editCat = new Category { CategoryId = cat.CategoryId, CategoryName = cat.CategoryName, Description = cat.Description }; isEditing = true; showModal = true; }
-    private void CloseModal() => showModal = false;
-
-    private async Task HandleSubmit()
-    {
-        if (string.IsNullOrEmpty(editCat.CategoryName)) return;
-        bool res = isEditing ? await CategoryService.UpdateCategoryAsync(editCat) : await CategoryService.CreateCategoryAsync(editCat);
-        if (res) { await LoadData(); showModal = false; }
-    }
 
     private async Task Delete(int id)
     {

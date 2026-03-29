@@ -126,8 +126,8 @@
                                     </button>
                                 </div>
                             </td>
-                            <td style="padding-right: 2rem;">
-                                <div class="d-flex justify-content-center gap-2">
+                            <td style="text-align: center; padding-right: 2rem; white-space: nowrap;">
+                                <div style="display: flex !important; flex-direction: row !important; justify-content: center; align-items: center; gap: 0.75rem;">
                                     <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick="() => NavigateToEdit(group)">
                                         <i class="bi bi-pencil-square"></i>
                                     </button>
@@ -144,8 +144,141 @@
     </div>
 </div>
 
+@if (isPlayerVisible && currentPlayingPoi != null) {
+    <div class="audio-floating-player animate-slide-up">
+        <div class="player-content">
+            <div class="player-info">
+                <div class="playing-icon">
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                </div>
+                <div>
+                    <div class="playing-title">Đang phát: @currentPlayingPoi.Name</div>
+                    <div class="playing-sub">@currentLang.ToUpper() • @ttsProgress%</div>
+                </div>
+            </div>
+            
+            <div class="player-progress">
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" style="width: @ttsProgress%"></div>
+                </div>
+            </div>
+
+            <button class="btn-stop-player" @onclick="StopAudio">
+                <i class="bi bi-stop-circle-fill"></i> Dừng phát
+            </button>
+        </div>
+    </div>
+}
+
 
 <style>
+    /* Floating Player */
+    .audio-floating-player {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 600px;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 45, 133, 0.2);
+        border-radius: 25px;
+        padding: 1.2rem 2rem;
+        box-shadow: 0 20px 50px rgba(255, 45, 133, 0.15);
+        z-index: 1000;
+    }
+
+    .player-content {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .player-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .playing-title {
+        font-weight: 900;
+        font-size: 0.95rem;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .playing-sub {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--primary);
+    }
+
+    .player-progress {
+        flex: 2;
+    }
+
+    .progress-bar-bg {
+        height: 6px;
+        background: rgba(0,0,0,0.05);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), #FF7EB3);
+        border-radius: 10px;
+        transition: width 0.3s ease;
+    }
+
+    .btn-stop-player {
+        background: #FF4D4F;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 15px;
+        font-weight: 800;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+        box-shadow: 0 8px 15px rgba(255, 77, 79, 0.3);
+    }
+
+    .btn-stop-player:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 20px rgba(255, 77, 79, 0.4);
+    }
+
+    /* Playing Animation */
+    .playing-icon {
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: 16px;
+    }
+    .playing-icon .bar {
+        width: 3px;
+        background: var(--primary);
+        border-radius: 1px;
+        animation: bar-rise 0.8s infinite ease-in-out;
+    }
+    .playing-icon .bar:nth-child(2) { animation-delay: 0.2s; height: 100%; }
+    .playing-icon .bar:nth-child(3) { animation-delay: 0.4s; height: 60%; }
+
+    @@keyframes bar-rise {
+        0%, 100% { height: 30%; }
+        50% { height: 100%; }
+    }
     /* Stats Layout */
     .stats-row {
         display: grid;
@@ -270,8 +403,8 @@
         transition: all 0.2s ease;
         font-size: 1.1rem;
     }
-    .btn-edit { background: rgba(0, 150, 255, 0.05); color: #0084ff; }
-    .btn-edit:hover { background: #0084ff; color: white; transform: translateY(-2px); }
+    .btn-edit { background: rgba(255, 45, 133, 0.05); color: var(--primary); }
+    .btn-edit:hover { background: var(--primary); color: white; transform: translateY(-2px); }
     .btn-delete { background: rgba(255, 0, 0, 0.05); color: #ff4d4f; }
     .btn-delete:hover { background: #ff4d4f; color: white; transform: translateY(-2px); }
 
@@ -341,7 +474,7 @@
     [JSInvokable]
     public void OnTtsProgress(int progress) {
         ttsProgress = progress;
-        isActuallyPlaying = progress > 0 && progress < 100;
+        isActuallyPlaying = true;
         InvokeAsync(StateHasChanged);
     }
 
@@ -349,7 +482,7 @@
     public void OnTtsFinished() {
         isActuallyPlaying = false;
         ttsProgress = 100;
-        Task.Delay(2200).ContinueWith(_ => {
+        Task.Delay(1000).ContinueWith(_ => {
             isPlayerVisible = false;
             currentPlayingPoi = null;
             InvokeAsync(StateHasChanged);

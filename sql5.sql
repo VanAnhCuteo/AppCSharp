@@ -240,6 +240,7 @@ CREATE TABLE `users` (
   `email` varchar(100) DEFAULT NULL,
   `password` varchar(255) DEFAULT NULL,
   `role` enum('user','admin','CNH') DEFAULT 'user',
+  `is_blocked` tinyint(1) DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`user_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

@@ -1,0 +1,61 @@
+@page "/categories/add"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject ICategoryService CategoryService
+@inject NavigationManager Navigator
+@attribute [Authorize(Roles = "admin")]
+
+<PageTitle>Thêm Danh mục mới - FoodMap Admin</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Thêm danh mục</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Tạo phân loại mới cho các quán ăn trong hệ thống</p>
+    </div>
+    <button class="back-btn-premium transition-up" @onclick="Cancel" title="Quay lại">
+        <i class="bi bi-arrow-left-short"></i>
+    </button>
+</div>
+
+<CategoryForm CategoryModel="category" 
+              Title="Tạo danh mục mới"
+              OnSubmit="HandleSubmit" 
+              OnCancel="Cancel" />
+
+<style>
+    .back-btn-premium {
+        width: 50px;
+        height: 50px;
+        border-radius: 18px;
+        background: white;
+        border: 1px solid var(--glass-border);
+        color: var(--primary);
+        font-size: 1.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+        transition: all 0.3s ease;
+    }
+
+    .back-btn-premium:hover {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 15px 30px var(--primary-glow);
+    }
+</style>
+
+@code {
+    private Category category = new();
+
+    private async Task HandleSubmit()
+    {
+        if (await CategoryService.CreateCategoryAsync(category))
+        {
+            Navigator.NavigateTo("/categories");
+        }
+    }
+
+    private void Cancel() => Navigator.NavigateTo("/categories");
+}

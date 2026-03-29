@@ -1,0 +1,115 @@
+@page "/images/edit/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IPoiImageService PoiImageService
+@inject IPoiService PoiService
+@inject NavigationManager Navigator
+@attribute [Authorize(Roles = "admin,CNH")]
+
+<PageTitle>Chỉnh sửa Hình ảnh - FoodMap Admin</PageTitle>
+
+@if (image == null)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+        <div>
+            <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Chỉnh sửa ảnh</h2>
+            <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Cập nhật thông tin hình ảnh của "@(image?.Poi?.Name ?? "...")"</p>
+        </div>
+        <button class="back-btn-premium transition-up" @onclick="Cancel" title="Quay lại">
+            <i class="bi bi-arrow-left-short"></i>
+        </button>
+    </div>
+
+    <ImageForm ImageModel="image" 
+               AvailablePois="pois" 
+               IsAddMode="false" 
+               Title="Chỉnh sửa Hình ảnh"
+               OnSubmitWithFile="HandleSubmit" 
+               OnCancel="Cancel" />
+}
+
+<style>
+    .back-btn-premium {
+        width: 50px;
+        height: 50px;
+        border-radius: 18px;
+        background: white;
+        border: 1px solid var(--glass-border);
+        color: var(--primary);
+        font-size: 1.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+        transition: all 0.3s ease;
+    }
+
+    .back-btn-premium:hover {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 15px 30px var(--primary-glow);
+    }
+</style>
+
+@code {
+    [Parameter] public int id { get; set; }
+    private PoiImage? image;
+    private List<Poi> pois = new();
+    
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        image = await PoiImageService.GetImageByIdAsync(id);
+        if (image == null) Navigator.NavigateTo("/images");
+
+        if (AuthStateTask != null)
+        {
+            var authState = await AuthStateTask;
+            var user = authState.User;
+
+            if (user.IsInRole("admin"))
+            {
+                pois = await PoiService.GetAllPoisAsync();
+            }
+            else if (user.IsInRole("CNH"))
+            {
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(userIdStr, out var userId))
+                {
+                    pois = await PoiService.GetPoisByOwnerAsync(userId);
+                }
+            }
+        }
+    }
+
+    private async Task HandleSubmit((IBrowserFile? file, string? fileName) uploadData)
+    {
+        if (image != null)
+        {
+            Stream? stream = null;
+            if (uploadData.file != null)
+            {
+                stream = uploadData.file.OpenReadStream(2 * 1024 * 1024);
+            }
+
+            if (await PoiImageService.UpdateImageAsync(image, stream, uploadData.fileName))
+            {
+                Navigator.NavigateTo("/images");
+            }
+        }
+    }
+
+    private void Cancel() => Navigator.NavigateTo("/images");
+}

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FoodMapAdmin.Models
@@ -24,6 +24,9 @@ namespace FoodMapAdmin.Models
 
         [Column("role")]
         public string Role { get; set; } = "user"; // 'user', 'admin', 'CNH'
+
+        [Column("is_blocked")]
+        public bool IsBlocked { get; set; } = false;
 
         [Column("created_at")]
         public DateTime? CreatedAt { get; set; } = DateTime.Now;

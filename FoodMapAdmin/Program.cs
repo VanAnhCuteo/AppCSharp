@@ -29,6 +29,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IPoiService, PoiService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IPoiGuideService, PoiGuideService>();
+builder.Services.AddScoped<IPoiImageService, PoiImageService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
 builder.Services.AddMemoryCache();
@@ -87,6 +88,18 @@ if (app.Environment.IsDevelopment())
 
 // app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Serve images from the mobile app's Resources/Raw/images directory
+var imagePath = builder.Configuration["ImageStoragePath"];
+if (!string.IsNullOrEmpty(imagePath) && Directory.Exists(imagePath))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(imagePath),
+        RequestPath = "/images"
+    });
+}
+
 app.UseAntiforgery();
 
 app.UseCors("AllowReactApp");

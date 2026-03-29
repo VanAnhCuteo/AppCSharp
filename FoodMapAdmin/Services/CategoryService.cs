@@ -12,6 +12,7 @@ namespace FoodMapAdmin.Services
         Task<bool> CreateCategoryAsync(Category category);
         Task<bool> UpdateCategoryAsync(Category category);
         Task<bool> DeleteCategoryAsync(int id);
+        Task<Category?> GetCategoryByIdAsync(int id);
     }
 
     public class CategoryService : ICategoryService
@@ -38,6 +39,11 @@ namespace FoodMapAdmin.Services
         public async Task<List<Category>> GetAllCategoriesAsync()
         {
             return await _context.Categories.ToListAsync();
+        }
+
+        public async Task<Category?> GetCategoryByIdAsync(int id)
+        {
+            return await _context.Categories.FindAsync(id);
         }
 
         public async Task<bool> CreateCategoryAsync(Category category)

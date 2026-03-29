@@ -1,0 +1,93 @@
+@using FoodMapAdmin.Models
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="card shadow-glass border-0" style="border-radius: 35px; background: white; overflow: hidden;">
+    <div class="card-header border-0 bg-transparent p-5 pb-0">
+        <h3 style="font-size: 1.8rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+            @Title
+        </h3>
+    </div>
+    
+    <div class="card-body p-5">
+        <EditForm Model="CategoryModel" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+            
+            <div class="mb-4">
+                <label class="form-label-premium">Tên danh mục</label>
+                <InputText class="form-control-premium" @bind-Value="CategoryModel.CategoryName" placeholder="VD: Đặc sản vùng miền..." />
+                <ValidationMessage For="@(() => CategoryModel.CategoryName)" class="text-danger mt-1" style="font-size: 0.8rem;" />
+            </div>
+
+            <div class="mb-5">
+                <label class="form-label-premium">Mô tả (Không bắt buộc)</label>
+                <InputTextArea class="form-control-premium" style="height: 150px; resize: none;" @bind-Value="CategoryModel.Description" placeholder="Mô tả ngắn gọn về danh mục này..." />
+                <ValidationMessage For="@(() => CategoryModel.Description)" class="text-danger mt-1" style="font-size: 0.8rem;" />
+            </div>
+
+            <div class="d-flex justify-content-end gap-3 pt-3">
+                <button type="button" class="btn-cancel-premium px-4" @onclick="OnCancel">Hủy bỏ</button>
+                <button type="submit" class="glass-btn px-5" style="box-shadow: 0 15px 30px var(--primary-glow);">
+                    <i class="bi bi-check-circle-fill me-2"></i> Lưu dữ liệu
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+<style>
+    .form-label-premium {
+        display: block;
+        margin-bottom: 0.6rem;
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-weight: 800;
+    }
+
+    .form-control-premium {
+        width: 100%;
+        padding: 0.9rem 1.2rem;
+        border-radius: 16px;
+        background: #f8f9fa;
+        border: 1px solid rgba(0,0,0,0.05);
+        color: var(--text-main);
+        font-size: 1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .form-control-premium:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 10px 25px var(--primary-glow);
+    }
+
+    .btn-cancel-premium {
+        background: transparent;
+        border: 1px solid rgba(0,0,0,0.05);
+        color: #777;
+        font-weight: 700;
+        padding: 0.8rem 1.5rem;
+        border-radius: 15px;
+        transition: all 0.2s;
+    }
+
+    .btn-cancel-premium:hover {
+        background: #f0f0f0;
+        color: var(--text-main);
+    }
+</style>
+
+@code {
+    [Parameter] public Category CategoryModel { get; set; } = new();
+    [Parameter] public string Title { get; set; } = "Thông tin Danh mục";
+    [Parameter] public EventCallback OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task HandleSubmit()
+    {
+        await OnSubmit.InvokeAsync();
+    }
+}

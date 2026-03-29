@@ -9,6 +9,7 @@ namespace FoodMapAdmin.Services
         Task<User?> AuthenticateAsync(string username, string password);
         Task<List<User>> GetAllUsersAsync();
         Task<User?> GetUserByIdAsync(int id);
+        Task<bool> UpdateUserAsync(User user);
         Task<bool> DeleteUserAsync(int id);
     }
 
@@ -23,8 +24,6 @@ namespace FoodMapAdmin.Services
 
         public async Task<User?> AuthenticateAsync(string username, string password)
         {
-            // Note: In real app, use password hashing! 
-            // The provided SQL dump shows '123456' as password for all.
             return await _context.Users
                 .FirstOrDefaultAsync(u => u.Username == username && u.Password == password);
         }
@@ -37,6 +36,12 @@ namespace FoodMapAdmin.Services
         public async Task<User?> GetUserByIdAsync(int id)
         {
             return await _context.Users.FindAsync(id);
+        }
+
+        public async Task<bool> UpdateUserAsync(User user)
+        {
+            _context.Users.Update(user);
+            return await _context.SaveChangesAsync() > 0;
         }
 
         public async Task<bool> DeleteUserAsync(int id)

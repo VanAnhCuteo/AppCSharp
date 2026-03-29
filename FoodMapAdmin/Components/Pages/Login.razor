@@ -49,7 +49,7 @@
         </EditForm>
 
         <div style="margin-top: 3.5rem; display: flex; flex-direction: column; gap: 0.5rem; opacity: 0.5;">
-            <p style="margin: 0; color: var(--text-muted); font-size: 0.75rem;">&copy; 2026 FoodMap Excellence Team</p>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.75rem;">&copy; 2026 FoodMap VanAnhCuteo</p>
             <div style="width: 40px; height: 2px; background: var(--primary); margin: 0 auto; border-radius: 10px; opacity: 0.3;"></div>
         </div>
     </div>
@@ -68,6 +68,12 @@
 
         if (user != null)
         {
+            if (user.IsBlocked)
+            {
+                errorMessage = "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.";
+                return;
+            }
+
             if (user.Role == "user")
             {
                 errorMessage = "Truy cập bị từ chối. Tài khoản khách hàng không thể vào trang quản lý.";

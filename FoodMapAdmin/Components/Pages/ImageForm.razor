@@ -1,0 +1,269 @@
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime JSRuntime
+
+<EditForm Model="ImageModel" OnValidSubmit="HandleValidSubmit" class="if-container">
+    <DataAnnotationsValidator />
+
+    <div class="if-card animate-fade-in">
+        <!-- Header -->
+        <div class="if-card-header">
+            <div>
+                <span class="if-tag">@Title.ToUpper()</span>
+                <h2 class="if-card-title">@(ImageModel.Poi?.Name ?? "Thông tin ảnh")</h2>
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div class="if-body">
+            <div class="if-field">
+                <label>QUÁN ĂN / ĐỊA ĐIỂM</label>
+                <InputSelect @bind-Value="ImageModel.PoiId" class="if-select">
+                    <option value="">-- Chọn quán ăn --</option>
+                    @foreach (var poi in AvailablePois) {
+                        <option value="@poi.PoiId">@poi.Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(()=>ImageModel.PoiId)" />
+            </div>
+
+            <div class="if-field">
+                <label>HÌNH ẢNH</label>
+                <div class="upload-zone @(previewUrl != null ? "has-preview" : "")">
+                    @if (previewUrl != null) {
+                        <img src="@previewUrl" class="upload-preview" />
+                        <div class="upload-overlay">
+                            <i class="bi bi-camera-fill"></i>
+                            <span>Thay đổi ảnh</span>
+                        </div>
+                    } else {
+                        <div class="upload-placeholder">
+                            <i class="bi bi-cloud-arrow-up-fill" style="font-size: 3rem; color: var(--primary); opacity: 0.3;"></i>
+                            <p style="font-weight: 700; color: #666; margin-top: 1rem;">Kéo thả hoặc nhấp để tải ảnh lên</p>
+                            <span style="font-size: 0.8rem; color: #AAA;">Định dạng: JPG(Max 2MB)</span>
+                        </div>
+                    }
+                    <InputFile OnChange="OnInputFileChange" class="file-input" accept="image/*" />
+                </div>
+                @if (selectedFile != null) {
+                    <div class="file-info animate-slide-up">
+                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                        <span style="font-weight: 700; color: #444;">@selectedFile.Name</span>
+                        <span class="ms-auto" style="color: #AAA; font-size: 0.85rem;">@(Math.Round(selectedFile.Size / 1024.0, 1)) KB</span>
+                    </div>
+                }
+            </div>
+
+            <!-- Actions -->
+            <div class="if-actions">
+                <button type="button" class="if-btn-sec" @onclick="OnCancelClick">Hủy bỏ</button>
+                <button type="submit" class="if-btn-pri" disabled="@(IsAddMode && selectedFile == null)">
+                    <i class="bi bi-cloud-upload-fill me-2"></i> Lưu hình ảnh
+                </button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+<style>
+    .if-container { max-width: 700px; margin: 0 auto; }
+
+    .if-card {
+        background: white;
+        border-radius: 35px;
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: 0 40px 100px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .if-card-header {
+        padding: 2.5rem 3rem;
+        background: rgba(255, 45, 133, 0.02);
+        border-bottom: 1px solid #F0F0F0;
+    }
+    .if-tag { font-size: 0.68rem; font-weight: 800; color: #FF2D85; letter-spacing: 2.5px; }
+    .if-card-title { margin: 0.5rem 0 0; font-weight: 950; letter-spacing: -1px; font-size: 1.8rem; color: #1A1A1A; }
+
+    .if-body {
+        padding: 3rem;
+        display: flex;
+        flex-direction: column;
+        gap: 2.5rem;
+    }
+
+    .if-field { display: flex; flex-direction: column; gap: 0.8rem; }
+    .if-field label {
+        font-size: 0.72rem; font-weight: 900; color: #666; letter-spacing: 1.5px; text-transform: uppercase;
+    }
+
+    .if-select {
+        width: 100%;
+        background: #F8F9FC;
+        border: 1.5px solid transparent;
+        border-radius: 20px;
+        padding: 1.2rem 1.5rem;
+        font-weight: 600;
+        color: #1A1A1A;
+        transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+        font-size: 1rem;
+    }
+    .if-select:focus {
+        outline: none;
+        background: #FFF;
+        border-color: #FF2D85;
+        box-shadow: 0 0 0 6px rgba(255,45,133,0.06);
+    }
+
+    .upload-zone {
+        position: relative;
+        height: 300px;
+        background: #F8F9FC;
+        border: 2px dashed #E0E0E0;
+        border-radius: 25px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        overflow: hidden;
+        transition: all 0.3s;
+    }
+    .upload-zone:hover {
+        border-color: var(--primary);
+        background: rgba(255, 45, 133, 0.02);
+    }
+    .upload-zone.has-preview { border-style: solid; }
+
+    .file-input {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 10;
+    }
+
+    .upload-preview {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .upload-overlay {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.4);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        opacity: 0;
+        transition: opacity 0.3s;
+        gap: 0.5rem;
+    }
+    .upload-zone:hover .upload-overlay { opacity: 1; }
+    .upload-overlay i { font-size: 2rem; }
+    .upload-overlay span { font-weight: 800; font-size: 0.9rem; }
+
+    .upload-placeholder {
+        text-align: center;
+        pointer-events: none;
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        background: #F0F2F7;
+        border-radius: 15px;
+        margin-top: 0.5rem;
+    }
+
+    .if-actions { 
+        display: flex; 
+        gap: 1.2rem; 
+        margin-top: 1rem; 
+        padding-top: 2rem; 
+        border-top: 1px dashed #EEE; 
+    }
+    
+    .if-btn-pri {
+        flex: 3;
+        background: linear-gradient(135deg, #FF2D85, #FF7EB3);
+        color: white;
+        border: none;
+        padding: 1.2rem;
+        border-radius: 22px;
+        font-weight: 900;
+        font-size: 1.1rem;
+        display: flex; align-items: center; justify-content: center; gap: 0.8rem;
+        cursor: pointer;
+        box-shadow: 0 15px 35px rgba(255,45,133,0.25);
+        transition: all 0.3s;
+    }
+    .if-btn-pri:hover:not(:disabled) { transform: translateY(-4px) scale(1.02); box-shadow: 0 20px 45px rgba(255,45,133,0.35); }
+    .if-btn-pri:disabled { opacity: 0.6; cursor: not-allowed; filter: grayscale(1); }
+
+    .if-btn-sec {
+        flex: 1;
+        background: #F3F5F9;
+        border: none;
+        padding: 1.2rem;
+        border-radius: 22px;
+        font-weight: 800;
+        color: #777;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .if-btn-sec:hover { background: #EEE; color: #333; }
+
+    .animate-fade-in { animation: fadeIn 0.8s cubic-bezier(0.19, 1, 0.22, 1); }
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+    .animate-slide-up { animation: slideUp 0.4s ease-out; }
+    @@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+@code {
+    [Parameter] public PoiImage ImageModel { get; set; } = new();
+    [Parameter] public List<Poi> AvailablePois { get; set; } = new();
+    [Parameter] public bool IsAddMode { get; set; } = true;
+    [Parameter] public string Title { get; set; } = "Thông tin Hình ảnh";
+    [Parameter] public EventCallback<(IBrowserFile? file, string? fileName)> OnSubmitWithFile { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string? previewUrl;
+    private IBrowserFile? selectedFile;
+
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrEmpty(ImageModel.ImageUrl))
+        {
+            previewUrl = ImageModel.ImageUrl;
+        }
+    }
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        var format = "image/png";
+        if (selectedFile.ContentType == "image/jpeg") format = "image/jpeg";
+        
+        var resizedFile = await selectedFile.RequestImageFileAsync(format, 600, 600);
+        var buffer = new byte[resizedFile.Size];
+        await resizedFile.OpenReadStream().ReadAsync(buffer);
+        previewUrl = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+        StateHasChanged();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        await OnSubmitWithFile.InvokeAsync((selectedFile, selectedFile?.Name));
+    }
+
+    private async Task OnCancelClick()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}
