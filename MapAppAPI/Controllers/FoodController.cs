@@ -30,8 +30,12 @@ namespace FoodMapAPI.Controllers
                 {
                     await conn.OpenAsync();
 
-                    // Select all from pois. We'll filter or just take the first language we find.
-                    string query = "SELECT p.*, (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url FROM pois p";
+                    // Join with poi_guides to get description for the requested language, fallback to 'vi'
+                    string query = @"SELECT p.*, COALESCE(g.description, gv.description) as description, 
+                                   (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url 
+                                   FROM pois p 
+                                   LEFT JOIN poi_guides g ON p.poi_id = g.poi_id AND g.language = @lang
+                                   LEFT JOIN poi_guides gv ON p.poi_id = gv.poi_id AND gv.language = 'vi'";
 
                     if (category_id.HasValue && category_id.Value > 0)
                     {
@@ -39,6 +43,7 @@ namespace FoodMapAPI.Controllers
                     }
 
                     MySqlCommand cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@lang", lang);
                     if (category_id.HasValue && category_id.Value > 0)
                     {
                         cmd.Parameters.AddWithValue("@catId", category_id.Value);
@@ -101,10 +106,18 @@ namespace FoodMapAPI.Controllers
                 {
                     await conn.OpenAsync();
 
-                    // 1. Get food info
-                    using (MySqlCommand cmd = new MySqlCommand("SELECT p.*, (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url FROM pois p WHERE p.poi_id = @id", conn))
+                    // 1. Get food info with description from poi_guides, fallback to 'vi'
+                    string detailQuery = @"SELECT p.*, COALESCE(g.description, gv.description) as description, 
+                                         (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url 
+                                         FROM pois p 
+                                         LEFT JOIN poi_guides g ON p.poi_id = g.poi_id AND g.language = @lang 
+                                         LEFT JOIN poi_guides gv ON p.poi_id = gv.poi_id AND gv.language = 'vi'
+                                         WHERE p.poi_id = @id";
+
+                    using (MySqlCommand cmd = new MySqlCommand(detailQuery, conn))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
+                        cmd.Parameters.AddWithValue("@lang", lang);
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
                             if (await reader.ReadAsync())
@@ -395,7 +408,7 @@ namespace FoodMapAPI.Controllers
                                    FROM poi_visits v 
                                    JOIN pois p ON v.poi_id = p.poi_id 
                                    WHERE v.user_id = @userId 
-                                   ORDER BY v.visit_date DESC";
+                                   ORDER BY v.visit_time DESC";
 
                     using (MySqlCommand cmd = new MySqlCommand(query, conn))
                     {

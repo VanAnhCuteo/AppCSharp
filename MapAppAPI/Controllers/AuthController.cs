@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using FoodMapAPI.Models;
 using System.Data;
@@ -89,7 +89,7 @@ namespace FoodMapAPI.Controllers
                 {
                     await conn.OpenAsync();
 
-                    string query = "SELECT user_id, username, role, email FROM users WHERE (username = @id OR email = @id) AND password = @pass LIMIT 1";
+                    string query = "SELECT user_id, username, role, email, is_blocked FROM users WHERE (username = @id OR email = @id) AND password = @pass LIMIT 1";
                     using (MySqlCommand cmd = new MySqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@id", request.identifier);
@@ -99,6 +99,12 @@ namespace FoodMapAPI.Controllers
                         {
                             if (await reader.ReadAsync())
                             {
+                                bool isBlocked = Convert.ToBoolean(reader["is_blocked"]);
+                                if (isBlocked)
+                                {
+                                    return Unauthorized(new AuthResponse { success = false, message = "Tài khoản của bạn đã bị khóa." });
+                                }
+
                                 return Ok(new AuthResponse
                                 {
                                     success = true,

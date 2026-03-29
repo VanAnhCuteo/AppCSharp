@@ -1,4 +1,4 @@
-﻿namespace FoodMapAPI.Models
+namespace FoodMapAPI.Models
 {
     public class User
     {
@@ -7,6 +7,7 @@
         public string email { get; set; }
         public string password { get; set; }
         public string role { get; set; } // 'user', 'admin', 'CNH'
+        public bool is_blocked { get; set; } = false;
         public DateTime created_at { get; set; }
     }
 
