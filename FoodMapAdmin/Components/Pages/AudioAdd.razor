@@ -125,13 +125,18 @@ else
             if (success)
             {
                 // 2. Auto-translate and save for other languages
+                // We use a specific order and wait for each to ensure stability
                 var targetLangs = new[] { "en", "zh" };
                 foreach (var lang in targetLangs)
                 {
                     try 
                     {
-                        var tTitle = await TranslationService.TranslateAsync(newGuide.Title, lang);
-                        var tDesc = await TranslationService.TranslateAsync(newGuide.Description ?? "", lang);
+                        // Normalize title and script for translation
+                        var sourceTitle = newGuide.Title?.Trim();
+                        var sourceDesc = newGuide.Description?.Trim() ?? "";
+
+                        var tTitle = await TranslationService.TranslateAsync(sourceTitle!, lang);
+                        var tDesc = await TranslationService.TranslateAsync(sourceDesc, lang);
                         
                         var tGuide = new PoiGuide {
                             PoiId = newGuide.PoiId,
@@ -143,7 +148,7 @@ else
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Auto-translation error for {lang}: {ex.Message}");
+                        Console.WriteLine($"[Translation Error] Failed for {lang}: {ex.Message}");
                     }
                 }
                 

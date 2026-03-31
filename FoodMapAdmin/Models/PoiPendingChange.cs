@@ -11,10 +11,14 @@ namespace FoodMapAdmin.Models
         public int ChangeId { get; set; }
 
         [Column("poi_id")]
-        public int PoiId { get; set; }
+        public int? PoiId { get; set; }
 
         [ForeignKey(nameof(PoiId))]
         public Poi? Poi { get; set; }
+
+        [Column("change_type")]
+        [StringLength(20)]
+        public string ChangeType { get; set; } = "update"; // create, update, delete
 
         [Column("category_id")]
         public int? CategoryId { get; set; }

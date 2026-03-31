@@ -122,14 +122,18 @@ else
                 {
                     var allGuides = await GuideService.GetAllGuidesAsync();
                     var poiGuides = allGuides.Where(g => g.PoiId == editingGuide.PoiId).ToList();
-                    // 2. Update/Create translations for other languages
+                    
                     var targetLangs = new[] { "en", "zh" };
-            foreach (var langCode in targetLangs)
+                    foreach (var langCode in targetLangs)
                     {
                         try 
                         {
-                            var tTitle = await TranslationService.TranslateAsync(editingGuide.Title, langCode);
-                            var tDesc = await TranslationService.TranslateAsync(editingGuide.Description ?? "", langCode);
+                            // Normalize source for translation
+                            var sourceTitle = editingGuide.Title?.Trim();
+                            var sourceDesc = editingGuide.Description?.Trim() ?? "";
+
+                            var tTitle = await TranslationService.TranslateAsync(sourceTitle!, langCode);
+                            var tDesc = await TranslationService.TranslateAsync(sourceDesc, langCode);
                             
                             var existing = poiGuides.FirstOrDefault(g => g.Language == langCode);
                             if (existing != null)
@@ -151,7 +155,7 @@ else
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Auto-update translation error for {langCode}: {ex.Message}");
+                            Console.WriteLine($"[Sync Error] Translation update failed for {langCode}: {ex.Message}");
                         }
                     }
                 }

@@ -69,10 +69,13 @@
                                     <div>
                                         <div style="font-weight: 800; color: var(--text-main); font-size: 1.05rem;">
                                             @poi.Name 
-                                            @if (pendingPoiIds.Contains(poi.PoiId))
+                                            @if (pendingChangesList.Any(pc => pc.PoiId == poi.PoiId))
                                             {
-                                                <span class="badge rounded-pill bg-warning text-dark ms-2" style="font-size: 0.65rem; font-weight: 700; padding: 0.3rem 0.6rem; vertical-align: middle;">
-                                                    <i class="bi bi-clock-history"></i> CHỜ DUYỆT
+                                                var change = pendingChangesList.FirstOrDefault(pc => pc.PoiId == poi.PoiId);
+                                                string badgeText = change?.ChangeType == "delete" ? "CHỜ DUYỆT XÓA" : "CHỜ DUYỆT SỬA";
+                                                string badgeClass = change?.ChangeType == "delete" ? "bg-danger text-white" : "bg-warning text-dark";
+                                                <span class="badge rounded-pill @badgeClass ms-2" style="font-size: 0.65rem; font-weight: 700; padding: 0.3rem 0.6rem; vertical-align: middle;">
+                                                    <i class="bi bi-clock-history"></i> @badgeText
                                                 </span>
                                             }
                                         </div>
@@ -216,7 +219,7 @@
 
 @code {
     private List<Poi>? pois;
-    private HashSet<int> pendingPoiIds = new();
+    private List<PoiPendingChange> pendingChangesList = new();
     
     [CascadingParameter]
     private Task<AuthenticationState>? AuthStateTask { get; set; }
@@ -244,8 +247,7 @@
                 }
 
                 // Load pending changes to show badges
-                var pendingChanges = await PendingChangeService.GetPendingChangesAsync();
-                pendingPoiIds = pendingChanges.Select(pc => pc.PoiId).ToHashSet();
+                pendingChangesList = await PendingChangeService.GetPendingChangesAsync();
             }
         }
         catch (Exception ex)
@@ -259,13 +261,39 @@
     private void Edit(int id) => Navigator.NavigateTo($"/pois/edit/{id}");
     
     private async Task Delete(int id) {
-        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xóa quán ăn này không? Hành động này không thể hoàn tác.");
+        var authState = await AuthStateTask!;
+        var user = authState.User;
+        var poi = pois?.FirstOrDefault(p => p.PoiId == id);
+        if (poi == null) return;
+
+        string msg = user.IsInRole("admin") 
+            ? "Bạn có chắc chắn muốn xóa quán ăn này không? Hành động này không thể hoàn tác."
+            : "Bạn có chắc chắn muốn gửi yêu cầu XÓA quán ăn này? Hệ thống sẽ ẩn quán ngay sau khi Admin phê duyệt.";
+
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", msg);
         if (confirmed)
         {
-            if (await PoiService.DeletePoiAsync(id))
+            if (user.IsInRole("admin"))
             {
-                pois = pois?.Where(p => p.PoiId != id).ToList();
-                StateHasChanged();
+                if (await PoiService.DeletePoiAsync(id))
+                {
+                    pois = pois?.Where(p => p.PoiId != id).ToList();
+                    StateHasChanged();
+                }
+            }
+            else
+            {
+                // CNH: Create delete request
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(userIdStr, out var userId))
+                {
+                    if (await PendingChangeService.CreatePendingChangeAsync(poi, userId, "delete"))
+                    {
+                        await JSRuntime.InvokeVoidAsync("alert", "Yêu cầu xóa đã được gửi. Quán sẽ biến mất sau khi được Admin phê duyệt.");
+                        pendingChangesList = await PendingChangeService.GetPendingChangesAsync();
+                        StateHasChanged();
+                    }
+                }
             }
         }
     }

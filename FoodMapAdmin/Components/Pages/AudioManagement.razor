@@ -78,20 +78,20 @@
                             </td>
                             <td style="text-align: center;">
                                 <div class="play-action-btns">
-                                    <button class="btn-play-mini vi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "vi" && isActuallyPlaying ? "playing" : "")" 
+                                    <button class="btn-play-mini vi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "vi" && isActuallyPlaying && !isPaused ? "playing" : "")" 
                                             disabled="@(!group.Guides.Any(g => g.Language == "vi"))"
                                             @onclick="@(() => PlayAudio(group, "vi"))">
-                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "vi" && isActuallyPlaying ? "bi-stop-fill" : "bi-play-fill")"></i>
+                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "vi" && isActuallyPlaying && !isPaused ? "bi-pause-fill" : "bi-play-fill")"></i>
                                     </button>
-                                    <button class="btn-play-mini en @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "en" && isActuallyPlaying ? "playing" : "")" 
+                                    <button class="btn-play-mini en @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "en" && isActuallyPlaying && !isPaused ? "playing" : "")" 
                                             disabled="@(!group.Guides.Any(g => g.Language == "en"))"
                                             @onclick="@(() => PlayAudio(group, "en"))">
-                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "en" && isActuallyPlaying ? "bi-stop-fill" : "bi-play-fill")"></i>
+                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "en" && isActuallyPlaying && !isPaused ? "bi-pause-fill" : "bi-play-fill")"></i>
                                     </button>
-                                    <button class="btn-play-mini zh @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "zh" && isActuallyPlaying ? "playing" : "")" 
+                                    <button class="btn-play-mini zh @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "zh" && isActuallyPlaying && !isPaused ? "playing" : "")" 
                                             disabled="@(!group.Guides.Any(g => g.Language == "zh"))"
                                             @onclick="@(() => PlayAudio(group, "zh"))">
-                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "zh" && isActuallyPlaying ? "bi-stop-fill" : "bi-play-fill")"></i>
+                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "zh" && isActuallyPlaying && !isPaused ? "bi-pause-fill" : "bi-play-fill")"></i>
                                     </button>
                                 </div>
                             </td>
@@ -113,141 +113,39 @@
     </div>
 </div>
 
-@if (isPlayerVisible && currentPlayingPoi != null) {
-    <div class="audio-floating-player animate-slide-up">
+@if (isPlayerVisible && currentPlayingPoi != null)
+{
+    <div class="audio-player-fixed animate-slide-up">
         <div class="player-content">
             <div class="player-info">
-                <div class="playing-icon">
-                    <div class="bar"></div>
-                    <div class="bar"></div>
-                    <div class="bar"></div>
+                <div class="player-avatar">
+                    <i class="bi bi-mic-fill"></i>
                 </div>
-                <div>
-                    <div class="playing-title">Đang phát: @currentPlayingPoi.Name</div>
-                    <div class="playing-sub">@currentLang.ToUpper() • @ttsProgress%</div>
-                </div>
-            </div>
-            
-            <div class="player-progress">
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill" style="width: @ttsProgress%"></div>
+                <div class="player-text">
+                    <div class="player-poi-name">@currentPlayingPoi.Name</div>
+                    <div class="player-status">
+                        @if (isPaused) { <span class="text-warning">Đã tạm dừng</span> }
+                        else { <span class="text-primary">Đang thuyết minh...</span> }
+                    </div>
                 </div>
             </div>
 
-            <button class="btn-stop-player" @onclick="StopAudio">
-                <i class="bi bi-stop-circle-fill"></i> Dừng phát
-            </button>
+            <div class="player-controls">
+                <button class="player-btn toggle-btn" @onclick="TogglePlayPause">
+                    <i class="bi @(isPaused ? "bi-play-fill" : "bi-pause-fill")"></i>
+                </button>
+                <button class="player-btn stop-btn" @onclick="StopAudio">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+        <div class="player-progress-container">
+            <div class="player-progress-bar" style="width: @(ttsProgress)%"></div>
         </div>
     </div>
 }
 
-
 <style>
-    /* Floating Player */
-    .audio-floating-player {
-        position: fixed;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 90%;
-        max-width: 600px;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 45, 133, 0.2);
-        border-radius: 25px;
-        padding: 1.2rem 2rem;
-        box-shadow: 0 20px 50px rgba(255, 45, 133, 0.15);
-        z-index: 1000;
-    }
-
-    .player-content {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-    }
-
-    .player-info {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        flex: 1;
-        min-width: 0;
-    }
-
-    .playing-title {
-        font-weight: 900;
-        font-size: 0.95rem;
-        color: var(--text-main);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .playing-sub {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--primary);
-    }
-
-    .player-progress {
-        flex: 2;
-    }
-
-    .progress-bar-bg {
-        height: 6px;
-        background: rgba(0,0,0,0.05);
-        border-radius: 10px;
-        overflow: hidden;
-    }
-
-    .progress-bar-fill {
-        height: 100%;
-        background: linear-gradient(90deg, var(--primary), #FF7EB3);
-        border-radius: 10px;
-        transition: width 0.3s ease;
-    }
-
-    .btn-stop-player {
-        background: #FF4D4F;
-        color: white;
-        border: none;
-        padding: 0.6rem 1.2rem;
-        border-radius: 15px;
-        font-weight: 800;
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: all 0.2s;
-        box-shadow: 0 8px 15px rgba(255, 77, 79, 0.3);
-    }
-
-    .btn-stop-player:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 20px rgba(255, 77, 79, 0.4);
-    }
-
-    /* Playing Animation */
-    .playing-icon {
-        display: flex;
-        align-items: flex-end;
-        gap: 2px;
-        height: 16px;
-    }
-    .playing-icon .bar {
-        width: 3px;
-        background: var(--primary);
-        border-radius: 1px;
-        animation: bar-rise 0.8s infinite ease-in-out;
-    }
-    .playing-icon .bar:nth-child(2) { animation-delay: 0.2s; height: 100%; }
-    .playing-icon .bar:nth-child(3) { animation-delay: 0.4s; height: 60%; }
-
-    @@keyframes bar-rise {
-        0%, 100% { height: 30%; }
-        50% { height: 100%; }
-    }
     /* Stats Layout */
     .stats-row {
         display: grid;
@@ -344,7 +242,6 @@
     .btn-play-mini.vi:hover:not(:disabled) { background: #E6FFFA; color: #38B2AC; }
     .btn-play-mini.en:hover:not(:disabled) { background: #EBF4FF; color: #4299E1; }
     .btn-play-mini.zh:hover:not(:disabled) { background: #FFF5F5; color: #E53E3E; }
-    .btn-play-mini.ja:hover:not(:disabled) { background: #FFF0F0; color: #FF0000; }
     
     .btn-play-mini.playing {
         background: var(--primary) !important;
@@ -392,6 +289,56 @@
         border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;
     }
     @@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* Floating Player Styles */
+    .audio-player-fixed {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 600px;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 45, 133, 0.2);
+        border-radius: 25px;
+        box-shadow: 0 20px 50px rgba(255, 45, 133, 0.15);
+        z-index: 1000;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .player-content {
+        padding: 1rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .player-info { display: flex; align-items: center; gap: 1rem; }
+    .player-avatar {
+        width: 40px; height: 40px; background: var(--primary); color: white;
+        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem;
+    }
+    .player-poi-name { font-weight: 800; color: #1A1A1A; font-size: 1rem; line-height: 1.2; }
+    .player-status { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .player-controls { display: flex; gap: 0.8rem; }
+    .player-btn {
+        width: 40px; height: 40px; border-radius: 50%; border: none;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem; transition: all 0.2s;
+    }
+    .toggle-btn { background: var(--primary); color: white; box-shadow: 0 5px 15px var(--primary-glow); }
+    .toggle-btn:hover { transform: scale(1.1); }
+    .stop-btn { background: #f0f2f5; color: #666; }
+    .stop-btn:hover { background: #fee2e2; color: #ef4444; }
+
+    .player-progress-container { width: 100%; height: 4px; background: rgba(0,0,0,0.05); }
+    .player-progress-bar { height: 100%; background: var(--primary); transition: width 0.3s; }
+
+    .animate-slide-up { animation: playerSlideUp 0.5s cubic-bezier(0.19, 1, 0.22, 1); }
+    @@keyframes playerSlideUp { from { transform: translate(-50%, 100px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 </style>
 
 @code {
@@ -403,6 +350,7 @@
     private int ttsProgress = 0;
     private bool isPlayerVisible = false;
     private bool isActuallyPlaying = false;
+    private bool isPaused = false;
 
     public class PoiGroup {
         public Poi Poi { get; set; } = null!;
@@ -450,6 +398,7 @@
     [JSInvokable]
     public void OnTtsFinished() {
         isActuallyPlaying = false;
+        isPaused = false;
         ttsProgress = 100;
         Task.Delay(1000).ContinueWith(_ => {
             isPlayerVisible = false;
@@ -458,18 +407,47 @@
         });
     }
 
-    private async Task PlayAudio(PoiGroup group, string lang) {
-        if (currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == lang && isActuallyPlaying) {
-            await StopAudio();
-            return;
+    private async Task TogglePlayPause() {
+        if (!isActuallyPlaying) return;
+        if (!isPaused) {
+            await JSRuntime.InvokeVoidAsync("ttsHelper.pause");
+            isPaused = true;
+        } else {
+            await JSRuntime.InvokeVoidAsync("ttsHelper.resume");
+            isPaused = false;
         }
+        StateHasChanged();
+    }
 
+    private async Task PlayAudio(PoiGroup group, string lang) {
         var guide = group.Guides.FirstOrDefault(g => g.Language == lang);
         if (guide == null || string.IsNullOrEmpty(guide.Description)) return;
 
+        // Nếu có audio đang chạy...
+        if (isActuallyPlaying) {
+            // ...mà là cùng quán và cùng ngôn ngữ -> Toggle Pause/Resume
+            if (currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == lang) {
+                if (!isPaused) {
+                    await JSRuntime.InvokeVoidAsync("ttsHelper.pause");
+                    isPaused = true;
+                } else {
+                    await JSRuntime.InvokeVoidAsync("ttsHelper.resume");
+                    isPaused = false;
+                }
+                StateHasChanged();
+                return;
+            }
+            
+            // ...nếu là quán khác hoặc ngôn ngữ khác -> Không làm gì (Yêu cầu phải bấm Stop trước)
+            await JSRuntime.InvokeVoidAsync("alert", "Hệ thống đang phát thuyết minh khác. Vui lòng bấm Dừng (Stop) trước khi chọn thuyết minh mới.");
+            return;
+        }
+
+        // Nếu mới hoặc đổi quán (và không có cái nào đang chạy) -> Phát mới từ đầu
         currentPlayingPoi = group.Poi;
         currentLang = lang;
         ttsProgress = 0;
+        isPaused = false;
         isPlayerVisible = true;
         isActuallyPlaying = true;
         StateHasChanged();
@@ -477,10 +455,12 @@
         await JSRuntime.InvokeVoidAsync("ttsHelper.speak", guide.Description, lang);
     }
 
+
     private async Task StopAudio() {
         await JSRuntime.InvokeVoidAsync("ttsHelper.stop");
         isPlayerVisible = false;
         isActuallyPlaying = false;
+        isPaused = false;
         ttsProgress = 0;
         StateHasChanged();
     }

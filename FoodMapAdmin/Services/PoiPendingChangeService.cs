@@ -8,7 +8,7 @@ namespace FoodMapAdmin.Services
     {
         Task<List<PoiPendingChange>> GetPendingChangesAsync();
         Task<PoiPendingChange?> GetByIdAsync(int id);
-        Task<bool> CreatePendingChangeAsync(Poi poi, int userId);
+        Task<bool> CreatePendingChangeAsync(Poi poi, int userId, string changeType = "update");
         Task<bool> ApproveChangeAsync(int changeId);
         Task<bool> RejectChangeAsync(int changeId);
         Task<PoiPendingChange?> GetByPoiIdAsync(int poiId);
@@ -29,6 +29,7 @@ namespace FoodMapAdmin.Services
         {
             return await _context.PoiPendingChanges
                 .Include(p => p.Poi)
+                    .ThenInclude(p => p.Category)
                 .Include(p => p.Category)
                 .Include(p => p.Requester)
                 .Where(p => p.Status == "pending")
@@ -40,37 +41,60 @@ namespace FoodMapAdmin.Services
         {
             return await _context.PoiPendingChanges
                 .Include(p => p.Poi)
+                    .ThenInclude(p => p.Category)
                 .Include(p => p.Category)
                 .Include(p => p.Requester)
                 .FirstOrDefaultAsync(p => p.ChangeId == id);
         }
 
-        public async Task<bool> CreatePendingChangeAsync(Poi poi, int userId)
+        public async Task<bool> CreatePendingChangeAsync(Poi poi, int userId, string changeType = "update")
         {
-            // Check if there is already a pending change for this POI
-            var existing = await _context.PoiPendingChanges
-                .FirstOrDefaultAsync(p => p.PoiId == poi.PoiId && p.Status == "pending");
-
-            if (existing != null)
+            if (changeType == "update")
             {
-                // Update existing pending change
-                existing.Name = poi.Name;
-                existing.CategoryId = poi.CategoryId;
-                existing.Address = poi.Address;
-                existing.Latitude = poi.Latitude;
-                existing.Longitude = poi.Longitude;
-                existing.OpenTime = poi.OpenTime;
-                existing.RangeMeters = poi.RangeMeters;
-                existing.CreatedAt = DateTime.Now;
-                existing.UserId = userId;
-                _context.PoiPendingChanges.Update(existing);
+                // Check if there is already a pending change for this POI
+                var existing = await _context.PoiPendingChanges
+                    .FirstOrDefaultAsync(p => p.PoiId == poi.PoiId && p.Status == "pending" && p.ChangeType == "update");
+
+                if (existing != null)
+                {
+                    existing.Name = poi.Name;
+                    existing.CategoryId = poi.CategoryId;
+                    existing.Address = poi.Address;
+                    existing.Latitude = poi.Latitude;
+                    existing.Longitude = poi.Longitude;
+                    existing.OpenTime = poi.OpenTime;
+                    existing.RangeMeters = poi.RangeMeters;
+                    existing.CreatedAt = DateTime.Now;
+                    existing.UserId = userId;
+                    _context.PoiPendingChanges.Update(existing);
+                }
+                else
+                {
+                    var pending = new PoiPendingChange
+                    {
+                        PoiId = poi.PoiId,
+                        ChangeType = "update",
+                        CategoryId = poi.CategoryId,
+                        Name = poi.Name,
+                        Address = poi.Address,
+                        Latitude = poi.Latitude,
+                        Longitude = poi.Longitude,
+                        OpenTime = poi.OpenTime,
+                        RangeMeters = poi.RangeMeters,
+                        UserId = userId,
+                        Status = "pending",
+                        CreatedAt = DateTime.Now
+                    };
+                    _context.PoiPendingChanges.Add(pending);
+                }
             }
             else
             {
-                // Create new
+                // For 'create' or 'delete'
                 var pending = new PoiPendingChange
                 {
-                    PoiId = poi.PoiId,
+                    PoiId = changeType == "create" ? null : poi.PoiId,
+                    ChangeType = changeType,
                     CategoryId = poi.CategoryId,
                     Name = poi.Name,
                     Address = poi.Address,
@@ -88,40 +112,114 @@ namespace FoodMapAdmin.Services
             var result = await _context.SaveChangesAsync() > 0;
             if (result)
             {
-                await _logger.LogAsync(userId, "Yêu cầu thay đổi", poi.Name, $"Đã gửi yêu cầu cập nhật thông tin cho {poi.Name}");
+                string actionLabel = changeType == "create" ? "Yêu cầu thêm mới" : (changeType == "delete" ? "Yêu cầu xóa" : "Yêu cầu thay đổi");
+                await _logger.LogAsync(userId, actionLabel, poi.Name, $"Đã gửi {actionLabel.ToLower()} cho {poi.Name}");
             }
             return result;
         }
 
         public async Task<bool> ApproveChangeAsync(int changeId)
         {
-            var pending = await _context.PoiPendingChanges.FindAsync(changeId);
-            if (pending == null) return false;
-
-            var poi = await _context.Pois.FindAsync(pending.PoiId);
-            if (poi == null) return false;
-
-            // Apply changes to the main POI
-            poi.Name = pending.Name ?? poi.Name;
-            poi.CategoryId = pending.CategoryId ?? poi.CategoryId;
-            poi.Address = pending.Address ?? poi.Address;
-            poi.Latitude = pending.Latitude ?? poi.Latitude;
-            poi.Longitude = pending.Longitude ?? poi.Longitude;
-            poi.OpenTime = pending.OpenTime ?? poi.OpenTime;
-            poi.RangeMeters = pending.RangeMeters;
-
-            // Update status
-            pending.Status = "approved";
-
-            _context.Pois.Update(poi);
-            _context.PoiPendingChanges.Update(pending);
-
-            var result = await _context.SaveChangesAsync() > 0;
-            if (result)
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try 
             {
-                await _logger.LogAsync(null, "Phê duyệt thay đổi", poi.Name, $"Admin đã phê duyệt thay đổi cho {poi.Name}");
+                var pending = await _context.PoiPendingChanges
+                    .Include(p => p.Poi)
+                    .FirstOrDefaultAsync(p => p.ChangeId == changeId);
+                
+                if (pending == null) return false;
+
+                string actionLabel = "";
+                string poiName = pending.Name ?? "Quán ăn";
+
+                if (pending.ChangeType == "create")
+                {
+                    // Case 1: Approve addition of a new POI
+                    var newPoi = new Poi
+                    {
+                        Name = pending.Name ?? "",
+                        CategoryId = pending.CategoryId,
+                        Address = pending.Address,
+                        Latitude = pending.Latitude,
+                        Longitude = pending.Longitude,
+                        OpenTime = pending.OpenTime,
+                        RangeMeters = pending.RangeMeters,
+                        UserId = pending.UserId, // The original requester becomes the owner
+                        CreatedAt = DateTime.Now
+                    };
+                    
+                    _context.Pois.Add(newPoi);
+                    await _context.SaveChangesAsync(); // Save POI first to generate Its ID
+
+                    // Crucial: Update the pending record with the newly created PoiId
+                    pending.PoiId = newPoi.PoiId; 
+                    actionLabel = "Phê duyệt thêm mới";
+                }
+                else if (pending.ChangeType == "delete")
+                {
+                    // Case 2: Approve deletion of an existing POI
+                    if (pending.PoiId.HasValue)
+                    {
+                        var poi = await _context.Pois
+                            .Include(p => p.Images)
+                            .Include(p => p.Guides)
+                            .Include(p => p.Reviews)
+                            .FirstOrDefaultAsync(p => p.PoiId == pending.PoiId.Value);
+
+                        if (poi != null) 
+                        {
+                            // Clear related data first (though Cascade Delete might handle this, explicit is safer)
+                            if (poi.Images?.Any() == true) _context.PoiImages.RemoveRange(poi.Images);
+                            if (poi.Guides?.Any() == true) _context.PoiGuides.RemoveRange(poi.Guides);
+                            if (poi.Reviews?.Any() == true) _context.Reviews.RemoveRange(poi.Reviews);
+                            
+                            _context.Pois.Remove(poi);
+                            actionLabel = "Phê duyệt xóa";
+                        }
+                    }
+                }
+                else // default is "update"
+                {
+                    // Case 3: Approve changes to an existing POI
+                    if (pending.PoiId.HasValue)
+                    {
+                        var poi = await _context.Pois.FindAsync(pending.PoiId.Value);
+                        if (poi != null)
+                        {
+                            poi.Name = pending.Name ?? poi.Name;
+                            poi.CategoryId = pending.CategoryId ?? poi.CategoryId;
+                            poi.Address = pending.Address ?? poi.Address;
+                            poi.Latitude = pending.Latitude ?? poi.Latitude;
+                            poi.Longitude = pending.Longitude ?? poi.Longitude;
+                            poi.OpenTime = pending.OpenTime ?? poi.OpenTime;
+                            poi.RangeMeters = pending.RangeMeters;
+                            
+                            _context.Pois.Update(poi);
+                            actionLabel = "Phê duyệt thay đổi";
+                        }
+                    }
+                }
+
+                // Mark the request as approved
+                pending.Status = "approved";
+                _context.PoiPendingChanges.Update(pending);
+
+                // Log the action
+                string logDetails = $"Admin đã phê duyệt yêu cầu {pending.ChangeType} cho quán {poiName}";
+                _logger.LogToContext(null, actionLabel != "" ? actionLabel : "Phê duyệt", poiName, logDetails);
+                
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
             }
-            return result;
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                // Capture inner exception for more details (useful for DB constraint errors)
+                var errorMsg = ex.InnerException != null ? $"{ex.Message} -> {ex.InnerException.Message}" : ex.Message;
+                Console.WriteLine($"[Approve Error] {errorMsg}");
+                throw new Exception($"Lỗi thực thi database: {errorMsg}", ex);
+            }
         }
 
         public async Task<bool> RejectChangeAsync(int changeId)
@@ -135,11 +233,12 @@ namespace FoodMapAdmin.Services
             var result = await _context.SaveChangesAsync() > 0;
             if (result)
             {
-                var poi = await _context.Pois.FindAsync(pending.PoiId);
-                await _logger.LogAsync(null, "Từ chối thay đổi", poi?.Name ?? "Unknown", $"Admin đã từ chối thay đổi cho {poi?.Name ?? "Unknown"}");
+                string poiName = pending.Name ?? "Quán ăn";
+                await _logger.LogAsync(null, "Từ chối thay đổi", poiName, $"Admin đã từ chối yêu cầu {pending.ChangeType} cho {poiName}");
             }
             return result;
         }
+
 
         public async Task<PoiPendingChange?> GetByPoiIdAsync(int poiId)
         {

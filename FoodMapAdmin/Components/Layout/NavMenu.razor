@@ -4,29 +4,54 @@
     </div>
 
     <nav class="nav-menu">
-        <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
-            <i class="bi bi-grid-1x2-fill"></i> Tổng quan
-        </NavLink>
+        <AuthorizeView Roles="admin">
+            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                <i class="bi bi-grid-1x2-fill"></i> Tổng quan
+            </NavLink>
+        </AuthorizeView>
 
-        <NavLink class="nav-link" href="/pois">
-            <i class="bi bi-shop-window"></i> Quán ăn & Địa điểm
-        </NavLink>
+        <!-- Q.Lý Cửa Hàng - Admin Version (with Dropdown) -->
+        <AuthorizeView Roles="admin">
+            <div class="nav-item-group">
+                <div class="nav-link nav-link-item @(isPoisExpanded ? "is-expanded" : "")" @onclick="TogglePois">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="bi bi-shop-window"></i> Q.Lý Cửa Hàng
+                    </div>
+                    <i class="bi bi-chevron-down dropdown-arrow"></i>
+                </div>
+                
+                <div class="submenu-wrapper">
+                    <NavLink class="nav-link nav-link-sub" href="/pois">
+                        <i class="bi bi-list-ul"></i> Danh sách
+                    </NavLink>
+
+                    <NavLink class="nav-link nav-link-sub" href="/moderation">
+                        <i class="bi bi-shield-check"></i> Phê duyệt
+                    </NavLink>
+
+                    <NavLink class="nav-link nav-link-sub" href="/categories">
+                        <i class="bi bi-tags-fill"></i> Danh mục
+                    </NavLink>
+                </div>
+            </div>
+        </AuthorizeView>
+
+        <!-- Q.Lý Cửa Hàng - Chủ Quán Version (Direct Link) -->
+        <AuthorizeView Roles="CNH">
+            <NavLink class="nav-link" href="/pois">
+                <i class="bi bi-shop-window"></i> Q.Lý Cửa Hàng
+            </NavLink>
+        </AuthorizeView>
 
         <NavLink class="nav-link" href="/images">
             <i class="bi bi-image-fill"></i> Quản lý hình ảnh
         </NavLink>
 
-        <NavLink class="nav-link" href="/audio-management">
-            <i class="bi bi-mic-fill"></i> Hướng dẫn Audio
-        </NavLink>
-
         <AuthorizeView Roles="admin">
-            <NavLink class="nav-link" href="/moderation">
-                <i class="bi bi-shield-check"></i> Phê duyệt
+            <NavLink class="nav-link" href="/audio-management">
+                <i class="bi bi-mic-fill"></i> Hướng dẫn Audio
             </NavLink>
-            <NavLink class="nav-link" href="/categories">
-                <i class="bi bi-tags-fill"></i> Danh mục
-            </NavLink>
+
             <NavLink class="nav-link" href="/users">
                 <i class="bi bi-people-fill"></i> Người dùng
             </NavLink>
@@ -37,6 +62,26 @@
                 <i class="bi bi-box-arrow-right"></i> Đăng xuất
             </a>
         </div>
-
     </nav>
 </aside>
+
+@code {
+    private bool isPoisExpanded = false;
+
+    @inject NavigationManager Navigation
+
+    protected override void OnInitialized()
+    {
+        // Auto-expand if on related pages
+        var uri = Navigation.Uri.ToLower();
+        if (uri.Contains("/pois") || uri.Contains("/moderation") || uri.Contains("/categories"))
+        {
+            isPoisExpanded = true;
+        }
+    }
+
+    private void TogglePois()
+    {
+        isPoisExpanded = !isPoisExpanded;
+    }
+}

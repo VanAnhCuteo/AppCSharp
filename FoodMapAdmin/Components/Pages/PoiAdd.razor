@@ -4,9 +4,11 @@
 @using FoodMapAdmin.Models
 @using FoodMapAdmin.Services
 @inject IPoiService PoiService
+@inject IPoiPendingChangeService PendingChangeService
 @inject ICategoryService CategoryService
 @inject IUserService UserService
 @inject NavigationManager Navigator
+@inject IJSRuntime JSRuntime
 @attribute [Authorize(Roles = "admin,CNH")]
 
 <div class="d-flex justify-content-between align-items-center mb-5 mt-2">
@@ -86,8 +88,27 @@ else
 
     private async Task HandleSubmit()
     {
-        await PoiService.CreatePoiAsync(newPoi);
-        Navigator.NavigateTo("/pois");
+        var authState = await AuthStateTask!;
+        var user = authState.User;
+        
+        if (user.IsInRole("admin"))
+        {
+            await PoiService.CreatePoiAsync(newPoi);
+            Navigator.NavigateTo("/pois");
+        }
+        else
+        {
+            // Owner: Create a pending change request
+            var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(userIdStr, out var userId))
+            {
+                if (await PendingChangeService.CreatePendingChangeAsync(newPoi, userId, "create"))
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Yêu cầu thêm quán mới của bạn đã được gửi và đang chờ Admin phê duyệt.");
+                    Navigator.NavigateTo("/pois");
+                }
+            }
+        }
     }
 
     private void HandleCancel() => Navigator.NavigateTo("/pois");

@@ -2,108 +2,120 @@ window.ttsHelper = {
     voices: [],
     dotNetRef: null,
     isPlaying: false,
-    currentUtterance: null, // Giữ tham chiếu để tránh bị Garbage Collector xóa
+    _heartbeat: null,
 
-    langMap: { 'vi': 'vi-VN', 'en': 'en-US', 'zh': 'zh-CN' },
-
+    // 1. Khởi động (Init)
     init: async function (dotNetRef) {
         this.dotNetRef = dotNetRef;
-        this.voices = await this._getVoicesAsync();
-
-        window.speechSynthesis.onvoiceschanged = () => {
-            const newVoices = window.speechSynthesis.getVoices();
-            if (newVoices.length > 0) {
-                this.voices = newVoices;
-            }
-        };
-    },
-
-    _getVoicesAsync: function () {
-        return new Promise(resolve => {
-            let v = window.speechSynthesis.getVoices();
-            if (v.length > 0) { resolve(v); return; }
-
-            let attempts = 0;
-            const timer = setInterval(() => {
-                const refreshed = window.speechSynthesis.getVoices();
-                if (refreshed.length > 0 || attempts > 20) {
-                    clearInterval(timer);
-                    resolve(refreshed);
-                }
-                attempts++;
-            }, 100);
-        });
-    },
-
-    _pickVoice: function (voices, langCode) {
-        const prefs = {
-            'vi': ['Microsoft HoaiMy Online (Natural)', 'Microsoft NamMinh Online (Natural)', 'Google Tiếng Việt', 'Microsoft An'],
-            'en': ['Microsoft Aria Online (Natural)', 'Google US English'],
-            'zh': ['Microsoft Xiaoxiao Online (Natural)']
-        };
-        const list = prefs[langCode] || prefs['en'];
-
-        for (const name of list) {
-            const found = voices.find(v => v.name.includes(name));
-            if (found) return found;
+        this.voices = window.speechSynthesis.getVoices();
+        
+        if (this.voices.length === 0) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                this.voices = window.speechSynthesis.getVoices();
+            };
         }
 
-        const prefix = { 'vi': 'vi', 'en': 'en', 'zh': 'zh' }[langCode] || 'en';
-        return voices.find(v => v.lang.toLowerCase().startsWith(prefix)) || null;
-    },
-
-    speak: function (text, langCode) {
-        if (!text || !text.trim()) return;
-
-        // 1. Dừng mọi phát âm đang chạy ngay lập tức
-        this.stop();
-
-        // 2. Làm sạch văn bản: Loại bỏ xuống dòng thừa và chuẩn hóa NFC
-        const cleanText = text.replace(/[\r\n]+/g, ' ').trim().normalize('NFC');
-
-        const mappedLang = this.langMap[langCode] || 'vi-VN';
-        const voice = this._pickVoice(this.voices, langCode);
-
-        // 3. Khởi tạo Utterance và gán vào biến object để tránh bị GC dọn dẹp
-        this.currentUtterance = new SpeechSynthesisUtterance(cleanText);
-        this.currentUtterance.lang = mappedLang;
-        if (voice) this.currentUtterance.voice = voice;
-
-        // Tinh chỉnh thông số để mượt hơn
-        this.currentUtterance.rate = 1.0;
-        this.currentUtterance.pitch = 1.0;
-
-        this.currentUtterance.onstart = () => {
-            this.isPlaying = true;
-            if (this.dotNetRef) this.dotNetRef.invokeMethodAsync('OnTtsProgress', 0).catch(() => { });
-        };
-
-        this.currentUtterance.onend = () => {
-            this.isPlaying = false;
-            this.currentUtterance = null; // Giải phóng bộ nhớ
-            if (this.dotNetRef) this.dotNetRef.invokeMethodAsync('OnTtsFinished').catch(() => { });
-        };
-
-        this.currentUtterance.onerror = (e) => {
-            console.error("[TTS] Error:", e);
-            this.isPlaying = false;
-            this.currentUtterance = null;
-            if (this.dotNetRef) this.dotNetRef.invokeMethodAsync('OnTtsFinished').catch(() => { });
-        };
-
-        // 4. Mẹo quan trọng cho Edge/Chrome: Resume trước khi Speak để "đánh thức" engine
-        window.speechSynthesis.resume();
-
-        // Delay nhẹ để đảm bảo lệnh cancel() trước đó đã hoàn tất xử lý luồng
+        // Warm-up: Chuẩn bị sẵn engine âm thanh
         setTimeout(() => {
-            window.speechSynthesis.speak(this.currentUtterance);
-        }, 100);
+            ['vi', 'en', 'zh'].forEach(lang => {
+                const u = new SpeechSynthesisUtterance(' ');
+                u.volume = 0;
+                u.voice = this.pickVoice(lang);
+                window.speechSynthesis.speak(u);
+            });
+        }, 1000);
     },
 
-    stop: function () {
-        this.isPlaying = false;
-        if (window.speechSynthesis.speaking) {
-            window.speechSynthesis.cancel();
+    // 2. Chọn giọng đọc (Ưu tiên Online/Neural)
+    pickVoice: function (langCode) {
+        const prefs = {
+            'vi': ['Nam Minh', 'Hoai My', 'Google Vietnamese', 'NamMinhNeural', 'HoaiMyNeural'],
+            'en': ['Aria Online', 'AriaNeural', 'Google US English', 'David', 'Zira'],
+            'zh': ['Xiaoxiao Online', 'XiaoxiaoNeural', 'Google 普通话', 'Huihui', 'Kangkang']
+        };
+
+        const list = prefs[langCode] || prefs['en'];
+        
+        for (const name of list) {
+            const found = this.voices.find(v => v.name.includes(name));
+            if (found) {
+                console.log(`[TTS] Selected Voice (${langCode}): ${found.name}`);
+                return found;
+            }
         }
+
+        const matched = this.voices.filter(v => v.lang.toLowerCase().startsWith(langCode));
+        const fallback = matched.find(v => v.name.includes('Online') || v.name.includes('Natural') || v.name.includes('Neural'))
+            || matched.find(v => v.name.includes('Google'))
+            || matched[0] 
+            || null;
+            
+        if (fallback) console.log(`[TTS] Fallback Voice (${langCode}): ${fallback.name}`);
+        return fallback;
+    },
+
+    // 3. Phát âm thanh (Speak)
+    async speak(text, langCode) {
+        this.stop(false); // Clear old audio without notifying Blazor
+        if (!text) return;
+
+        await new Promise(r => setTimeout(r, 50));
+
+        const cleanText = text.normalize('NFC').replace(/\s+/g, ' ').trim();
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        
+        const voice = this.pickVoice(langCode);
+        if (voice) {
+            utterance.voice = voice;
+            utterance.lang = voice.lang;
+        } else {
+            utterance.lang = langCode === 'vi' ? 'vi-VN' : (langCode === 'zh' ? 'zh-CN' : 'en-US');
+        }
+
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+
+        utterance.onstart = () => {
+            this.isPlaying = true;
+            this._startHeartbeat();
+            if (this.dotNetRef) this.dotNetRef.invokeMethodAsync('OnTtsProgress', 50).catch(() => {});
+        };
+
+        utterance.onend = () => this.stop();
+        utterance.onerror = () => this.stop();
+
+        window.speechSynthesis.speak(utterance);
+    },
+
+    // 4. Tạm dừng (Pause)
+    pause() {
+        window.speechSynthesis.pause();
+        this._stopHeartbeat();
+    },
+
+    // 5. Tiếp tục (Resume)
+    resume() {
+        window.speechSynthesis.resume();
+        this._startHeartbeat();
+    },
+
+    // 6. Dừng hẳn (Stop)
+    stop(notify = true) {
+        this.isPlaying = false;
+        this._stopHeartbeat();
+        window.speechSynthesis.cancel();
+        if (notify && this.dotNetRef) {
+            this.dotNetRef.invokeMethodAsync('OnTtsFinished').catch(() => {});
+        }
+    },
+
+    _startHeartbeat: function () {
+        this._stopHeartbeat();
+        this._heartbeat = setInterval(() => window.speechSynthesis.resume(), 10000);
+    },
+
+    _stopHeartbeat: function () {
+        if (this._heartbeat) clearInterval(this._heartbeat);
+        this._heartbeat = null;
     }
 };
