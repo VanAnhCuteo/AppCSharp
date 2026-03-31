@@ -1,0 +1,193 @@
+@page "/moderation"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IPoiPendingChangeService PendingChangeService
+@inject IPoiService PoiService
+@inject IJSRuntime JSRuntime
+@attribute [Authorize(Roles = "admin")]
+
+<PageTitle>Phê duyệt thay đổi - FoodMap Admin</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Phê duyệt thay đổi</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Xem xét các yêu cầu chỉnh sửa thông tin từ các chủ nhà hàng</p>
+    </div>
+</div>
+
+@if (pendingRequests == null)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+    </div>
+}
+else if (!pendingRequests.Any())
+{
+    <div class="card shadow-glass text-center py-5" style="border-radius: 35px;">
+        <i class="bi bi-check-circle text-success mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+        <h4 class="text-muted">Không có yêu cầu nào đang chờ xử lý</h4>
+        <p class="text-muted">Tất cả các thay đổi đã được giải quyết.</p>
+    </div>
+}
+else
+{
+    <div class="row">
+        <div class="col-12">
+            @foreach (var request in pendingRequests)
+            {
+                <div class="card shadow-glass mb-4 overflow-hidden border-0" style="border-radius: 25px; background: var(--surface);">
+                    <div class="card-header bg-white border-0 p-4 d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div>
+                                <h5 class="mb-0" style="font-weight: 800; color: var(--text-main); font-size: 1.2rem;">@request.Poi?.Name</h5>
+                                <span class="text-muted" style="font-size: 0.85rem;">
+                                    ID: <strong>#@request.PoiId</strong> <span class="mx-2">|</span>
+                                    Người yêu cầu: <strong>@request.Requester?.Username</strong> 
+                                    <span class="mx-2">•</span> 
+                                    Thời gian: @request.CreatedAt?.ToString("HH:mm dd/MM/yyyy")
+                                </span>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn glass-btn-success" @onclick="() => Approve(request)">
+                                <i class="bi bi-check-lg me-1"></i> Phê duyệt
+                            </button>
+                            <button class="btn btn-outline-danger btn-reject" @onclick="() => Reject(request)">
+                                <i class="bi bi-x-lg me-1"></i> Từ chối
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table mb-0 align-middle" style="border-style: hidden; table-layout: fixed;">
+                                <thead style="background: rgba(255, 45, 133, 0.02);">
+                                    <tr>
+                                        <th style="width: 25%; padding: 1.2rem 1.5rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); border: none;">Trường dữ liệu</th>
+                                        <th style="width: 37.5%; padding: 1.2rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); border: none;">Giá trị hiện tại</th>
+                                        <th style="width: 37.5%; padding: 1.2rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); border: none;">Yêu cầu thay đổi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @renderDiffRow("Tên quán ăn", request.Poi?.Name, request.Name)
+                                    @renderDiffRow("Địa chỉ", request.Poi?.Address, request.Address)
+                                    @renderDiffRow("Giờ mở cửa", request.Poi?.OpenTime, request.OpenTime)
+                                    @renderDiffRow("Vĩ độ (Lat)", request.Poi?.Latitude?.ToString(), request.Latitude?.ToString())
+                                    @renderDiffRow("Kinh độ (Lng)", request.Poi?.Longitude?.ToString(), request.Longitude?.ToString())
+                                    @renderDiffRow("Bán kính quét", request.Poi?.RangeMeters.ToString(), request.RangeMeters.ToString())
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private List<PoiPendingChange>? pendingRequests;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        pendingRequests = await PendingChangeService.GetPendingChangesAsync();
+    }
+
+    private async Task Approve(PoiPendingChange request)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn PHE DUYỆT thay đổi này không? Dữ liệu chính thức sẽ được cập nhật ngay lập tức."))
+        {
+            if (await PendingChangeService.ApproveChangeAsync(request.ChangeId))
+            {
+                await LoadData();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task Reject(PoiPendingChange request)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn TỪ CHỐI thay đổi này không?"))
+        {
+            if (await PendingChangeService.RejectChangeAsync(request.ChangeId))
+            {
+                await LoadData();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private RenderFragment renderDiffRow(string label, string? oldValue, string? newValue) => __builder => {
+        bool isChanged = oldValue != newValue;
+        <tr class="@(isChanged ? "table-warning-custom" : "")">
+            <td style="padding: 1.2rem 1.5rem; font-weight: 700; color: var(--text-muted);">@label</td>
+            <td class="text-muted" style="padding: 1.2rem; font-family: inherit; font-size: 0.95rem;">@oldValue</td>
+            <td style="padding: 1.2rem; font-weight: 800; color: @(isChanged ? "var(--primary)" : "var(--text-main)"); font-size: 0.95rem;">
+                @newValue
+                @if (isChanged) {
+                    <i class="bi bi-arrow-left-short ms-1" style="opacity: 0.5;"></i>
+                }
+            </td>
+        </tr>
+    };
+}
+
+<style>
+    .req-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        box-shadow: 0 8px 20px var(--primary-glow);
+    }
+
+    .glass-btn-success {
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 0.6rem 1.2rem;
+        font-weight: 700;
+        box-shadow: 0 10px 20px rgba(46, 204, 113, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    .glass-btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px rgba(46, 204, 113, 0.3);
+        color: white;
+    }
+
+    .btn-reject {
+        border-radius: 12px;
+        padding: 0.6rem 1.2rem;
+        font-weight: 700;
+        transition: all 0.3s ease;
+    }
+
+    .btn-reject:hover {
+        background: #ff4d4f;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .table-warning-custom {
+        background: rgba(255, 193, 7, 0.04) !important;
+    }
+
+    .table-warning-custom td:last-child {
+        background: rgba(255, 45, 133, 0.03);
+    }
+</style>

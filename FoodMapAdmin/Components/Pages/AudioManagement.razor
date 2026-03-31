@@ -21,37 +21,6 @@
     </button>
 </div>
 
-<!-- Stats / Filters -->
-<div class="stats-row mb-4 animate-slide-up">
-    <div class="stat-glass">
-        <div class="stat-icon"><i class="bi bi-geo-alt-fill"></i></div>
-        <div class="stat-info">
-            <span class="sv">@(poiGroups?.Count ?? 0)</span>
-            <span class="sl">Địa điểm</span>
-        </div>
-    </div>
-    <div class="stat-glass">
-        <div class="stat-icon vi">🇻🇳</div>
-        <div class="stat-info">
-            <span class="sv">@(poiGroups?.Count(g => g.Guides.Any(gu => gu.Language == "vi")) ?? 0)</span>
-            <span class="sl">Tiếng Việt</span>
-        </div>
-    </div>
-    <div class="stat-glass">
-        <div class="stat-icon en">🇬🇧</div>
-        <div class="stat-info">
-            <span class="sv">@(poiGroups?.Count(g => g.Guides.Any(gu => gu.Language == "en")) ?? 0)</span>
-            <span class="sl">Tiếng Anh</span>
-        </div>
-    </div>
-    <div class="stat-glass">
-        <div class="stat-icon zh">🇨🇳</div>
-        <div class="stat-info">
-            <span class="sv">@(poiGroups?.Count(g => g.Guides.Any(gu => gu.Language == "zh")) ?? 0)</span>
-            <span class="sl">Tiếng Trung</span>
-        </div>
-    </div>
-</div>
 
 <!-- Table Section -->
 <div class="card shadow-glass border-0 animate-stagger" style="border-radius: 30px; overflow: hidden; background: var(--surface);">

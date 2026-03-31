@@ -1,176 +1,109 @@
-/**
- * TTS Helper - FoodMapAdmin
- * Optimized for Edge & Chrome: Natural voice selection + 15s bug fix.
- * Voice preference: Google Natural > Microsoft Online > System local.
- */
 window.ttsHelper = {
     voices: [],
     dotNetRef: null,
     isPlaying: false,
-    resumeTimer: null,
-    totalChunks: 0,
-    currentChunkIndex: 0,
-    pendingChunks: [],
-    currentMappedLang: '',
-    currentVoice: null,
+    currentUtterance: null, // Giữ tham chiếu để tránh bị Garbage Collector xóa
 
     langMap: { 'vi': 'vi-VN', 'en': 'en-US', 'zh': 'zh-CN' },
 
     init: async function (dotNetRef) {
         this.dotNetRef = dotNetRef;
         this.voices = await this._getVoicesAsync();
+
+        window.speechSynthesis.onvoiceschanged = () => {
+            const newVoices = window.speechSynthesis.getVoices();
+            if (newVoices.length > 0) {
+                this.voices = newVoices;
+            }
+        };
     },
 
     _getVoicesAsync: function () {
         return new Promise(resolve => {
-            const v = window.speechSynthesis.getVoices();
+            let v = window.speechSynthesis.getVoices();
             if (v.length > 0) { resolve(v); return; }
-            window.speechSynthesis.onvoiceschanged = () => {
-                resolve(window.speechSynthesis.getVoices());
-            };
-            // Fallback 2s
-            setTimeout(() => resolve(window.speechSynthesis.getVoices()), 2000);
+
+            let attempts = 0;
+            const timer = setInterval(() => {
+                const refreshed = window.speechSynthesis.getVoices();
+                if (refreshed.length > 0 || attempts > 20) {
+                    clearInterval(timer);
+                    resolve(refreshed);
+                }
+                attempts++;
+            }, 100);
         });
     },
 
     _pickVoice: function (voices, langCode) {
-        // Danh sách giọng ưu tiên - Google > Microsoft Online > Microsoft local
         const prefs = {
-            'vi': ['Google Vietnamese', 'Microsoft Nam Minh Online', 'vi-VN-NamMinhNeural', 'Microsoft Hoai My Online', 'vi-VN-HoaiMyNeural'],
-            'en': ['Google US English', 'Microsoft Aria Online (Natural)', 'Microsoft Guy Online (Natural)', 'Microsoft David', 'Microsoft Zira'],
-            'zh': ['Google Chinese (Simplified)', 'Microsoft Xiaoxiao Online (Natural)', 'Microsoft Yunxi Online (Natural)']
+            'vi': ['Microsoft HoaiMy Online (Natural)', 'Microsoft NamMinh Online (Natural)', 'Google Tiếng Việt', 'Microsoft An'],
+            'en': ['Microsoft Aria Online (Natural)', 'Google US English'],
+            'zh': ['Microsoft Xiaoxiao Online (Natural)']
         };
         const list = prefs[langCode] || prefs['en'];
-        
+
         for (const name of list) {
-            const found = voices.find(v => v.name === name || v.name.includes(name));
+            const found = voices.find(v => v.name.includes(name));
             if (found) return found;
         }
 
-        // Fallback
         const prefix = { 'vi': 'vi', 'en': 'en', 'zh': 'zh' }[langCode] || 'en';
-        const matched = voices.filter(v => v.lang.toLowerCase().startsWith(prefix));
-        return matched.length > 0 ? matched[0] : null;
+        return voices.find(v => v.lang.toLowerCase().startsWith(prefix)) || null;
     },
 
-    _splitText: function (text) {
-        if (!text || !text.trim()) return [];
-        const sentences = text.match(/[^.!?。！？\n,，;；]+[.!?。！？\n,，;；]?/g) || [text];
-        const chunks = [];
-        let buffer = '';
-
-        for (const s of sentences) {
-            const t = s.trim();
-            if (!t) continue;
-            const newBuffer = buffer ? buffer + ' ' + t : t;
-            if (newBuffer.length >= 120) {
-                if (buffer) { chunks.push(buffer); buffer = t; }
-                else { chunks.push(newBuffer); buffer = ''; }
-            } else { buffer = newBuffer; }
-        }
-        if (buffer.trim()) chunks.push(buffer.trim());
-        return chunks;
-    },
-
-    _startKeepAlive: function () {
-        this._stopKeepAlive();
-        this.resumeTimer = setInterval(() => {
-            if (this.isPlaying && window.speechSynthesis.speaking) {
-                window.speechSynthesis.pause();
-                window.speechSynthesis.resume();
-            }
-        }, 10000);
-    },
-
-    _stopKeepAlive: function () {
-        if (this.resumeTimer) { clearInterval(this.resumeTimer); this.resumeTimer = null; }
-    },
-
-    speak: async function (text, langCode) {
+    speak: function (text, langCode) {
         if (!text || !text.trim()) return;
-        console.log(`[TTS] Speaking in "${langCode}": ${text.substring(0, 50)}...`);
+
+        // 1. Dừng mọi phát âm đang chạy ngay lập tức
         this.stop();
 
-        if (this.voices.length === 0) {
-            console.log('[TTS] Voices empty, fetching...');
-            this.voices = await this._getVoicesAsync();
-        }
-        
-        this.currentMappedLang = this.langMap[langCode] || 'vi-VN';
-        this.currentVoice = this._pickVoice(this.voices, langCode);
-        
-        if (this.currentVoice) {
-            console.log(`[TTS] Selected voice: ${this.currentVoice.name} (${this.currentVoice.lang})`);
-        } else {
-            console.warn(`[TTS] No perfect voice found for ${langCode}, relying on browser default for ${this.currentMappedLang}`);
-        }
+        // 2. Làm sạch văn bản: Loại bỏ xuống dòng thừa và chuẩn hóa NFC
+        const cleanText = text.replace(/[\r\n]+/g, ' ').trim().normalize('NFC');
 
-        const chunks = this._splitText(text);
-        if (chunks.length === 0) return;
+        const mappedLang = this.langMap[langCode] || 'vi-VN';
+        const voice = this._pickVoice(this.voices, langCode);
 
-        this.isPlaying = true;
-        this.totalChunks = chunks.length;
-        this.currentChunkIndex = 0;
-        this.pendingChunks = chunks;
+        // 3. Khởi tạo Utterance và gán vào biến object để tránh bị GC dọn dẹp
+        this.currentUtterance = new SpeechSynthesisUtterance(cleanText);
+        this.currentUtterance.lang = mappedLang;
+        if (voice) this.currentUtterance.voice = voice;
 
-        this._startKeepAlive();
-        this._speakNext();
-    },
+        // Tinh chỉnh thông số để mượt hơn
+        this.currentUtterance.rate = 1.0;
+        this.currentUtterance.pitch = 1.0;
 
-    _speakNext: function () {
-        if (!this.isPlaying || this.currentChunkIndex >= this.pendingChunks.length) {
-            if (this.isPlaying) {
-                this.isPlaying = false;
-                this._stopKeepAlive();
-                this._notifyFinished();
-            }
-            return;
-        }
-
-        const chunk = this.pendingChunks[this.currentChunkIndex];
-        const utt = new SpeechSynthesisUtterance(chunk);
-        utt.lang = this.currentMappedLang;
-        if (this.currentVoice) utt.voice = this.currentVoice;
-        
-        utt.rate = 1.0;
-        utt.pitch = 1.0;
-        utt.volume = 1.0;
-
-        utt.onstart = () => { this._notifyProgress(); };
-        utt.onend = () => {
-            if (!this.isPlaying) return;
-            this.currentChunkIndex++;
-            this._speakNext();
-        };
-        utt.onerror = (e) => {
-            if (e.error === 'interrupted' || e.error === 'canceled') return;
-            console.warn('TTS error:', e.error);
-            this.currentChunkIndex++;
-            setTimeout(() => this._speakNext(), 150);
+        this.currentUtterance.onstart = () => {
+            this.isPlaying = true;
+            if (this.dotNetRef) this.dotNetRef.invokeMethodAsync('OnTtsProgress', 0).catch(() => { });
         };
 
-        window.speechSynthesis.speak(utt);
+        this.currentUtterance.onend = () => {
+            this.isPlaying = false;
+            this.currentUtterance = null; // Giải phóng bộ nhớ
+            if (this.dotNetRef) this.dotNetRef.invokeMethodAsync('OnTtsFinished').catch(() => { });
+        };
+
+        this.currentUtterance.onerror = (e) => {
+            console.error("[TTS] Error:", e);
+            this.isPlaying = false;
+            this.currentUtterance = null;
+            if (this.dotNetRef) this.dotNetRef.invokeMethodAsync('OnTtsFinished').catch(() => { });
+        };
+
+        // 4. Mẹo quan trọng cho Edge/Chrome: Resume trước khi Speak để "đánh thức" engine
+        window.speechSynthesis.resume();
+
+        // Delay nhẹ để đảm bảo lệnh cancel() trước đó đã hoàn tất xử lý luồng
+        setTimeout(() => {
+            window.speechSynthesis.speak(this.currentUtterance);
+        }, 100);
     },
 
     stop: function () {
         this.isPlaying = false;
-        this._stopKeepAlive();
-        window.speechSynthesis.cancel();
-        this.pendingChunks = [];
-        this.currentChunkIndex = 0;
-        this.totalChunks = 0;
-        this._notifyProgress(0);
-    },
-
-    _notifyProgress: function (override) {
-        if (!this.dotNetRef) return;
-        const pct = override !== undefined
-            ? override
-            : (this.totalChunks > 1 ? Math.round((this.currentChunkIndex / this.totalChunks) * 100) : 0);
-        this.dotNetRef.invokeMethodAsync('OnTtsProgress', pct).catch(() => { });
-    },
-
-    _notifyFinished: function () {
-        if (this.dotNetRef) this.dotNetRef.invokeMethodAsync('OnTtsFinished').catch(() => { });
+        if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+        }
     }
 };

@@ -3,6 +3,7 @@
 @using FoodMapAdmin.Models
 @using FoodMapAdmin.Services
 @inject IPoiService PoiService
+@inject IPoiPendingChangeService PendingChangeService
 @inject NavigationManager Navigator
 @inject IJSRuntime JSRuntime
 @attribute [Authorize(Roles = "admin,CNH")]
@@ -66,7 +67,15 @@
                                         @(poi.Name.Substring(0, 1).ToUpper())
                                     </div>
                                     <div>
-                                        <div style="font-weight: 800; color: var(--text-main); font-size: 1.05rem;">@poi.Name</div>
+                                        <div style="font-weight: 800; color: var(--text-main); font-size: 1.05rem;">
+                                            @poi.Name 
+                                            @if (pendingPoiIds.Contains(poi.PoiId))
+                                            {
+                                                <span class="badge rounded-pill bg-warning text-dark ms-2" style="font-size: 0.65rem; font-weight: 700; padding: 0.3rem 0.6rem; vertical-align: middle;">
+                                                    <i class="bi bi-clock-history"></i> CHỜ DUYỆT
+                                                </span>
+                                            }
+                                        </div>
                                         <div class="text-muted" style="font-size: 0.8rem;">@poi.OpenTime</div>
                                     </div>
                                 </div>
@@ -207,6 +216,7 @@
 
 @code {
     private List<Poi>? pois;
+    private HashSet<int> pendingPoiIds = new();
     
     [CascadingParameter]
     private Task<AuthenticationState>? AuthStateTask { get; set; }
@@ -232,6 +242,10 @@
                         pois = await PoiService.GetPoisByOwnerAsync(userId);
                     }
                 }
+
+                // Load pending changes to show badges
+                var pendingChanges = await PendingChangeService.GetPendingChangesAsync();
+                pendingPoiIds = pendingChanges.Select(pc => pc.PoiId).ToHashSet();
             }
         }
         catch (Exception ex)

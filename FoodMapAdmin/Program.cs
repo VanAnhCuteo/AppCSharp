@@ -27,6 +27,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Add custom services
 builder.Services.AddScoped<IPoiService, PoiService>();
+builder.Services.AddScoped<IPoiPendingChangeService, PoiPendingChangeService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IPoiGuideService, PoiGuideService>();
 builder.Services.AddScoped<IPoiImageService, PoiImageService>();

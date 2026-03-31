@@ -36,8 +36,8 @@
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
 
 		<!-- Optimization for Android Build Speed and Performance -->
-		<AndroidEnableProfiledAot Condition="'$(Configuration)' == 'Release'">true</AndroidEnableProfiledAot>
-		<RunAOTCompilation Condition="'$(Configuration)' == 'Release' AND $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">false</RunAOTCompilation>
+		<AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+		<RunAOTCompilation>false</RunAOTCompilation>
 		<PublishTrimmed Condition="'$(Configuration)' == 'Release'">true</PublishTrimmed>
 		<TrimMode>partial</TrimMode>
 		<AndroidLinkResources>true</AndroidLinkResources>
