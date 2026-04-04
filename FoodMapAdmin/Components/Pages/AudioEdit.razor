@@ -5,173 +5,301 @@
 @inject IPoiGuideService GuideService
 @inject NavigationManager Navigation
 @inject ITranslationService TranslationService
+@inject IJSRuntime JSRuntime
 @attribute [Authorize(Roles = "admin")]
 
-<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+<div class="d-flex justify-content-between align-items-center mb-3 mt-2">
     <div>
-        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Chỉnh sửa Audio Guide</h2>
-        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Cập nhật nội dung thuyết minh cho địa điểm</p>
+        <h2 class="mb-1" style="font-size: 1.6rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Chỉnh sửa Audio Guide</h2>
+        <p class="text-muted mb-0" style="font-size: 0.85rem; font-weight: 500;">Cập nhật nội dung thuyết minh cho địa điểm</p>
     </div>
     <button class="back-btn-premium transition-up" @onclick="GoBack" title="Quay lại">
         <i class="bi bi-arrow-left-short"></i>
     </button>
 </div>
 
-@if (editingGuide == null || isSaving)
+@if (isLoading)
 {
     <div class="modern-loading-zone animate-fade-in">
         <div class="loading-orb"></div>
-        <h3>@(isSaving ? "Đang cập nhật kịch bản..." : "Đang tải dữ liệu...")</h3>
-        @if (isSaving)
-        {
-            <p>Hệ thống đang đồng bộ hóa các bản dịch liên quan. Vui lòng đợi trong giây lát...</p>
-        }
+        <h3>Đang tải dữ liệu thuyết minh...</h3>
     </div>
 }
 else
 {
-    <AudioForm 
-        Guide="editingGuide" 
-        IsAddMode="false" 
-        Title="Cập nhật bản thuyết minh"
-        OnSubmit="HandleSubmit" 
-        OnCancel="GoBack" />
+    <div class="row g-4 animate-stagger">
+        <!-- VIETNAMESE COLUMN -->
+        <div class="col-lg-4">
+            <div class="lang-card vi shadow-sm">
+                <div class="lang-header">
+                    <span class="badge-lang vi">TIẾNG VIỆT (GỐC)</span>
+                </div>
+                <div class="lang-body">
+                    <div class="mb-3">
+                        <label class="small-label">TIÊU ĐỀ</label>
+                        <InputText @bind-Value="viGuide.Title" class="form-control-modern" placeholder="Tiêu đề tiếng Việt..." />
+                    </div>
+                    <div class="mb-3">
+                        <label class="small-label">KỊCH BẢN</label>
+                        <InputTextArea @bind-Value="viGuide.Description" class="form-control-modern textarea-fixed" placeholder="Nội dung tiếng Việt..." />
+                    </div>
+                </div>
+                <div class="lang-footer">
+                    <button class="btn-save-lang vi" @onclick="() => SaveLang(viGuide)" disabled="@isProcessing">
+                        @if (processingLang == "vi") { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        <i class="bi bi-check2-circle me-1"></i> Lưu bản VI
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ENGLISH COLUMN -->
+        <div class="col-lg-4">
+            <div class="lang-card en shadow-sm">
+                <div class="lang-header">
+                    <span class="badge-lang en">TIẾNG ANH</span>
+                    <button class="btn-magic en" @onclick='() => TranslateFromVi("en")' disabled="@isProcessing">
+                        @if (processingLang == "en_tr") { <span class="spinner-border spinner-border-sm"></span> }
+                        else { <i class="bi bi-magic me-1"></i> } Dịch từ bản VI
+                    </button>
+                </div>
+                <div class="lang-body">
+                    <div class="mb-3">
+                        <label class="small-label">TIÊU ĐỀ (EN)</label>
+                        <InputText @bind-Value="enGuide.Title" class="form-control-modern" placeholder="English Title..." />
+                    </div>
+                    <div class="mb-3">
+                        <label class="small-label">KỊCH BẢN (EN)</label>
+                        <InputTextArea @bind-Value="enGuide.Description" class="form-control-modern textarea-fixed" placeholder="English Script..." />
+                    </div>
+                </div>
+                <div class="lang-footer">
+                    <button class="btn-save-lang en" @onclick="() => SaveLang(enGuide)" disabled="@isProcessing">
+                        @if (processingLang == "en") { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        <i class="bi bi-check2-circle me-1"></i> Lưu bản EN
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHINESE COLUMN -->
+        <div class="col-lg-4">
+            <div class="lang-card zh shadow-sm">
+                <div class="lang-header">
+                    <span class="badge-lang zh">TIẾNG TRUNG</span>
+                    <button class="btn-magic zh" @onclick='() => TranslateFromVi("zh")' disabled="@isProcessing">
+                        @if (processingLang == "zh_tr") { <span class="spinner-border spinner-border-sm"></span> }
+                        else { <i class="bi bi-magic me-1"></i> } Dịch từ bản VI
+                    </button>
+                </div>
+                <div class="lang-body">
+                    <div class="mb-3">
+                        <label class="small-label">TIÊU ĐỀ (ZH)</label>
+                        <InputText @bind-Value="zhGuide.Title" class="form-control-modern" placeholder="中文标题..." />
+                    </div>
+                    <div class="mb-3">
+                        <label class="small-label">KỊCH BẢN (ZH)</label>
+                        <InputTextArea @bind-Value="zhGuide.Description" class="form-control-modern textarea-fixed" placeholder="中文脚本..." />
+                    </div>
+                </div>
+                <div class="lang-footer">
+                    <button class="btn-save-lang zh" @onclick="() => SaveLang(zhGuide)" disabled="@isProcessing">
+                        @if (processingLang == "zh") { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        <i class="bi bi-check2-circle me-1"></i> Lưu bản ZH
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
 <style>
-    .back-btn-premium {
-        width: 50px;
-        height: 50px;
-        border-radius: 18px;
+    .lang-card {
         background: white;
-        border: 1px solid var(--glass-border);
-        color: var(--primary);
-        font-size: 1.8rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.03);
-        transition: all 0.3s ease;
-    }
-
-    .back-btn-premium:hover {
-        background: var(--primary);
-        color: white;
-        box-shadow: 0 15px 30px var(--primary-glow);
-    }
-
-    .modern-loading-zone {
+        border-radius: 15px;
+        border: 1px solid rgba(0,0,0,0.08);
+        height: 100%;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 5rem 2rem;
-        text-align: center;
+        transition: all 0.3s ease;
     }
+    .lang-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+    .lang-card.vi { border-top: 4px solid var(--primary); }
+    .lang-card.en { border-top: 4px solid #4299E1; }
+    .lang-card.zh { border-top: 4px solid #F56565; }
 
-    .loading-orb {
-        width: 80px;
-        height: 80px;
-        background: var(--primary-gradient);
-        border-radius: 50%;
-        margin-bottom: 2rem;
-        animation: pulse-orb 2s infinite ease-in-out;
-        box-shadow: 0 0 40px rgba(255, 45, 133, 0.4);
+    .lang-header {
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid #F0F0F0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
+    .badge-lang {
+        padding: 0.3rem 0.6rem;
+        border-radius: 8px;
+        font-size: 0.6rem;
+        font-weight: 900;
+        letter-spacing: 1px;
+    }
+    .badge-lang.vi { background: rgba(255, 45, 133, 0.1); color: var(--primary); }
+    .badge-lang.en { background: #EBF4FF; color: #3182CE; }
+    .badge-lang.zh { background: #FFF5F5; color: #E53E3E; }
+
+    .lang-body { padding: 1.2rem; flex-grow: 1; }
+    .small-label { font-size: 0.6rem; font-weight: 800; color: #AAA; letter-spacing: 0.8px; margin-bottom: 0.4rem; display: block; }
+    
+    .form-control-modern {
+        width: 100%; border: 1.5px solid #F0F0F0; border-radius: 10px; padding: 0.6rem 0.8rem;
+        font-size: 0.9rem; font-weight: 600; color: #1A1A1A; transition: all 0.2s; background: #FDFDFD;
+    }
+    .form-control-modern:focus { outline: none; border-color: var(--primary); background: white; }
+    .textarea-fixed { height: 220px; resize: none; line-height: 1.5; }
+
+    .lang-footer { padding: 1rem; background: #FAFAFA; border-radius: 0 0 15px 15px; display: flex; gap: 0.5rem; }
+    
+    .btn-save-lang {
+        width: 100%; padding: 0.6rem; border-radius: 12px; border: none; font-weight: 800; font-size: 0.85rem;
+        transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+    }
+    .btn-save-lang.vi { background: var(--primary); color: white; }
+    .btn-save-lang.en { background: #4299E1; color: white; }
+    .btn-save-lang.zh { background: #F56565; color: white; }
+    .btn-save-lang:hover { opacity: 0.9; transform: scale(1.02); }
+
+    .btn-magic {
+        padding: 0.4rem 0.8rem; border-radius: 10px; border: 1px solid transparent; font-size: 0.7rem; font-weight: 700;
+        transition: all 0.2s; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: center;
+    }
+    .btn-magic.en { color: #3182CE; border-color: #bee3f8; }
+    .btn-magic.en:hover { background: #EBF4FF; }
+    .btn-magic.zh { color: #E53E3E; border-color: #fed7d7; }
+    .btn-magic.zh:hover { background: #FFF5F5; }
+
+    .btn-save-lang:disabled, .btn-magic:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .modern-loading-zone {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 2rem;
+    }
+    .loading-orb {
+        width: 60px; height: 60px; background: var(--primary-gradient); border-radius: 50%;
+        margin-bottom: 2rem; animation: pulse-orb 2s infinite ease-in-out;
+    }
+    
+    .back-btn-premium {
+        width: 40px; height: 40px; border-radius: 12px; background: white; border: 1px solid var(--glass-border);
+        color: var(--primary); font-size: 1.5rem; display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.03); transition: all 0.3s ease;
+    }
+    .back-btn-premium:hover { background: var(--primary); color: white; box-shadow: 0 10px 20px var(--primary-glow); }
 
     @@keyframes pulse-orb {
         0%, 100% { transform: scale(0.8); opacity: 0.5; }
         50% { transform: scale(1.1); opacity: 1; }
     }
 
-    .modern-loading-zone h3 { font-weight: 800; margin-bottom: 1rem; }
-    .modern-loading-zone p { color: #888; max-width: 500px; font-weight: 500; }
+    .animate-fade-in { animation: fadeIn 0.8s cubic-bezier(0.19, 1, 0.22, 1); }
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 </style>
 
 @code {
     [Parameter] public int GuideId { get; set; }
-    private PoiGuide? editingGuide;
-    private bool isSaving = false;
+    private PoiGuide viGuide = new() { Language = "vi" };
+    private PoiGuide enGuide = new() { Language = "en" };
+    private PoiGuide zhGuide = new() { Language = "zh" };
+    private Poi? currentPoi;
+    private bool isLoading = true;
+    private bool isProcessing = false;
+    private string? processingLang = null;
 
     protected override async Task OnInitializedAsync() {
-        var guides = await GuideService.GetAllGuidesAsync();
-        editingGuide = guides.FirstOrDefault(g => g.GuideId == GuideId);
-        
-        if (editingGuide == null) {
-            Navigation.NavigateTo("/audio-management");
-            return;
+        try 
+        {
+            var initialGuide = await GuideService.GetGuideByIdAsync(GuideId);
+            if (initialGuide == null) {
+                Navigation.NavigateTo("/audio-management");
+                return;
+            }
+
+            var poiId = initialGuide.PoiId ?? 0;
+            currentPoi = initialGuide.Poi;
+
+            var allPoiGuides = await GuideService.GetGuidesByPoiIdAsync(poiId);
+            
+            viGuide = allPoiGuides.FirstOrDefault(g => g.Language == "vi") ?? new PoiGuide { PoiId = poiId, Language = "vi" };
+            enGuide = allPoiGuides.FirstOrDefault(g => g.Language == "en") ?? new PoiGuide { PoiId = poiId, Language = "en" };
+            zhGuide = allPoiGuides.FirstOrDefault(g => g.Language == "zh") ?? new PoiGuide { PoiId = poiId, Language = "zh" };
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
-    private async Task HandleSubmit()
+    private async Task SaveLang(PoiGuide guide)
     {
-        if (editingGuide == null) return;
-        if (string.IsNullOrEmpty(editingGuide.Title)) return;
-
-        isSaving = true;
+        if (guide.PoiId == 0) return;
+        isProcessing = true;
+        processingLang = guide.Language;
         StateHasChanged();
 
         try 
         {
-            // 1. Update the current (presumably Vietnamese) record
-            bool success = await GuideService.UpdateGuideAsync(editingGuide);
-            if (success)
+            bool success = false;
+            if (guide.GuideId == 0)
             {
-                // 2. Automate update for other languages if this was a VI guide
-                if (editingGuide.Language == "vi")
-                {
-                    var allGuides = await GuideService.GetAllGuidesAsync();
-                    var poiGuides = allGuides.Where(g => g.PoiId == editingGuide.PoiId).ToList();
-                    
-                    var targetLangs = new[] { "en", "zh" };
-                    foreach (var langCode in targetLangs)
-                    {
-                        try 
-                        {
-                            // Normalize source for translation
-                            var sourceTitle = editingGuide.Title?.Trim();
-                            var sourceDesc = editingGuide.Description?.Trim() ?? "";
-
-                            var tTitle = await TranslationService.TranslateAsync(sourceTitle!, langCode);
-                            var tDesc = await TranslationService.TranslateAsync(sourceDesc, langCode);
-                            
-                            var existing = poiGuides.FirstOrDefault(g => g.Language == langCode);
-                            if (existing != null)
-                            {
-                                existing.Title = tTitle;
-                                existing.Description = tDesc;
-                                await GuideService.UpdateGuideAsync(existing);
-                            }
-                            else 
-                            {
-                                var newT = new PoiGuide {
-                                    PoiId = editingGuide.PoiId,
-                                    Title = tTitle,
-                                    Description = tDesc,
-                                    Language = langCode
-                                };
-                                await GuideService.CreateGuideAsync(newT);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"[Sync Error] Translation update failed for {langCode}: {ex.Message}");
-                        }
-                    }
-                }
-                
-                Navigation.NavigateTo("/audio-management");
+                success = await GuideService.CreateGuideAsync(guide);
+            }
+            else 
+            {
+                success = await GuideService.UpdateGuideAsync(guide);
+            }
+            
+            if (success) 
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Đã lưu kịch bản {guide.Language.ToUpper()} thành công!");
             }
         }
         finally 
         {
-            isSaving = false;
+            isProcessing = false;
+            processingLang = null;
             StateHasChanged();
         }
     }
 
-    private void GoBack()
+    private async Task TranslateFromVi(string targetLang)
     {
-        Navigation.NavigateTo("/audio-management");
+        if (string.IsNullOrEmpty(viGuide.Title) && string.IsNullOrEmpty(viGuide.Description)) return;
+        
+        isProcessing = true;
+        processingLang = $"{targetLang}_tr"; // translation indicator
+        StateHasChanged();
+
+        try 
+        {
+            var targetGuide = targetLang == "en" ? enGuide : zhGuide;
+            
+            if (!string.IsNullOrEmpty(viGuide.Title))
+                targetGuide.Title = await TranslationService.TranslateAsync(viGuide.Title, targetLang);
+            
+            if (!string.IsNullOrEmpty(viGuide.Description))
+                targetGuide.Description = await TranslationService.TranslateAsync(viGuide.Description, targetLang);
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Lỗi khi dịch sang {targetLang.ToUpper()}: {ex.Message}");
+        }
+        finally 
+        {
+            isProcessing = false;
+            processingLang = null;
+            StateHasChanged();
+        }
     }
+
+    private void GoBack() => Navigation.NavigateTo("/audio-management");
 }

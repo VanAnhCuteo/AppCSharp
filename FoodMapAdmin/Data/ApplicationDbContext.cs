@@ -21,6 +21,7 @@ namespace FoodMapAdmin.Data
         public DbSet<Review> Reviews { get; set; }
         public DbSet<ActivityLog> ActivityLogs { get; set; }
         public DbSet<PoiPendingChange> PoiPendingChanges { get; set; }
+        public DbSet<PoiImagePendingChange> PoiImagePendingChanges { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -32,6 +33,7 @@ namespace FoodMapAdmin.Data
             modelBuilder.Entity<PoiImage>().ToTable("poi_images");
             modelBuilder.Entity<Review>().ToTable("reviews");
             modelBuilder.Entity<PoiPendingChange>().ToTable("poi_pending_changes");
+            modelBuilder.Entity<PoiImagePendingChange>().ToTable("poi_image_pending_changes");
             
             // Handle enum status if needed, or use string directly as defined in model
         }

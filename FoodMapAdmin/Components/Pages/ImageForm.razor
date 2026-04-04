@@ -19,12 +19,17 @@
         <div class="if-body">
             <div class="if-field">
                 <label>QUÁN ĂN / ĐỊA ĐIỂM</label>
-                <InputSelect @bind-Value="ImageModel.PoiId" class="if-select">
+                <InputSelect @bind-Value="ImageModel.PoiId" class="if-select" disabled="@(!IsAddMode)">
                     <option value="">-- Chọn quán ăn --</option>
                     @foreach (var poi in AvailablePois) {
                         <option value="@poi.PoiId">@poi.Name</option>
                     }
                 </InputSelect>
+                @if(!IsAddMode) {
+                    <div class="text-muted mt-1" style="font-size: 0.75rem; font-style: italic;">
+                        * Không thể thay đổi quán ăn sau khi đã tải ảnh lên.
+                    </div>
+                }
                 <ValidationMessage For="@(()=>ImageModel.PoiId)" />
             </div>
 

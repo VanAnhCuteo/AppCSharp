@@ -2,6 +2,7 @@
 @using FoodMapAdmin.Models
 @using FoodMapAdmin.Services
 @inject IDashboardService DashService
+@inject NavigationManager Navigator
 
 <PageTitle>Tổng quan - FoodMap Admin</PageTitle>
 
@@ -109,8 +110,21 @@ else
 @code {
     private DashboardStats? stats;
 
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
+        if (AuthStateTask != null)
+        {
+            var authState = await AuthStateTask;
+            var user = authState.User;
+            if (user.IsInRole("CNH"))
+            {
+                Navigator.NavigateTo("/pois");
+                return;
+            }
+        }
         stats = await DashService.GetDashboardStatsAsync();
     }
 }

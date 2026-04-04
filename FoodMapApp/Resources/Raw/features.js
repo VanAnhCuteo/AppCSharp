@@ -76,7 +76,11 @@ async function openDetails(poiId, lang = selectedLanguage) {
         return;
     }
 
-    resetPlayerForNewPoi();
+    const isSamePoi = (currentBasePoiId === poiId);
+    if (!isSamePoi) {
+        resetPlayerForNewPoi();
+    }
+    
     currentBasePoiId = poiId;
     sheet.classList.remove('hidden');
     sheet.classList.add('open');

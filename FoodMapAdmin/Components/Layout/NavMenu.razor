@@ -25,13 +25,26 @@
                         <i class="bi bi-list-ul"></i> Danh sách
                     </NavLink>
 
-                    <NavLink class="nav-link nav-link-sub" href="/moderation">
-                        <i class="bi bi-shield-check"></i> Phê duyệt
-                    </NavLink>
-
                     <NavLink class="nav-link nav-link-sub" href="/categories">
                         <i class="bi bi-tags-fill"></i> Danh mục
                     </NavLink>
+
+                    <div class="nav-item-group-sub">
+                        <div class="nav-link nav-link-sub nav-link-sub-item @(isModerationExpanded ? "is-expanded" : "")" @onclick="ToggleModeration">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-shield-check"></i> Phê duyệt
+                            </div>
+                            <i class="bi bi-chevron-down dropdown-arrow-sub"></i>
+                        </div>
+                        <div class="submenu-wrapper-sub @(isModerationExpanded ? "is-open" : "")">
+                            <NavLink class="nav-link nav-link-sub nav-link-sub-sub" href="/moderation/pois">
+                                <i class="bi bi-geo-alt-fill"></i> Địa điểm
+                            </NavLink>
+                            <NavLink class="nav-link nav-link-sub nav-link-sub-sub" href="/moderation/images">
+                                <i class="bi bi-image"></i> Hình ảnh
+                            </NavLink>
+                        </div>
+                    </div>
                 </div>
             </div>
         </AuthorizeView>
@@ -67,6 +80,7 @@
 
 @code {
     private bool isPoisExpanded = false;
+    private bool isModerationExpanded = false;
 
     @inject NavigationManager Navigation
 
@@ -78,10 +92,21 @@
         {
             isPoisExpanded = true;
         }
+
+        if (uri.Contains("/moderation/"))
+        {
+            isModerationExpanded = true;
+        }
     }
 
     private void TogglePois()
     {
         isPoisExpanded = !isPoisExpanded;
+        if (!isPoisExpanded) isModerationExpanded = false;
+    }
+
+    private void ToggleModeration()
+    {
+        isModerationExpanded = !isModerationExpanded;
     }
 }

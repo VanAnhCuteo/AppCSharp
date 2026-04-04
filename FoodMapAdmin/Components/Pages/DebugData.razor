@@ -1,0 +1,50 @@
+@page "/debug-db"
+@using FoodMapAdmin.Data
+@using FoodMapAdmin.Models
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Context
+
+<h3>Debug Database - Image Pending Changes</h3>
+
+@if (changes == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <p>Total records in table: @changes.Count</p>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>PoiId</th>
+                <th>ImageId</th>
+                <th>ChangeType</th>
+                <th>Status</th>
+                <th>CreatedAt</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in changes)
+            {
+                <tr>
+                    <td>@c.ChangeId</td>
+                    <td>@c.PoiId</td>
+                    <td>@c.ImageId</td>
+                    <td>@c.ChangeType</td>
+                    <td>@c.Status</td>
+                    <td>@c.CreatedAt</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<PoiImagePendingChange>? changes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        changes = await Context.PoiImagePendingChanges.ToListAsync();
+    }
+}

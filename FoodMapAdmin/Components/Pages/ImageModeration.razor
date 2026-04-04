@@ -1,0 +1,283 @@
+@page "/moderation/images"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IPoiImagePendingChangeService ImagePendingService
+@inject IJSRuntime JS
+@attribute [Authorize(Roles = "admin")]
+
+<PageTitle>Phê duyệt Hình ảnh - FoodMap Admin</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.22rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Duyệt hình ảnh</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý các yêu cầu Thêm, Sửa, Xóa hình ảnh từ chủ quán</p>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="moderation-tabs mb-5">
+    <button class="mod-tab @(activeTab == "add" ? "active" : "")" @onclick='() => SetTab("add")'>
+        <i class="bi bi-plus-circle-fill"></i> Thêm ảnh
+        @if (getImageTabCount("add") > 0) { <span class="tab-badge">@getImageTabCount("add")</span> }
+    </button>
+    <button class="mod-tab @(activeTab == "update" ? "active" : "")" @onclick='() => SetTab("update")'>
+        <i class="bi bi-pencil-square"></i> Sửa ảnh
+        @if (getImageTabCount("update") > 0) { <span class="tab-badge">@getImageTabCount("update")</span> }
+    </button>
+    <button class="mod-tab @(activeTab == "delete" ? "active" : "")" @onclick='() => SetTab("delete")'>
+        <i class="bi bi-trash3-fill"></i> Xóa ảnh
+        @if (getImageTabCount("delete") > 0) { <span class="tab-badge">@getImageTabCount("delete")</span> }
+    </button>
+</div>
+
+@if (allImageRequests == null)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+    </div>
+}
+else if (!GetFilteredImageRequests().Any())
+{
+    <div class="card shadow-glass text-center py-5" style="border-radius: 35px;">
+        <i class="bi bi-check-circle text-success mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+        <h4 class="text-muted">Không có yêu cầu nào trong mục này</h4>
+        <p class="text-muted">Tất cả các hình ảnh đã được giải quyết.</p>
+    </div>
+}
+else
+{
+    <div class="row animate-stagger">
+        <div class="col-12">
+            @foreach (var imgRequest in GetFilteredImageRequests())
+            {
+                <div class="card shadow-glass mb-4 overflow-hidden border-0" style="border-radius: 25px; background: var(--surface);">
+                    <div class="card-header bg-white border-0 p-4 d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="req-icon-mini @imgRequest.ChangeType me-3">
+                                <i class="bi @(imgRequest.ChangeType == "add" ? "bi-image" : (imgRequest.ChangeType == "delete" ? "bi-trash" : "bi-pencil-square"))"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0" style="font-weight: 800; color: var(--text-main); font-size: 1.2rem;">
+                                    @if(imgRequest.ChangeType == "add") { <span>Thêm ảnh mới cho @imgRequest.Poi?.Name</span> }
+                                    else if(imgRequest.ChangeType == "update") { <span>Cập nhật ảnh cho @imgRequest.Poi?.Name</span> }
+                                    else { <span>Xóa ảnh hiện có của @imgRequest.Poi?.Name</span> }
+                                </h5>
+                                <span class="text-muted" style="font-size: 0.85rem;">
+                                    Người yêu cầu: <strong>@imgRequest.Requester?.Username</strong> 
+                                    <span class="mx-2">•</span> 
+                                    Thời gian: @imgRequest.CreatedAt?.ToString("HH:mm dd/MM/yyyy")
+                                </span>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn @(expandedImageId == imgRequest.ChangeId ? "btn-primary" : "btn-outline-primary")" style="border-radius: 12px; font-weight: 700; transition: all 0.3s ease;" @onclick="() => ToggleExpand(imgRequest.ChangeId)">
+                                <i class="bi @(expandedImageId == imgRequest.ChangeId ? "bi-eye-slash-fill" : "bi-eye-fill") me-1"></i> @(expandedImageId == imgRequest.ChangeId ? "Đóng" : "Xem")
+                            </button>
+                            <button class="btn glass-btn-success" @onclick="() => ApproveImage(imgRequest)">
+                                <i class="bi bi-check-lg me-1"></i> Duyệt
+                            </button>
+                            <button class="btn btn-outline-danger btn-reject" @onclick="() => RejectImage(imgRequest)">
+                                <i class="bi bi-x-lg me-1"></i> Từ chối
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (expandedImageId == imgRequest.ChangeId)
+                    {
+                        <div class="card-body p-4 border-top animate-expand">
+                            <div class="row align-items-stretch g-4">
+                                @if (imgRequest.ChangeType == "update")
+                                {
+                                    <div class="col-md-5">
+                                        <div class="text-center p-3 rounded-4 bg-light shadow-sm h-100 d-flex flex-column justify-content-center" style="border: 1px solid #efefef;">
+                                            <div class="image-container-moderation">
+                                                <img src="@imgRequest.OriginalImage?.ImageUrl" class="img-fluid rounded-3" style="max-height: 180px; width: 100%; object-fit: contain; opacity: 0.7;" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-center justify-content-center">
+                                        <div class="d-flex flex-column align-items-center">
+                                            <i class="bi bi-arrow-right-circle-fill text-primary" style="font-size: 2rem; opacity: 0.7;"></i>
+                                            <span class="badge bg-primary text-white px-2 py-1 rounded-pill fw-bold" style="font-size: 0.6rem; letter-spacing: 1px;">Thay thế</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <div class="text-center p-3 rounded-4 bg-white shadow-sm h-100 d-flex flex-column justify-content-center" style="border: 2px solid var(--primary);">
+                                            <div class="image-container-moderation">
+                                                <img src="@imgRequest.ImageUrl" class="img-fluid rounded-3" style="max-height: 180px; width: 100%; object-fit: contain;" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="col-md-6">
+                                        <div class="text-center p-4 rounded-4 bg-white shadow-sm h-100 d-flex flex-column justify-content-center" style="border: 1px solid #efefef;">
+                                            <p class="text-muted small mb-3 fw-bold text-uppercase" style="letter-spacing: 2px;">@(imgRequest.ChangeType == "add" ? "HÌNH ẢNH YÊU CẦU MỚI" : "HÌNH ẢNH SẼ XÓA")</p>
+                                            <div class="image-container-moderation">
+                                                <img src="@imgRequest.ImageUrl" class="img-fluid rounded-4" style="max-height: 350px; width: 100%; object-fit: contain;" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="alert @(imgRequest.ChangeType == "delete" ? "alert-danger" : "alert-primary") border-0 rounded-4 p-5 shadow-sm mb-0 h-100 d-flex flex-column justify-content-center">
+                                            <h4 class="alert-heading fw-bold mb-4 d-flex align-items-center">
+                                                <i class="bi @(imgRequest.ChangeType == "delete" ? "bi-exclamation-triangle-fill" : "bi-info-circle-fill") me-3" style="font-size: 1.8rem;"></i>
+                                                Thông tin yêu cầu
+                                            </h4>
+                                            <p class="mb-0 fs-5 lh-base">
+                                                @(imgRequest.ChangeType == "delete" 
+                                                    ? "Chủ quán yêu cầu gỡ bỏ vĩnh viễn hình ảnh này khỏi hệ thống. Hành động này sẽ xóa hoàn toàn dữ liệu và tệp tin liên quan." 
+                                                    : "Đây là hình ảnh mới được chủ quán tải lên. Sau khi được bạn phê duyệt, hình ảnh này sẽ hiển thị công khai tới tất cả người dùng trên ứng dụng.")
+                                            </p>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private List<PoiImagePendingChange>? allImageRequests;
+    private string activeTab = "add";
+    private int? expandedImageId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        // Tự động nhảy sang tab có đơn
+        if (getImageTabCount("update") > 0) activeTab = "update";
+        else if (getImageTabCount("add") > 0) activeTab = "add";
+        else if (getImageTabCount("delete") > 0) activeTab = "delete";
+    }
+
+    private async Task LoadData()
+    {
+        allImageRequests = await ImagePendingService.GetPendingChangesAsync();
+    }
+
+    private void SetTab(string tab) { 
+        activeTab = tab;
+        expandedImageId = null; 
+    }
+
+    private void ToggleExpand(int id) {
+        if (expandedImageId == id) expandedImageId = null;
+        else expandedImageId = id;
+    }
+
+    private List<PoiImagePendingChange> GetFilteredImageRequests()
+    {
+        return allImageRequests?.Where(r => r.ChangeType == activeTab).ToList() ?? new();
+    }
+
+    private int getImageTabCount(string type) => allImageRequests?.Count(r => r.ChangeType == type) ?? 0;
+
+    private async Task ApproveImage(PoiImagePendingChange request)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn duyệt ảnh này?"))
+        {
+            if (await ImagePendingService.ApproveChangeAsync(request.ChangeId))
+            {
+                await LoadData();
+                await JS.InvokeVoidAsync("alert", "Đã phê duyệt ảnh thành công!");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Không thể phê duyệt ảnh.");
+            }
+        }
+    }
+
+    private async Task RejectImage(PoiImagePendingChange request)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn từ chối ảnh này?"))
+        {
+            if (await ImagePendingService.RejectChangeAsync(request.ChangeId))
+            {
+                await LoadData();
+                await JS.InvokeVoidAsync("alert", "Đã từ chối đơn!");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Không thể từ chối đơn.");
+            }
+        }
+    }
+}
+
+<style>
+    /* Tabs System */
+    .moderation-tabs {
+        display: flex;
+        gap: 1rem;
+        background: #f0f2f5;
+        padding: 0.5rem;
+        border-radius: 20px;
+        width: fit-content;
+    }
+
+    .mod-tab {
+        border: none;
+        background: transparent;
+        padding: 0.7rem 1.5rem;
+        border-radius: 15px;
+        font-weight: 800;
+        font-size: 0.9rem;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .mod-tab.active {
+        background: white;
+        color: var(--primary);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        transform: translateY(-2px);
+    }
+
+    .tab-badge {
+        background: var(--primary);
+        color: white;
+        font-size: 0.65rem;
+        padding: 0.1rem 0.5rem;
+        border-radius: 10px;
+        margin-left: 2px;
+    }
+
+    .req-icon-mini {
+        width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    }
+    .req-icon-mini.add { background: rgba(46, 204, 113, 0.1); color: #2ecc71; }
+    .req-icon-mini.update { background: rgba(52, 152, 219, 0.1); color: #3498db; }
+    .req-icon-mini.delete { background: rgba(231, 76, 60, 0.1); color: #e74c3c; }
+
+    .glass-btn-success {
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: white; border: none; border-radius: 12px; padding: 0.6rem 1.2rem; font-weight: 700;
+        box-shadow: 0 10px 20px rgba(46, 204, 113, 0.2); transition: all 0.3s ease;
+    }
+    .glass-btn-success:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(46, 204, 113, 0.3); color: white; }
+
+    .btn-reject { border-radius: 12px; padding: 0.6rem 1.2rem; font-weight: 700; transition: all 0.3s ease; }
+    .btn-reject:hover { background: #ff4d4f; color: white; transform: translateY(-2px); }
+
+    .animate-stagger > * { animation: slideUp 0.5s cubic-bezier(0.19, 1, 0.22, 1) both; }
+    @@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .animate-expand { 
+        animation: expandDown 0.4s cubic-bezier(0.19, 1, 0.22, 1) both;
+        transform-origin: top;
+    }
+    @@keyframes expandDown { from { transform: scaleY(0.95); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+</style>

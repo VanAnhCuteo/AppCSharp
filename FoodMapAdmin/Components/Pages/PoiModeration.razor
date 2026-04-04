@@ -1,0 +1,279 @@
+@page "/moderation/pois"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IPoiPendingChangeService PendingChangeService
+@inject IJSRuntime JS
+@attribute [Authorize(Roles = "admin")]
+
+<PageTitle>Quản lý Phê duyệt - FoodMap Admin</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.22rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Duyệt địa điểm</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Xử lý các yêu cầu Thêm, Sửa, Xóa từ chủ quán</p>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="moderation-tabs mb-5">
+
+    <button class="mod-tab @(activeTab == "create" ? "active" : "")" @onclick='() => SetTab("create")'>
+        <i class="bi bi-plus-circle-fill"></i> Thêm quán
+        @if (getTabCount("create") > 0) { <span class="tab-badge">@getTabCount("create")</span> }
+    </button>
+    <button class="mod-tab @(activeTab == "update" ? "active" : "")" @onclick='() => SetTab("update")'>
+        <i class="bi bi-pencil-square"></i> Sửa quán
+        @if (getTabCount("update") > 0) { <span class="tab-badge">@getTabCount("update")</span> }
+    </button>
+    <button class="mod-tab @(activeTab == "delete" ? "active" : "")" @onclick='() => SetTab("delete")'>
+        <i class="bi bi-trash3-fill"></i> Xóa quán
+        @if (getTabCount("delete") > 0) { <span class="tab-badge">@getTabCount("delete")</span> }
+    </button>
+</div>
+
+@if (allRequests == null)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+    </div>
+}
+else if (!GetFilteredRequests().Any())
+{
+    <div class="card shadow-glass text-center py-5" style="border-radius: 35px;">
+        <i class="bi bi-check-circle text-success mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+        <h4 class="text-muted">Không có yêu cầu nào trong mục này</h4>
+        <p class="text-muted">Tất cả các thay đổi đã được giải quyết.</p>
+    </div>
+}
+else
+{
+    <div class="row animate-stagger">
+        <div class="col-12">
+            @foreach (var request in GetFilteredRequests())
+            {
+                <div class="card shadow-glass mb-4 overflow-hidden border-0" style="border-radius: 25px; background: var(--surface);">
+                    <div class="card-header bg-white border-0 p-4 d-flex align-items-center gap-4">
+                        <div class="req-icon-mini @request.ChangeType">
+                            <i class="bi @(request.ChangeType == "create" ? "bi-plus-lg" : (request.ChangeType == "delete" ? "bi-trash" : "bi-pencil-square"))"></i>
+                        </div>
+                        
+                        <div style="flex: 1; min-width: 150px;">
+                            <h5 class="mb-0" style="font-weight: 850; color: var(--text-main); font-size: 1.25rem; letter-spacing: -0.5px;">
+                                @request.Name
+                            </h5>
+                        </div>
+
+                        <div style="flex: 2; border-left: 2px solid #f1f1f1; padding-left: 2rem;">
+                            <p class="mb-0 text-muted" style="font-size: 0.9rem; font-weight: 500;">
+                                <i class="bi bi-person-circle me-1 opacity-50"></i> Chủ: <strong style="color: #444;">@request.Requester?.Username</strong>
+                                <span class="mx-3 text-light opacity-50">|</span>
+                                <i class="bi bi-clock-history me-1 opacity-50"></i> @request.CreatedAt?.ToString("HH:mm dd/MM/yyyy")
+                            </p>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button class="btn @(expandedChangeId == request.ChangeId ? "btn-primary shadow-primary" : "btn-outline-primary")" style="border-radius: 12px; font-weight: 700; transition: all 0.3s ease; min-width: 90px;" @onclick="() => ToggleExpand(request.ChangeId)">
+                                <i class="bi @(expandedChangeId == request.ChangeId ? "bi-eye-slash-fill" : "bi-eye-fill") me-1"></i> @(expandedChangeId == request.ChangeId ? "Đóng" : "Xem")
+                            </button>
+                            <button class="btn glass-btn-success" style="min-width: 100px;" @onclick="() => Approve(request)">
+                                <i class="bi bi-check-lg me-1"></i> Duyệt
+                            </button>
+                            <button class="btn btn-outline-danger btn-reject" style="min-width: 110px;" @onclick="() => Reject(request)">
+                                <i class="bi bi-x-lg me-1"></i> Từ chối
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (expandedChangeId == request.ChangeId)
+                    {
+                        <div class="card-body p-4 border-top animate-expand">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0" style="border-radius: 15px; overflow: hidden;">
+                                    <thead class="table-light">
+                                        <tr style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; font-weight: 900; color: #555;">
+                                            <th style="width: 30%; padding: 1.2rem 3rem; text-align: left;">Trường dữ liệu</th>
+                                            <th style="width: 35%; padding: 1.2rem 3rem; text-align: left;">Thông tin HIỆN TẠI</th>
+                                            <th style="width: 35%; padding: 1.2rem 3rem; text-align: left;">Thông tin THAY ĐỔI</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @renderRow("Danh mục", request.Poi?.Category?.CategoryName, request.Category?.CategoryName)
+                                        @renderRow("Tên địa điểm", request.Poi?.Name, request.Name)
+                                        @renderRow("Địa chỉ", request.Poi?.Address, request.Address)
+                                        @renderRow("Giờ mở cửa", request.Poi?.OpenTime, request.OpenTime)
+                                        @renderRow("Lat / Lng", $"{request.Poi?.Latitude} / {request.Poi?.Longitude}", $"{request.Latitude} / {request.Longitude}")
+                                        @renderRow("Bán kính (m)", request.Poi?.RangeMeters.ToString(), request.RangeMeters.ToString())
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            @if (request.ChangeType == "delete")
+                            {
+                                <div class="alert alert-danger mt-4 border-0 rounded-4 p-3 mb-0" style="background: rgba(255, 77, 79, 0.05); color: #ff4d4f;">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    <strong>CẢNH BÁO:</strong> Yêu cầu này sẽ xóa toàn bộ địa điểm và các dữ liệu liên quan.
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private List<PoiPendingChange>? allRequests;
+    private string activeTab = "update";
+    private int? expandedChangeId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        // Tự động nhảy sang tab có đơn
+        if (getTabCount("update") > 0) activeTab = "update";
+        else if (getTabCount("create") > 0) activeTab = "create";
+        else if (getTabCount("delete") > 0) activeTab = "delete";
+    }
+
+    private async Task LoadData()
+    {
+        allRequests = await PendingChangeService.GetPendingChangesAsync();
+    }
+
+    private void SetTab(string tab) { 
+        activeTab = tab;
+        expandedChangeId = null; // Reset when switching tabs
+    }
+
+    private void ToggleExpand(int id) {
+        if (expandedChangeId == id) expandedChangeId = null;
+        else expandedChangeId = id;
+    }
+
+    private List<PoiPendingChange> GetFilteredRequests()
+    {
+        return allRequests?.Where(r => r.ChangeType == activeTab).ToList() ?? new();
+    }
+
+    private int getTabCount(string type) => allRequests?.Count(r => r.ChangeType == type) ?? 0;
+
+    private async Task Approve(PoiPendingChange request)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn phê duyệt yêu cầu này?"))
+        {
+            if (await PendingChangeService.ApproveChangeAsync(request.ChangeId))
+            {
+                await LoadData();
+                await JS.InvokeVoidAsync("alert", "Đã duyệt thành công!");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Không thể phê duyệt yêu cầu.");
+            }
+        }
+    }
+
+    private async Task Reject(PoiPendingChange request)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn từ chối yêu cầu này?"))
+        {
+            if (await PendingChangeService.RejectChangeAsync(request.ChangeId))
+            {
+                await LoadData();
+                await JS.InvokeVoidAsync("alert", "Đã từ chối yêu cầu.");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Không thể từ chối yêu cầu.");
+            }
+        }
+    }
+
+    private RenderFragment renderRow(string label, string? oldVal, string? newVal) => __builder => {
+        bool isDiff = oldVal != newVal && !string.IsNullOrEmpty(newVal);
+        <tr class="@(isDiff ? "table-warning-custom" : "")" style="border-bottom: 1px solid #f1f1f1;">
+            <td class="fw-bold" style="color: #666; font-size: 0.92rem; width: 30%; padding: 1.2rem 3rem; vertical-align: middle;">@label</td>
+            <td class="text-muted" style="font-size: 0.98rem; padding: 1.2rem 3rem; text-align: left; vertical-align: middle; width: 35%;">@(oldVal ?? "---")</td>
+            <td class="fw-bold @(isDiff ? "text-primary" : "")" style="font-size: 0.98rem; padding: 1.2rem 3rem; vertical-align: middle; width: 35%;">
+                <div class="d-flex align-items-center">
+                    @newVal
+                    @if(isDiff) { <i class="bi bi-arrow-left-short ms-2" style="color: var(--primary); font-size: 1.4rem;"></i> }
+                </div>
+            </td>
+        </tr>
+    };
+}
+
+<style>
+    /* Tabs System */
+    .moderation-tabs {
+        display: flex;
+        gap: 1rem;
+        background: #f0f2f5;
+        padding: 0.5rem;
+        border-radius: 20px;
+        width: fit-content;
+    }
+
+    .mod-tab {
+        border: none;
+        background: transparent;
+        padding: 0.7rem 1.5rem;
+        border-radius: 15px;
+        font-weight: 800;
+        font-size: 0.9rem;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .mod-tab.active {
+        background: white;
+        color: var(--primary);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        transform: translateY(-2px);
+    }
+
+    .tab-badge {
+        background: var(--primary);
+        color: white;
+        font-size: 0.65rem;
+        padding: 0.1rem 0.5rem;
+        border-radius: 10px;
+        margin-left: 2px;
+    }
+
+    .req-icon-mini {
+        width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    }
+    .req-icon-mini.create { background: rgba(46, 204, 113, 0.1); color: #2ecc71; }
+    .req-icon-mini.update { background: rgba(52, 152, 219, 0.1); color: #3498db; }
+    .req-icon-mini.delete { background: rgba(231, 76, 60, 0.1); color: #e74c3c; }
+
+    .glass-btn-success {
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: white; border: none; border-radius: 12px; padding: 0.6rem 1.2rem; font-weight: 700;
+        box-shadow: 0 10px 20px rgba(46, 204, 113, 0.2); transition: all 0.3s ease;
+    }
+    .glass-btn-success:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(46, 204, 113, 0.3); color: white; }
+
+    .btn-reject { border-radius: 12px; padding: 0.6rem 1.2rem; font-weight: 700; transition: all 0.3s ease; }
+    .btn-reject:hover { background: #ff4d4f; color: white; transform: translateY(-2px); }
+
+    .table-warning-custom { background: rgba(255, 193, 7, 0.04) !important; }
+
+    .animate-stagger > * { animation: slideUp 0.5s cubic-bezier(0.19, 1, 0.22, 1) both; }
+    @@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .animate-expand { 
+        animation: expandDown 0.4s cubic-bezier(0.19, 1, 0.22, 1) both;
+        transform-origin: top;
+    }
+    @@keyframes expandDown { from { transform: scaleY(0.95); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+</style>

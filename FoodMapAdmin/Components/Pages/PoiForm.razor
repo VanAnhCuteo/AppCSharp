@@ -37,7 +37,15 @@
                     
                     <div class="mb-4">
                         <label class="form-label-premium">Giờ mở cửa</label>
-                        <InputText @bind-Value="CurrentPoi.OpenTime" class="form-control-premium" placeholder="VD: 08:00 - 22:00" />
+                        <InputText @bind-Value="CurrentPoi.OpenTime" list="openTimeOptions" @onblur="HandleOpenTimeBlur" class="form-control-premium" placeholder="VD: 08:00 - 22:00" />
+                        <datalist id="openTimeOptions">
+                            <option value="08:00 - 22:00" />
+                            <option value="07:00 - 21:00" />
+                            <option value="10:00 - 23:00" />
+                            <option value="06:00 - 18:00" />
+                            <option value="24/7" />
+                            <option value="Cả ngày" />
+                        </datalist>
                     </div>
 
                     <div class="row g-3 mb-4">
@@ -250,6 +258,66 @@
     private async Task OnSubmitHandler()
     {
         await OnSubmit.InvokeAsync();
+    }
+
+    private void HandleOpenTimeBlur()
+    {
+        if (string.IsNullOrWhiteSpace(CurrentPoi.OpenTime)) return;
+
+        var input = CurrentPoi.OpenTime.Trim().Replace(" ", "");
+        
+        // Handle "24/7" or text cases
+        if (input.ToLower() == "24/7" || input.Contains("ngày") || input.Contains("hàng"))
+        {
+            CurrentPoi.OpenTime = input;
+            return;
+        }
+
+        try 
+        {
+            // Case 1: "8" or "08" -> "08:00"
+            if (System.Text.RegularExpressions.Regex.IsMatch(input, @"^\d{1,2}$"))
+            {
+                CurrentPoi.OpenTime = FormatSingleHour(input);
+            }
+            // Case 2: "8-22" or "8-10" -> "08:00 - 22:00"
+            else if (System.Text.RegularExpressions.Regex.IsMatch(input, @"^\d{1,2}-\d{1,2}$"))
+            {
+                var parts = input.Split('-');
+                CurrentPoi.OpenTime = $"{FormatSingleHour(parts[0])} - {FormatSingleHour(parts[1])}";
+            }
+            // Case 3: "0830-2215" -> "08:30 - 22:15"
+            else if (System.Text.RegularExpressions.Regex.IsMatch(input, @"^\d{3,4}-\d{3,4}$"))
+            {
+                var parts = input.Split('-');
+                CurrentPoi.OpenTime = $"{FormatComplexTime(parts[0])} - {FormatComplexTime(parts[1])}";
+            }
+            // Case 4: "08:00-22:00" (add spaces)
+            else if (input.Contains("-") && !input.Contains(" - "))
+            {
+                CurrentPoi.OpenTime = input.Replace("-", " - ");
+            }
+        }
+        catch { /* Fallback to raw if logic fails */ }
+    }
+
+    private string FormatSingleHour(string h)
+    {
+        if (int.TryParse(h, out int hour))
+        {
+            return $"{hour:D2}:00";
+        }
+        return h;
+    }
+
+    private string FormatComplexTime(string t)
+    {
+        if (t.Length == 3) t = "0" + t;
+        if (t.Length == 4)
+        {
+            return $"{t.Substring(0, 2)}:{t.Substring(2, 2)}";
+        }
+        return t;
     }
 
     public void Dispose()

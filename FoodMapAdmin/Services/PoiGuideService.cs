@@ -8,6 +8,7 @@ namespace FoodMapAdmin.Services
     {
         Task<List<PoiGuide>> GetAllGuidesAsync();
         Task<PoiGuide?> GetGuideByIdAsync(int id);
+        Task<List<PoiGuide>> GetGuidesByPoiIdAsync(int poiId);
         Task<PoiGuide?> GetGuideByPoiIdAsync(int poiId);
         Task<bool> UpdateGuideAsync(PoiGuide guide);
         Task<bool> CreateGuideAsync(PoiGuide guide);
@@ -26,6 +27,7 @@ namespace FoodMapAdmin.Services
         public async Task<List<PoiGuide>> GetAllGuidesAsync()
         {
             return await _context.PoiGuides
+                .AsNoTracking()
                 .Include(g => g.Poi)
                 .OrderByDescending(g => g.GuideId)
                 .ToListAsync();
@@ -34,6 +36,7 @@ namespace FoodMapAdmin.Services
         public async Task<PoiGuide?> GetGuideByIdAsync(int id)
         {
             return await _context.PoiGuides
+                .AsNoTracking()
                 .Include(g => g.Poi)
                 .FirstOrDefaultAsync(g => g.GuideId == id);
         }
@@ -41,20 +44,39 @@ namespace FoodMapAdmin.Services
         public async Task<PoiGuide?> GetGuideByPoiIdAsync(int poiId)
         {
             return await _context.PoiGuides
+                .AsNoTracking()
                 .Include(g => g.Poi)
                 .FirstOrDefaultAsync(g => g.PoiId == poiId);
         }
 
+        public async Task<List<PoiGuide>> GetGuidesByPoiIdAsync(int poiId)
+        {
+            return await _context.PoiGuides
+                .AsNoTracking()
+                .Include(g => g.Poi)
+                .Where(g => g.PoiId == poiId)
+                .ToListAsync();
+        }
+
         public async Task<bool> UpdateGuideAsync(PoiGuide guide)
         {
+            // Nullify navigation property to avoid tracking conflicts (Identity Map conflict)
+            var poi = guide.Poi;
+            guide.Poi = null;
             _context.PoiGuides.Update(guide);
-            return await _context.SaveChangesAsync() > 0;
+            var result = await _context.SaveChangesAsync() > 0;
+            guide.Poi = poi;
+            return result;
         }
 
         public async Task<bool> CreateGuideAsync(PoiGuide guide)
         {
+            var poi = guide.Poi;
+            guide.Poi = null;
             _context.PoiGuides.Add(guide);
-            return await _context.SaveChangesAsync() > 0;
+            var result = await _context.SaveChangesAsync() > 0;
+            guide.Poi = poi;
+            return result;
         }
 
         public async Task<bool> DeleteGuideAsync(int id)

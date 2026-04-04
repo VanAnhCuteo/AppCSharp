@@ -28,6 +28,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Add custom services
 builder.Services.AddScoped<IPoiService, PoiService>();
 builder.Services.AddScoped<IPoiPendingChangeService, PoiPendingChangeService>();
+builder.Services.AddScoped<IPoiImagePendingChangeService, PoiImagePendingChangeService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IPoiGuideService, PoiGuideService>();
 builder.Services.AddScoped<IPoiImageService, PoiImageService>();
@@ -115,12 +116,26 @@ app.MapRazorComponents<App>()
 // Seed Admin for testing
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var user = db.Users.FirstOrDefault(u => u.Username == "vananh");
-    if (user != null && user.Role != "admin")
+    try 
     {
-        user.Role = "admin";
-        db.SaveChanges();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
+        // Schema Fix for Image Moderation
+        try {
+            db.Database.ExecuteSqlRaw("ALTER TABLE poi_image_pending_changes MODIFY poi_id INT NULL;");
+        } catch { /* Already fixed or exists */ }
+
+        var user = db.Users.FirstOrDefault(u => u.Username == "vananh");
+        if (user != null && user.Role != "admin")
+        {
+            user.Role = "admin";
+            db.SaveChanges();
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Startup] Error during database initialization: {ex.Message}");
+        // Don't rethrow, let the app start so we can see the UI/logs
     }
 }
 

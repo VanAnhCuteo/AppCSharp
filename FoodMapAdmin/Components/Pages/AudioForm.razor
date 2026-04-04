@@ -66,63 +66,63 @@
 </EditForm>
 
 <style>
-    .af-container { max-width: 850px; margin: 0 auto; }
+    .af-container { max-width: 700px; margin: 0 auto; }
 
     .af-card {
         background: white;
-        border-radius: 35px;
+        border-radius: 15px;
         border: 1px solid rgba(0,0,0,0.05);
-        box-shadow: 0 40px 100px rgba(0,0,0,0.08);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.06);
         overflow: hidden;
     }
 
     .af-card-header {
-        padding: 2.5rem 3rem;
+        padding: 1.2rem 1.8rem;
         background: rgba(255, 45, 133, 0.02);
         border-bottom: 1px solid #F0F0F0;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
-    .af-tag { font-size: 0.68rem; font-weight: 800; color: #FF2D85; letter-spacing: 2.5px; }
-    .af-card-title { margin: 0.5rem 0 0; font-weight: 950; letter-spacing: -1px; font-size: 1.8rem; color: #1A1A1A; }
+    .af-tag { font-size: 0.6rem; font-weight: 800; color: #FF2D85; letter-spacing: 1.5px; }
+    .af-card-title { margin: 0.3rem 0 0; font-weight: 900; letter-spacing: -0.5px; font-size: 1.4rem; color: #1A1A1A; }
     .af-stat { display: flex; flex-direction: column; align-items: flex-end; }
-    .af-stat-val { font-size: 1.8rem; font-weight: 950; color: var(--primary); line-height: 1; }
-    .af-stat-label { font-size: 0.7rem; font-weight: 800; color: #AAA; text-transform: uppercase; margin-top: 5px; }
+    .af-stat-val { font-size: 1.35rem; font-weight: 950; color: var(--primary); line-height: 1; }
+    .af-stat-label { font-size: 0.6rem; font-weight: 800; color: #AAA; text-transform: uppercase; margin-top: 3px; }
 
     .af-body-clean {
-        padding: 3rem;
+        padding: 1.5rem 2rem;
         display: flex;
         flex-direction: column;
-        gap: 2rem;
+        gap: 1.2rem;
     }
 
-    .af-field { display: flex; flex-direction: column; gap: 0.8rem; }
+    .af-field { display: flex; flex-direction: column; gap: 0.5rem; }
     .af-field label {
-        font-size: 0.72rem; font-weight: 900; color: #666; letter-spacing: 1.5px; text-transform: uppercase;
+        font-size: 0.65rem; font-weight: 900; color: #666; letter-spacing: 1px; text-transform: uppercase;
     }
 
     .af-input, .af-select, .af-textarea {
         width: 100%;
         background: #F8F9FC;
         border: 1.5px solid transparent;
-        border-radius: 20px;
-        padding: 1.2rem 1.5rem;
+        border-radius: 12px;
+        padding: 0.7rem 1rem;
         font-weight: 600;
         color: #1A1A1A;
         transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-        font-size: 1rem;
+        font-size: 0.95rem;
     }
     .af-textarea {
-        height: 350px;
+        height: 250px;
         resize: none;
-        line-height: 1.8;
+        line-height: 1.6;
     }
     .af-input:focus, .af-textarea:focus, .af-select:focus {
         outline: none;
         background: #FFF;
         border-color: #FF2D85;
-        box-shadow: 0 0 0 6px rgba(255,45,133,0.06);
+        box-shadow: 0 0 0 4px rgba(255,45,133,0.06);
     }
     
     .af-footer-info { display: flex; justify-content: flex-end; margin-top: -0.5rem; }
@@ -130,9 +130,9 @@
 
     .af-actions-row { 
         display: flex; 
-        gap: 1.2rem; 
-        margin-top: 1.5rem; 
-        padding-top: 2rem; 
+        gap: 1rem; 
+        margin-top: 1rem; 
+        padding-top: 1.5rem; 
         border-top: 1px dashed #EEE; 
     }
     
@@ -141,22 +141,22 @@
         background: linear-gradient(135deg, #FF2D85, #FF7EB3);
         color: white;
         border: none;
-        padding: 1.2rem;
-        border-radius: 22px;
+        padding: 0.8rem;
+        border-radius: 12px;
         font-weight: 900;
-        font-size: 1.1rem;
-        display: flex; align-items: center; justify-content: center; gap: 0.8rem;
+        font-size: 1rem;
+        display: flex; align-items: center; justify-content: center; gap: 0.6rem;
         cursor: pointer;
-        box-shadow: 0 15px 35px rgba(255,45,133,0.25);
+        box-shadow: 0 10px 25px rgba(255,45,133,0.2);
         transition: all 0.3s;
     }
-    .af-btn-pri:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 20px 45px rgba(255,45,133,0.35); }
+    .af-btn-pri:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 15px 35px rgba(255,45,133,0.3); }
     .af-btn-sec {
         flex: 1;
         background: #F3F5F9;
         border: none;
-        padding: 1.2rem;
-        border-radius: 22px;
+        padding: 0.8rem;
+        border-radius: 12px;
         font-weight: 800;
         color: #777;
         cursor: pointer;

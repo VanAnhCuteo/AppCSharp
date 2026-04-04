@@ -10,6 +10,7 @@ namespace FoodMapAdmin.Models
         [Column("image_id")]
         public int ImageId { get; set; }
 
+        [Required(ErrorMessage = "Vui lòng chọn quán ăn")]
         [Column("poi_id")]
         public int? PoiId { get; set; }
 

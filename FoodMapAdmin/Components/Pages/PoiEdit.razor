@@ -115,29 +115,37 @@ else
 
     private async Task HandleSubmit()
     {
-        if (poiToEdit != null && !notAuthorized)
+        try
         {
-            var authState = await AuthStateTask!;
-            var user = authState.User;
-            
-            if (user.IsInRole("admin"))
+            if (poiToEdit != null && !notAuthorized)
             {
-                bool success = await PoiService.UpdatePoiAsync(poiToEdit);
-                if (success) Navigator.NavigateTo("/pois");
-            }
-            else if (user.IsInRole("CNH"))
-            {
-                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == ClaimTypes.NameIdentifier)?.Value;
-                if (int.TryParse(userIdStr, out var currentUserId))
+                var authState = await AuthStateTask!;
+                var user = authState.User;
+                
+                if (user.IsInRole("admin"))
                 {
-                    bool success = await PendingChangeService.CreatePendingChangeAsync(poiToEdit, currentUserId);
-                    if (success) 
+                    bool success = await PoiService.UpdatePoiAsync(poiToEdit);
+                    if (success) Navigator.NavigateTo("/pois");
+                }
+                else if (user.IsInRole("CNH"))
+                {
+                    var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == ClaimTypes.NameIdentifier)?.Value;
+                    if (int.TryParse(userIdStr, out var currentUserId))
                     {
-                        await JSRuntime.InvokeVoidAsync("alert", "Thay đổi đã được gửi! Quản trị viên sẽ sớm xem xét và phê duyệt thông tin của bạn.");
-                        Navigator.NavigateTo("/pois");
+                        bool success = await PendingChangeService.CreatePendingChangeAsync(poiToEdit, currentUserId);
+                        if (success) 
+                        {
+                            await JSRuntime.InvokeVoidAsync("alert", "Thay đổi đã được gửi! Quản trị viên sẽ sớm xem xét và phê duyệt thông tin của bạn.");
+                            Navigator.NavigateTo("/pois");
+                        }
                     }
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during POI update: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("alert", "Có lỗi xảy ra khi lưu thay đổi. Vui lòng thử lại sau.");
         }
     }
 

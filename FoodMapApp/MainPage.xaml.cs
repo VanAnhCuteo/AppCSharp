@@ -79,17 +79,18 @@ namespace FoodMapApp;
                         
                         Console.WriteLine($"DEBUG: TTS Request. ID: {id}. POI Changed: {poiChanged}. Text Changed: {textChanged}. Current Index: {_currentSentenceIndex}. IsPaused: {_isPaused}");
 
-                        if (poiChanged || (textChanged && _currentSentenceIndex == 0))
+                        if (poiChanged)
                         {
-                            StopSpeech(true); // Full reset for new content or POI
+                            Console.WriteLine("DEBUG: POI changed, full reset.");
+                            StopSpeech(true);
                             _lastPoiId = id;
                             _lastSpokenText = normalizedText;
-                            _currentSentences = text.Split(new[] { '.', '!', '?', ';', ':', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                            // Finer splitting (added comma, newline, etc.)
+                            _currentSentences = text.Split(new[] { '.', '!', '?', ';', ':', ',', '\n', '|' }, StringSplitOptions.RemoveEmptyEntries)
                                                     .Select(s => s.Trim())
                                                     .Where(s => s.Length > 0)
                                                     .ToArray();
                             _currentSentenceIndex = 0;
-                            Console.WriteLine($"DEBUG: New content loaded. Sentence count: {_currentSentences.Length}");
                             _ = SpeakWithChunksAsync(lang);
                         }
                         else if (_isPaused)
@@ -100,7 +101,17 @@ namespace FoodMapApp;
                         }
                         else 
                         {
-                            // If not paused and not changed, maybe it's already playing or we just want to ensure it's playing
+                            // Use same content but check if we need to start or just keep playing
+                            if (_currentSentences.Length == 0 || (textChanged && _currentSentenceIndex == 0))
+                            {
+                                StopSpeech(true);
+                                _lastSpokenText = normalizedText;
+                                _currentSentences = text.Split(new[] { '.', '!', '?', ';', ':', ',', '\n', '|' }, StringSplitOptions.RemoveEmptyEntries)
+                                                        .Select(s => s.Trim())
+                                                        .Where(s => s.Length > 0)
+                                                        .ToArray();
+                                _currentSentenceIndex = 0;
+                            }
                             _ = SpeakWithChunksAsync(lang);
                         }
                     }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using FoodMapAdmin.Services;
@@ -33,6 +33,11 @@ namespace FoodMapAdmin.Controllers
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
+                // Redirect based on role
+                if (user.Role == "CNH")
+                {
+                    return Redirect("/pois");
+                }
                 return Redirect("/");
             }
             return Redirect("/login?error=invalid");

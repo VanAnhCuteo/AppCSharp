@@ -21,12 +21,14 @@ namespace FoodMapAdmin.Services
         private readonly ApplicationDbContext _context;
         private readonly IActivityLogger _logger;
         private readonly AuthenticationStateProvider _authStateProvider;
+        private readonly IPoiImageService _imageService;
 
-        public PoiService(ApplicationDbContext context, IActivityLogger logger, AuthenticationStateProvider authStateProvider)
+        public PoiService(ApplicationDbContext context, IActivityLogger logger, AuthenticationStateProvider authStateProvider, IPoiImageService imageService)
         {
             _context = context;
             _logger = logger;
             _authStateProvider = authStateProvider;
+            _imageService = imageService;
         }
 
         private async Task<int?> GetCurrentUserIdAsync()
@@ -53,6 +55,7 @@ namespace FoodMapAdmin.Services
         public async Task<Poi?> GetPoiByIdAsync(int id)
         {
             return await _context.Pois
+                .AsNoTracking() // Quan trọng: Không track khi lấy dữ liệu để sửa, tránh auto-update
                 .Include(p => p.Category)
                 .Include(p => p.Images)
                 .Include(p => p.Reviews)
@@ -77,6 +80,10 @@ namespace FoodMapAdmin.Services
             if (poi == null) return false;
             
             var name = poi.Name;
+
+            // Xóa ảnh của quán và tệp vật lý trước khi xóa quán
+            await _imageService.DeleteImagesByPoiIdAsync(id);
+
             _context.Pois.Remove(poi);
             var result = await _context.SaveChangesAsync() > 0;
             if (result)

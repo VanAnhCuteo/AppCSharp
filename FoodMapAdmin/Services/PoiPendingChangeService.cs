@@ -51,8 +51,9 @@ namespace FoodMapAdmin.Services
         {
             if (changeType == "update")
             {
-                // Check if there is already a pending change for this POI
+                // Use AsNoTracking() and avoid navigation properties during check
                 var existing = await _context.PoiPendingChanges
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(p => p.PoiId == poi.PoiId && p.Status == "pending" && p.ChangeType == "update");
 
                 if (existing != null)

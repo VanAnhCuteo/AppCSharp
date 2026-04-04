@@ -6,6 +6,7 @@
 @inject IPoiImageService PoiImageService
 @inject IPoiService PoiService
 @inject NavigationManager Navigator
+@inject IJSRuntime JS
 @attribute [Authorize(Roles = "admin,CNH")]
 
 <div class="d-flex justify-content-between align-items-center mb-5 mt-2">
@@ -84,6 +85,11 @@
             using var stream = uploadData.file.OpenReadStream(2 * 1024 * 1024); // max 2MB
             if (await PoiImageService.CreateImageAsync(image, stream, uploadData.fileName))
             {
+                var authState = await AuthStateTask!;
+                if (authState.User.IsInRole("CNH"))
+                {
+                    await JS.InvokeVoidAsync("alert", "Yêu cầu thêm ảnh đã được gửi và đang chờ Admin phê duyệt.");
+                }
                 Navigator.NavigateTo("/images");
             }
         }

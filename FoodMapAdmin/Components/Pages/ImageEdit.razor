@@ -6,6 +6,7 @@
 @inject IPoiImageService PoiImageService
 @inject IPoiService PoiService
 @inject NavigationManager Navigator
+@inject IJSRuntime JS
 @attribute [Authorize(Roles = "admin,CNH")]
 
 <PageTitle>Chỉnh sửa Hình ảnh - FoodMap Admin</PageTitle>
@@ -96,18 +97,32 @@ else
 
     private async Task HandleSubmit((IBrowserFile? file, string? fileName) uploadData)
     {
-        if (image != null)
+        try
         {
-            Stream? stream = null;
-            if (uploadData.file != null)
+            if (image != null)
             {
-                stream = uploadData.file.OpenReadStream(2 * 1024 * 1024);
-            }
+                Stream? stream = null;
+                if (uploadData.file != null)
+                {
+                    // Limit to 2MB as configured in the form
+                    stream = uploadData.file.OpenReadStream(2 * 1024 * 1024);
+                }
 
-            if (await PoiImageService.UpdateImageAsync(image, stream, uploadData.fileName))
-            {
-                Navigator.NavigateTo("/images");
+                if (await PoiImageService.UpdateImageAsync(image, stream, uploadData.fileName))
+                {
+                    var authState = await AuthStateTask!;
+                    if (authState.User.IsInRole("CNH"))
+                    {
+                        await JS.InvokeVoidAsync("alert", "Yêu cầu cập nhật ảnh đã được gửi và đang chờ Admin phê duyệt. Khi duyệt xong thông tin mới được cập nhật!");
+                    }
+                    Navigator.NavigateTo("/images");
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during image update: {ex.Message}");
+            await JS.InvokeVoidAsync("alert", "Có lỗi xảy ra khi cập nhật ảnh. Có thể do tệp quá lớn hoặc lỗi kết nối.");
         }
     }
 
