@@ -77,7 +77,7 @@
                         <BoxView Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" WidthRequest="1" BackgroundColor="#FFE4EA" HorizontalOptions="Center" VerticalOptions="Fill" Margin="0,4"/>
                         <Label Grid.Row="0" Grid.Column="2" x:Name="ReviewCountLabel" Text="0" FontSize="26" FontAttributes="Bold" TextColor="#FFAD9F" HorizontalOptions="Center" VerticalOptions="End"/>
                         <BoxView Grid.Row="0" Grid.Column="3" Grid.RowSpan="2" WidthRequest="1" BackgroundColor="#FFE4EA" HorizontalOptions="Center" VerticalOptions="Fill" Margin="0,4"/>
-                        <Label Grid.Row="0" Grid.Column="4" Text="Bùi Viện" FontSize="18" FontAttributes="Bold" TextColor="#FF6A88" HorizontalOptions="Center" VerticalOptions="End" Margin="0,0,0,5"/>
+                        <Label Grid.Row="0" Grid.Column="4" Text="Vĩnh Khánh" FontSize="18" FontAttributes="Bold" TextColor="#FF6A88" HorizontalOptions="Center" VerticalOptions="End" Margin="0,0,0,5"/>
                         <Label Grid.Row="1" Grid.Column="0" x:Name="VisitLabel" FontSize="11" TextColor="#A1A1B5" HorizontalOptions="Center" VerticalOptions="Start" FontAttributes="Bold"/>
                         <Label Grid.Row="1" Grid.Column="2" x:Name="ReviewLabel" FontSize="11" TextColor="#A1A1B5" HorizontalOptions="Center" VerticalOptions="Start" FontAttributes="Bold"/>
                         <Label Grid.Row="1" Grid.Column="4" x:Name="AreaLabel" FontSize="11" TextColor="#A1A1B5" HorizontalOptions="Center" VerticalOptions="Start" FontAttributes="Bold"/>

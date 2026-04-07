@@ -6,6 +6,7 @@ let currentAudioGuide = null;
 let currentDestCoords = null;
 let routingLayer = null;
 let navigationActive = false;
+let navigatingPoiId = null; // New: Tracks the POI currently being navigated to
 
 // Bottom Sheet State
 const sheet = document.getElementById('bottom-sheet');
@@ -271,6 +272,20 @@ function processLocation(position) {
 
     allFoodsData.forEach(food => {
         const isClosest = closestPoi && closestPoi.id === food.id;
+        const isNavigating = navigatingPoiId === food.id;
+        
+        // Find the L.marker instance for this food
+        const markerData = mapMarkers.find(m => m.food.id === food.id);
+        if (markerData && markerData.marker) {
+            if (isNavigating) {
+                markerData.marker.setIcon(greenIcon);
+            } else if (isClosest) {
+                markerData.marker.setIcon(blueIcon);
+            } else {
+                markerData.marker.setIcon(pinkIcon);
+            }
+        }
+
         if (isClosest) {
             if (!playedAudioPois.has(food.id) && !poiAudioTimers[food.id]) {
                 poiAudioTimers[food.id] = setTimeout(() => {
@@ -525,6 +540,7 @@ if (directionsBtn) {
     directionsBtn.onclick = () => {
         if (currentDestCoords && userMarker) {
             const userCoords = userMarker.getLatLng();
+            navigatingPoiId = currentBasePoiId; // TRACK the navigation target
             startNavigation(userCoords.lat, userCoords.lng, currentDestCoords[0], currentDestCoords[1]);
             closeDetails();
         } else {
@@ -536,13 +552,16 @@ if (directionsBtn) {
 async function startNavigation(slat, slon, dlat, dlon) {
     if (routingLayer) map.removeLayer(routingLayer);
 
-    const url = `https://router.project-osrm.org/route/v1/driving/${slon},${slat};${dlon},${dlat}?overview=full&geometries=geojson`;
+    // Add alternatives=true to get multiple routes and then pick the shortest distance
+    const url = `https://router.project-osrm.org/route/v1/driving/${slon},${slat};${dlon},${dlat}?overview=full&geometries=geojson&alternatives=true`;
 
     try {
         const res = await fetch(url);
         const data = await res.json();
 
         if (data.code === 'Ok') {
+            // Sort routes by distance (ascending) to get the shortest route
+            data.routes.sort((a, b) => a.distance - b.distance);
             const route = data.routes[0];
             const distance = (route.distance / 1000).toFixed(1); // km
 
@@ -580,10 +599,16 @@ async function startNavigation(slat, slon, dlat, dlon) {
 }
 
 function cancelNavigation() {
+    navigatingPoiId = null; // CLEAR navigation target
     if (routingLayer) {
         map.removeLayer(routingLayer);
         routingLayer = null;
     }
     document.getElementById('nav-overlay').classList.add('hidden');
     navigationActive = false;
+    
+    // Force refresh colors to reset the green marker
+    if (userMarker) {
+        processLocation({ coords: { latitude: userMarker.getLatLng().lat, longitude: userMarker.getLatLng().lng } });
+    }
 }

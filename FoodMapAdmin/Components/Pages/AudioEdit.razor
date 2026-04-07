@@ -7,10 +7,11 @@
 @inject ITranslationService TranslationService
 @inject IJSRuntime JSRuntime
 @attribute [Authorize(Roles = "admin")]
+<PageTitle>Chỉnh sửa Audio - @(currentPoi?.Name ?? "FoodMap Admin")</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
     <div>
-        <h2 class="mb-1" style="font-size: 1.6rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Chỉnh sửa Audio Guide</h2>
+        <h2 class="mb-1" style="font-size: 1.6rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Chỉnh sửa Audio "@(currentPoi?.Name ?? "Guide")"</h2>
         <p class="text-muted mb-0" style="font-size: 0.85rem; font-weight: 500;">Cập nhật nội dung thuyết minh cho địa điểm</p>
     </div>
     <button class="back-btn-premium transition-up" @onclick="GoBack" title="Quay lại">

@@ -16,7 +16,7 @@ namespace FoodMapApp.Views
         {
             base.OnAppearing();
             // Set Vietnamese text from code-behind to avoid XAML encoding issues
-            AppTitleLabel.Text = "FoodTour Bùi Viện";
+            AppTitleLabel.Text = "FoodTour Vĩnh Khánh";
             WelcomeLabel.Text = "Chào mừng trở lại! Vui lòng đăng nhập.";
             IdentifierLabel.Text = "Tên đăng nhập hoặc Email";
             IdentifierEntry.Placeholder = "Nhập tên đăng nhập";

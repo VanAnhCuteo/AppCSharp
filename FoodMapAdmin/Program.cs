@@ -33,6 +33,7 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IPoiGuideService, PoiGuideService>();
 builder.Services.AddScoped<IPoiImageService, PoiImageService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITranslationService, TranslationService>();

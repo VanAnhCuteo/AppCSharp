@@ -123,28 +123,136 @@ async function loadFoods(foods, userId = 0) {
 
 function setupMapSearch() {
     const searchInput = document.getElementById('map-search-input');
-    if (!searchInput) return;
+    const clearBtn = document.getElementById('search-clear-btn');
+    const resultsDropdown = document.getElementById('search-results');
+    if (!searchInput || !resultsDropdown) return;
+
+    let debounceTimer;
 
     searchInput.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase().trim();
-        const normalizedTerm = removeDiacritics(term);
+        const query = e.target.value.trim();
+        
+        // Show/Hide clear button
+        if (query.length > 0) {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+            resultsDropdown.classList.add('hidden');
+            // Reset markers visibility when search is cleared
+            mapMarkers.forEach(({ marker }) => {
+                if (!markersGroup.hasLayer(marker)) markersGroup.addLayer(marker);
+            });
+            return;
+        }
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            performSmartSearch(query);
+        }, 300);
+    });
+
+    // Clear search button logic
+    if (clearBtn) {
+        clearBtn.onclick = () => {
+            searchInput.value = '';
+            clearBtn.classList.add('hidden');
+            resultsDropdown.classList.add('hidden');
+            mapMarkers.forEach(({ marker }) => {
+                if (!markersGroup.hasLayer(marker)) markersGroup.addLayer(marker);
+            });
+            searchInput.focus();
+        };
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !resultsDropdown.contains(e.target)) {
+            resultsDropdown.classList.add('hidden');
+        }
+    });
+
+    function performSmartSearch(query) {
+        const normalizedQuery = removeDiacritics(query.toLowerCase());
+        const searchTerms = normalizedQuery.split(/\s+/).filter(t => t.length > 0);
+        
+        const matchedFoods = [];
 
         mapMarkers.forEach(({ marker, food }) => {
-            const name = removeDiacritics(food.name.toLowerCase());
-            const addr = removeDiacritics(food.address.toLowerCase());
-            const desc = removeDiacritics(food.description.toLowerCase());
+            const foodName = removeDiacritics(food.name.toLowerCase());
+            const foodAddr = removeDiacritics((food.address || "").toLowerCase());
+            const foodDesc = removeDiacritics((food.description || "").toLowerCase());
+            
+            // Smart Match: EVERY search term must be found in either name, address or description
+            const isMatch = searchTerms.every(term => 
+                foodName.includes(term) || foodAddr.includes(term) || foodDesc.includes(term)
+            );
 
-            if (name.includes(normalizedTerm) || addr.includes(normalizedTerm) || desc.includes(normalizedTerm)) {
+            if (isMatch) {
                 if (!markersGroup.hasLayer(marker)) markersGroup.addLayer(marker);
+                matchedFoods.push(food);
             } else {
                 if (markersGroup.hasLayer(marker)) markersGroup.removeLayer(marker);
             }
         });
-    });
+
+        renderSearchResults(matchedFoods);
+    }
+
+    function renderSearchResults(foods) {
+        resultsDropdown.innerHTML = '';
+        if (foods.length === 0) {
+            resultsDropdown.innerHTML = '<div style="padding: 15px; text-align: center; color: #999; font-size: 14px;">Không tìm thấy quán nào...</div>';
+        } else {
+            // Limit to top 10 results to keep UI clean
+            foods.slice(0, 10).forEach(food => {
+                const item = document.createElement('div');
+                item.className = 'search-result-item';
+                item.innerHTML = `
+                    <div class="res-icon">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    </div>
+                    <div class="res-details">
+                        <span class="res-name">${food.name}</span>
+                        <span class="res-addr">${food.address || "No address"}</span>
+                    </div>
+                `;
+                item.onclick = () => {
+                    resultsDropdown.classList.add('hidden');
+                    // Find the existing marker for this food
+                    const markerData = mapMarkers.find(mm => mm.food.id === food.id);
+                    if (markerData) {
+                        map.flyTo(markerData.marker.getLatLng(), 18, { animate: true, duration: 1 });
+                        // Delay openDetails slightly so the map movement looks smoother
+                        setTimeout(() => openDetails(food.id), 300);
+                    }
+                };
+                resultsDropdown.appendChild(item);
+            });
+        }
+        resultsDropdown.classList.remove('hidden');
+    }
 }
 
 function removeDiacritics(text) {
-    return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (!text) return "";
+    let str = text;
+    // Replace Vietnamese-specific characters first
+    str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+    str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+    str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+    str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+    str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+    str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+    str = str.replace(/đ/g, "d");
+    str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+    str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+    str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
+    str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+    str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+    str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
+    str = str.replace(/Đ/g, "D");
+    // Finally use NFD normalization for any remaining diacritics
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
 async function syncVisitedHistory(userId) {

@@ -15,7 +15,7 @@
                     
                     <div class="mb-4">
                         <label class="form-label-premium">Tên quán ăn</label>
-                        <InputText @bind-Value="CurrentPoi.Name" class="form-control-premium" placeholder="Ví dụ: Ốc Bùi Viện..." />
+                        <InputText @bind-Value="CurrentPoi.Name" class="form-control-premium" placeholder="Ví dụ: Ốc Vĩnh Khánh..." />
                         <ValidationMessage For="@(() => CurrentPoi.Name)" />
                     </div>
                     
@@ -231,11 +231,11 @@
         if (firstRender)
         {
             dotNetRef = DotNetObjectReference.Create(this);
-            // Default to Bùi Viện, HCM if coordinates are zero/null
-            var lat = (double?)CurrentPoi.Latitude ?? 10.7669676;
-            var lng = (double?)CurrentPoi.Longitude ?? 106.6930774;
+            // Default to Vĩnh Khánh, HCM if coordinates are zero/null
+            if (!CurrentPoi.Latitude.HasValue || CurrentPoi.Latitude == 0) CurrentPoi.Latitude = 10.7589m;
+            if (!CurrentPoi.Longitude.HasValue || CurrentPoi.Longitude == 0) CurrentPoi.Longitude = 106.7068m;
             
-            await JSRuntime.InvokeVoidAsync("mapHelper.initMap", "map", lat, lng, 16, dotNetRef);
+            await JSRuntime.InvokeVoidAsync("mapHelper.initMap", "map", (double)CurrentPoi.Latitude, (double)CurrentPoi.Longitude, 16, dotNetRef);
         }
     }
 

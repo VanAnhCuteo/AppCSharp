@@ -1,0 +1,237 @@
+@page "/poi-analytics"
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IAnalyticsService AnalyticsService
+@inject NavigationManager NavigationManager
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
+<PageTitle>Thống kê địa điểm - FoodMap Admin</PageTitle>
+
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-5 mt-2 animate-fade-in">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800 fw-bold" style="font-size: 2rem; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Thống kê Nghe Thuyết Minh</h1>
+            <p class="text-muted mb-0" style="font-size: 0.9rem; font-weight: 500;">Phân tích hiệu suất và lượt tương tác với các địa điểm.</p>
+        </div>
+        <button class="btn-refresh-premium" @onclick="RefreshData" title="Làm mới">
+            <i class="bi bi-arrow-clockwise"></i>
+        </button>
+    </div>
+
+@if (topStats == null)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+    </div>
+}
+else if (!topStats.Any())
+{
+    <div class="alert alert-info shadow-sm border-0">
+        <i class="bi bi-info-circle me-2"></i> Chưa có dữ liệu thống kê nghe thuyết minh.
+    </div>
+}
+else
+{
+    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 4rem;">
+        <!-- Card 1: Hot nhất -->
+        <div class="card shadow-sm stat-card-modern" style="border-left: 5px solid var(--primary); background: #fff;">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <p class="stat-label">ĐỊA ĐIỂM HOT NHẤT</p>
+                    <i class="bi bi-fire text-primary opacity-50 fs-4"></i>
+                </div>
+                <h2 class="stat-value">@topStats[0].TotalListens</h2>
+                <div class="stat-desc text-truncate" title="@topStats[0].PoiName">
+                    <i class="bi bi-geo-alt-fill me-1 text-primary"></i> @topStats[0].PoiName
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2: Tương tác cao nhất -->
+        <div class="card shadow-sm stat-card-modern" style="border-left: 5px solid #00acc1; background: #fff;">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <p class="stat-label">TƯƠNG TÁC CAO NHẤT</p>
+                    <i class="bi bi-graph-up-arrow text-info opacity-50 fs-4"></i>
+                </div>
+                @{
+                    var bestEngagement = topStats.OrderByDescending(s => s.AverageDurationSeconds).First();
+                }
+                <h2 class="stat-value">@bestEngagement.AverageDurationSeconds.ToString("N1")<small class="fs-6 ms-1">s/lượt</small></h2>
+                <div class="stat-desc text-truncate" title="@bestEngagement.PoiName">
+                    <i class="bi bi-heart-fill me-1 text-info"></i> @bestEngagement.PoiName
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 bg-white" style="border-radius: 15px; overflow: hidden;">
+        <div class="card-header bg-white py-4 px-4 border-0">
+            <h4 class="mb-0 fw-bold" style="color: var(--text-main);">Top 5 địa điểm nổi bật</h4>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr style="background: rgba(255, 45, 133, 0.02); border-bottom: 2px solid rgba(0,0,0,0.03);">
+                            <th class="py-3 text-center" style="width: 80px; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Hạng</th>
+                            <th class="py-3 text-center" style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Địa điểm</th>
+                            <th class="py-3 text-center" style="width: 150px; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Lượt nghe</th>
+                            <th class="py-3 text-center" style="width: 180px; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Thời gian TB</th>
+                            <th class="py-3 text-center pe-4" style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Mức độ quan tâm</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < topStats.Count; i++)
+                        {
+                            var stat = topStats[i];
+                            <tr class="align-middle">
+                                <td class="text-center ps-4">
+                                    <div class="rank-circle @(i == 0 ? "rank-1" : i == 1 ? "rank-2" : i == 2 ? "rank-3" : "rank-other") mx-auto">
+                                        @(i + 1)
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <div class="fw-bold text-dark fs-6">@stat.PoiName</div>
+                                    <div class="small text-muted">ID: #@stat.PoiId</div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="fw-bold text-primary fs-5">@stat.TotalListens.ToString("N0")</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-info border border-info border-opacity-10 px-3 py-2 fw-semibold">
+                                        @stat.AverageDurationSeconds.ToString("N1") s
+                                    </span>
+                                </td>
+                                <td class="text-center pe-4">
+                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                        <div class="progress" style="height: 8px; width: 100px; border-radius: 4px; background: #f0f0f0;">
+                                            @{
+                                                double maxListens = topStats.Max(s => s.TotalListens);
+                                                double percentage = maxListens > 0 ? (double)stat.TotalListens / maxListens * 100 : 0;
+                                            }
+                                            <div class="progress-bar @(i == 0 ? "bg-primary" : "bg-info")" role="progressbar" style="width: @(percentage)%" aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <span class="small fw-bold text-muted" style="width: 35px">@(Math.Round(percentage))%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+</div>
+
+<style>
+    .btn-refresh-premium {
+        width: 45px;
+        height: 45px;
+        border-radius: 14px;
+        background: white;
+        border: 1px solid rgba(255, 45, 133, 0.2);
+        color: var(--primary);
+        font-size: 1.4rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 20px rgba(255, 45, 133, 0.1);
+        transition: all 0.3s ease;
+    }
+    .btn-refresh-premium:hover {
+        background: var(--primary);
+        color: white;
+        transform: rotate(180deg) scale(1.1);
+        box-shadow: 0 10px 25px var(--primary-glow);
+    }
+    .btn-refresh-premium:active {
+        transform: scale(0.95);
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.8s ease-out;
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .stat-card-modern {
+        border-radius: 16px;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    .stat-card-modern:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 25px rgba(0,0,0,0.08) !important;
+    }
+    .stat-label {
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+    .stat-value {
+        font-size: 2.8rem;
+        font-weight: 800;
+        margin: 0;
+        color: var(--text-main);
+        line-height: 1.2;
+    }
+    .stat-desc {
+        color: #666;
+        font-size: 0.9rem;
+        margin-top: 0.8rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    /* Rank Circles */
+    .rank-circle {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.85rem;
+        color: white;
+    }
+    .rank-1 { background: #FFD700; box-shadow: 0 4px 10px rgba(255, 215, 0, 0.3); }
+    .rank-2 { background: #C0C0C0; box-shadow: 0 4px 10px rgba(192, 192, 192, 0.3); }
+    .rank-3 { background: #CD7F32; box-shadow: 0 4px 10px rgba(205, 127, 50, 0.3); }
+    .rank-other { background: #f0f0f0; color: #888; }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(255, 45, 133, 0.01) !important;
+    }
+
+    .progress {
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+    }
+</style>
+
+
+@code {
+    private List<PoiAudioStat>? topStats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshData();
+    }
+
+    private async Task RefreshData()
+    {
+        topStats = null;
+        topStats = await AnalyticsService.GetTopAudioStatsAsync(5);
+    }
+}

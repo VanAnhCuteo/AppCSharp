@@ -48,6 +48,8 @@ body {
     box-shadow: 10px 0 30px rgba(0, 0, 0, 0.02);
     overflow-y: auto;
     padding-bottom: 1.5rem;
+    position: relative;
+    z-index: 1050;
 }
 
 .logo {
@@ -185,6 +187,7 @@ body {
     padding: 2.2rem;
     box-shadow: 0 10px 30px rgba(255, 45, 133, 0.04);
     transition: all 0.3s ease;
+    position: relative;
 }
 
     .card:hover {
@@ -265,3 +268,62 @@ h1, h2, h3 {
 ::-webkit-scrollbar-track { background: var(--bg-light); }
 ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.05); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+/* Premium Map Buttons */
+.btn-premium-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    color: var(--primary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.btn-premium-circle:hover {
+    background: var(--primary);
+    color: white;
+    transform: rotate(360deg) scale(1.1);
+    box-shadow: 0 8px 25px var(--primary-glow);
+}
+
+.btn-premium-magic {
+    background: linear-gradient(135deg, #FF9020 0%, #FF2D85 100%);
+    border: none;
+    color: white;
+    padding: 0.7rem 1.6rem;
+    border-radius: 16px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 45, 133, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-premium-magic:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 10px 30px rgba(255, 45, 133, 0.5);
+    filter: brightness(1.1);
+}
+
+.btn-premium-magic i {
+    font-size: 1rem;
+    animation: magic-sparkle 2s infinite linear;
+}
+
+@keyframes magic-sparkle {
+    0% { transform: scale(1) rotate(0deg); opacity: 1; }
+    50% { transform: scale(1.2) rotate(180deg); opacity: 0.8; }
+    100% { transform: scale(1) rotate(360deg); opacity: 1; }
+}

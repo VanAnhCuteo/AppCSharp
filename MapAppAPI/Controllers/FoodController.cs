@@ -311,6 +311,78 @@ namespace FoodMapAPI.Controllers
             return Ok(new { success = true });
         }
 
+        [HttpPost("{id}/audio-log")]
+        public async Task<IActionResult> LogAudio(int id, [FromBody] AudioLogRequest logReq)
+        {
+            if (logReq == null || logReq.duration_seconds <= 0) return BadRequest("Invalid duration");
+
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+                    string query = "INSERT INTO poi_audio_logs (poi_id, user_id, duration_seconds) VALUES (@poi, @user, @duration)";
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@poi", id);
+                        cmd.Parameters.AddWithValue("@user", logReq.user_id > 0 ? logReq.user_id : 1);
+                        cmd.Parameters.AddWithValue("@duration", logReq.duration_seconds);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            return Ok(new { success = true });
+        }
+
+        [HttpGet("stats/audio")]
+        public async Task<IActionResult> GetAudioStats()
+        {
+            List<AudioStat> stats = new List<AudioStat>();
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+                    string query = @"
+                        SELECT p.poi_id, p.name, 
+                               COUNT(l.log_id) as total_listens, 
+                               COALESCE(AVG(l.duration_seconds), 0) as avg_duration
+                        FROM pois p
+                        LEFT JOIN poi_audio_logs l ON p.poi_id = l.poi_id
+                        GROUP BY p.poi_id, p.name
+                        ORDER BY total_listens DESC";
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                stats.Add(new AudioStat
+                                {
+                                    poi_id = Convert.ToInt32(reader["poi_id"]),
+                                    poi_name = reader["name"].ToString() ?? "",
+                                    total_listens = Convert.ToInt32(reader["total_listens"]),
+                                    avg_duration = Math.Round(Convert.ToDouble(reader["avg_duration"]), 1)
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            return Ok(stats);
+        }
+
         [HttpGet("{id}/guide")]
         public async Task<IActionResult> GetGuide(int id, [FromQuery] string lang = "vi")
         {

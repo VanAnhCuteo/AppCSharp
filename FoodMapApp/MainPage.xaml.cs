@@ -1,6 +1,7 @@
 using System.Net.Http;
 using System.Text.Json;
 using System.Web;
+using System.Diagnostics;
 
 namespace FoodMapApp;
 
@@ -25,6 +26,8 @@ namespace FoodMapApp;
         private string _lastPoiId = "";
         private bool _isMapLoaded = false;
         private string _foodsJson = null;
+        private Stopwatch _audioStopwatch = new Stopwatch();
+        private string _reportingPoiId = "";
 
         private string NormalizeText(string text)
         {
@@ -85,8 +88,8 @@ namespace FoodMapApp;
                             StopSpeech(true);
                             _lastPoiId = id;
                             _lastSpokenText = normalizedText;
-                            // Finer splitting (added comma, newline, etc.)
-                            _currentSentences = text.Split(new[] { '.', '!', '?', ';', ':', ',', '\n', '|' }, StringSplitOptions.RemoveEmptyEntries)
+                            // Fluency fix: Split by sentence/phrase delimiters instead of spaces
+                            _currentSentences = text.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
                                                     .Select(s => s.Trim())
                                                     .Where(s => s.Length > 0)
                                                     .ToArray();
@@ -106,7 +109,7 @@ namespace FoodMapApp;
                             {
                                 StopSpeech(true);
                                 _lastSpokenText = normalizedText;
-                                _currentSentences = text.Split(new[] { '.', '!', '?', ';', ':', ',', '\n', '|' }, StringSplitOptions.RemoveEmptyEntries)
+                                _currentSentences = text.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
                                                         .Select(s => s.Trim())
                                                         .Where(s => s.Length > 0)
                                                         .ToArray();
@@ -165,11 +168,21 @@ namespace FoodMapApp;
         private void StopSpeech(bool fullReset = false)
         {
             _currentSentenceCts?.Cancel();
+            _audioStopwatch.Stop(); // Always stop stopwatch on pause/reset
+
             if (fullReset)
             {
                 _ttsCts?.Cancel();
                 _isPaused = false;
                 _pauseTcs?.TrySetResult(false);
+
+                // Send log if we were tracking a POI
+                if (_audioStopwatch.Elapsed.TotalSeconds >= 1 && !string.IsNullOrEmpty(_reportingPoiId))
+                {
+                    _ = SendAudioLogAsync(_reportingPoiId, (int)_audioStopwatch.Elapsed.TotalSeconds);
+                }
+                _audioStopwatch.Reset();
+                _reportingPoiId = "";
             }
         }
 
@@ -196,6 +209,7 @@ namespace FoodMapApp;
                 options.Locale = _cachedLocales.FirstOrDefault(l => l.Language.Equals(lang, StringComparison.OrdinalIgnoreCase)) ??
                                  _cachedLocales.FirstOrDefault(l => l.Language.StartsWith(lang.Split('-')[0], StringComparison.OrdinalIgnoreCase));
 
+                _reportingPoiId = _lastPoiId; // Store for reporting
                 Console.WriteLine($"DEBUG: SpeakWithChunks loop started. From index {_currentSentenceIndex}/{_currentSentences.Length}");
 
                 while (_currentSentenceIndex < _currentSentences.Length && !mainToken.IsCancellationRequested)
@@ -216,7 +230,9 @@ namespace FoodMapApp;
                     {
                         Console.WriteLine($"DEBUG: Speaking index {_currentSentenceIndex}: {(sentence.Length > 20 ? sentence.Substring(0, 20) : sentence)}...");
                         
+                        _audioStopwatch.Start(); // Start/Resume timer
                         await TextToSpeech.Default.SpeakAsync(sentence, options, _currentSentenceCts.Token);
+                        _audioStopwatch.Stop(); // Stop timer when sentence done
                         
                         _currentSentenceIndex++;
                         
@@ -241,15 +257,49 @@ namespace FoodMapApp;
 
                 if (_currentSentenceIndex >= _currentSentences.Length && !mainToken.IsCancellationRequested)
                 {
+                    // Finished normally
+                    if (_audioStopwatch.Elapsed.TotalSeconds >= 1 && !string.IsNullOrEmpty(_reportingPoiId))
+                    {
+                        _ = SendAudioLogAsync(_reportingPoiId, (int)_audioStopwatch.Elapsed.TotalSeconds);
+                    }
+                    _audioStopwatch.Reset();
+
                     _currentSentenceIndex = 0;
                     _lastSpokenText = "";
                     _lastPoiId = "";
+                    _reportingPoiId = "";
                     await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
                 }
             }
             finally
             {
                 _ttsSemaphore.Release();
+            }
+        }
+
+        private async Task SendAudioLogAsync(string poiId, int duration)
+        {
+            if (string.IsNullOrEmpty(poiId)) return;
+            
+            try
+            {
+                int userId = Preferences.Default.Get("user_id", 1);
+                var payload = new { user_id = userId, duration_seconds = duration };
+                
+                using HttpClient client = new HttpClient();
+                var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+                
+                Console.WriteLine($"DEBUG: Sending audio log for POI {poiId}, Duration: {duration}s");
+                var response = await client.PostAsync($"{BackendUrl}/{poiId}/audio-log", content);
+                
+                if (response.IsSuccessStatusCode)
+                    Console.WriteLine("DEBUG: Audio log sent successfully.");
+                else
+                    Console.WriteLine($"DEBUG: Failed to send audio log. Status: {response.StatusCode}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DEBUG: Error sending audio log: {ex.Message}");
             }
         }
 

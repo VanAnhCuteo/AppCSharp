@@ -1,4 +1,4 @@
-﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              NavigationPage.HasNavigationBar="False"
              x:Class="FoodMapApp.FoodTourPage">
@@ -14,7 +14,7 @@ HorizontalOptions="Center"
 Spacing="20">
 
             <Label
-Text="🍜 Food Tour Bùi Viện"
+Text="🍜 Food Tour Vĩnh Khánh"
 FontSize="36"
 TextColor="White"
 HorizontalOptions="Center"/>

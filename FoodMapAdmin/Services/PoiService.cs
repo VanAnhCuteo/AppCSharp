@@ -41,7 +41,11 @@ namespace FoodMapAdmin.Services
 
         public async Task<List<Poi>> GetAllPoisAsync()
         {
-            return await _context.Pois.Include(p => p.Category).Include(p => p.Owner).ToListAsync();
+            return await _context.Pois
+                .AsNoTracking()
+                .Include(p => p.Category)
+                .Include(p => p.Owner)
+                .ToListAsync();
         }
 
         public async Task<List<Poi>> GetPoisByOwnerAsync(int userId)

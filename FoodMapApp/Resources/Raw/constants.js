@@ -11,23 +11,42 @@ let markersGroup = null;
 let platformApiBase = ""; 
 
 // Icons & SVGs
-const markerSvg = `
-<svg width="46" height="52" viewBox="0 0 46 52" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M23 2C11.954 2 3 10.954 3 22C3 34.5 23 50 23 50C23 50 43 34.5 43 22C43 10.954 34.046 2 23 2Z" fill="url(#grad_marker)"/>
-    <path d="M23 2C11.954 2 3 10.954 3 22C3 34.5 23 50 23 50C23 50 43 34.5 43 22C43 10.954 34.046 2 23 2Z" fill="#FB6F92" fill-opacity="0.9"/>
-    <path d="M23 2C11.954 2 3 10.954 3 22C3 22.463 3.033 22.915 3.09 23.356C4.414 13.064 12.876 5 23 5C33.124 5 41.586 13.064 42.91 23.356C42.967 22.915 43 22.463 43 22C43 10.954 34.046 2 23 2Z" fill="white" fill-opacity="0.4"/>
-    <circle cx="23" cy="22" r="9" fill="white"/>
-    <defs>
-        <linearGradient id="grad_marker" x1="23" y1="2" x2="23" y2="50" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#FFBA08"/>
-            <stop offset="1" stop-color="#FB6F92"/>
-        </linearGradient>
-    </defs>
-</svg>`;
+function getMarkerSvg(mainColor, gradId) {
+    const secondaryColor = mainColor === '#FB6F92' ? '#FFBA08' : (mainColor === '#3A86FF' ? '#00D2FF' : '#2ecc71');
+    return `
+    <svg width="46" height="52" viewBox="0 0 46 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M23 2C11.954 2 3 10.954 3 22C3 34.5 23 50 23 50C23 50 43 34.5 43 22C43 10.954 34.046 2 23 2Z" fill="url(#${gradId})"/>
+        <path d="M23 2C11.954 2 3 10.954 3 22C3 34.5 23 50 23 50C23 50 43 34.5 43 22C43 10.954 34.046 2 23 2Z" fill="${mainColor}" fill-opacity="0.9"/>
+        <path d="M23 2C11.954 2 3 10.954 3 22C3 22.463 3.033 22.915 3.09 23.356C4.414 13.064 12.876 5 23 5C33.124 5 41.586 13.064 42.91 23.356C42.967 22.915 43 22.463 43 22C43 10.954 34.046 2 23 2Z" fill="white" fill-opacity="0.4"/>
+        <circle cx="23" cy="22" r="9" fill="white"/>
+        <defs>
+            <linearGradient id="${gradId}" x1="23" y1="2" x2="23" y2="50" gradientUnits="userSpaceOnUse">
+                <stop stop-color="${secondaryColor}"/>
+                <stop offset="1" stop-color="${mainColor}"/>
+            </linearGradient>
+        </defs>
+    </svg>`;
+}
 
 const pinkIcon = L.divIcon({
     className: 'custom-pink-marker',
-    html: '<div class="marker-inner"><div class="marker-pulse"></div>' + markerSvg + '</div>',
+    html: '<div class="marker-inner"><div class="marker-pulse"></div>' + getMarkerSvg('#FB6F92', 'grad_pink') + '</div>',
+    iconSize: [46, 52],
+    iconAnchor: [23, 50],
+    popupAnchor: [0, -46]
+});
+
+const blueIcon = L.divIcon({
+    className: 'custom-blue-marker',
+    html: '<div class="marker-inner">' + getMarkerSvg('#3A86FF', 'grad_blue') + '</div>',
+    iconSize: [46, 52],
+    iconAnchor: [23, 50],
+    popupAnchor: [0, -46]
+});
+
+const greenIcon = L.divIcon({
+    className: 'custom-green-marker',
+    html: '<div class="marker-inner">' + getMarkerSvg('#27ae60', 'grad_green') + '</div>',
     iconSize: [46, 52],
     iconAnchor: [23, 50],
     popupAnchor: [0, -46]

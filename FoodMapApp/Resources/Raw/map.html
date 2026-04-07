@@ -27,6 +27,11 @@
     <div class="map-header">
         <svg fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path></svg>
         <input type="text" id="map-search-input" placeholder="Tìm quán, địa chỉ..." autocomplete="off">
+        <button id="search-clear-btn" class="search-clear-btn hidden">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        <!-- Search Results Dropdown -->
+        <div id="search-results" class="search-results-dropdown hidden"></div>
     </div>
 
     <div id="map"></div>

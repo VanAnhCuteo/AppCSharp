@@ -125,8 +125,10 @@ namespace FoodMapApp.Views
         private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
         {
             var searchText = e.NewTextValue?.ToLower() ?? "";
-            var searchNormalized = RemoveDiacritics(searchText);
-
+            
+            // Toggle clear button visibility
+            ClearSearchBtn.IsVisible = !string.IsNullOrWhiteSpace(searchText);
+            
             if (string.IsNullOrWhiteSpace(searchText))
             {
                 RestaurantsCollection.ItemsSource = _allRestaurants;
@@ -135,15 +137,21 @@ namespace FoodMapApp.Views
                 return;
             }
 
+            // Smart Search: Split query into terms
+            var searchNormalized = RemoveDiacritics(searchText);
+            var searchTerms = searchNormalized.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
             var filtered = _allRestaurants.Where(f =>
             {
                 var nameNormalized = RemoveDiacritics(f.name?.ToLower() ?? "");
                 var descNormalized = RemoveDiacritics(f.description?.ToLower() ?? "");
                 var addrNormalized = RemoveDiacritics(f.address?.ToLower() ?? "");
 
-                return nameNormalized.Contains(searchNormalized) ||
-                       descNormalized.Contains(searchNormalized) ||
-                       addrNormalized.Contains(searchNormalized);
+                // Match: EVERY search term must be found in either name, address or description
+                return searchTerms.All(term =>
+                    nameNormalized.Contains(term) ||
+                    descNormalized.Contains(term) ||
+                    addrNormalized.Contains(term));
             }).ToList();
 
             if (filtered.Any())
@@ -158,6 +166,12 @@ namespace FoodMapApp.Views
                 RestaurantsCollection.IsVisible = false;
                 NoResultsLabel.IsVisible = true;
             }
+        }
+
+        private void OnClearSearchTapped(object sender, TappedEventArgs e)
+        {
+            SearchEntry.Text = string.Empty;
+            SearchEntry.Focus();
         }
 
         private void OnBackgroundTapped(object sender, EventArgs e)
@@ -201,7 +215,12 @@ namespace FoodMapApp.Views
 
         private string RemoveDiacritics(string text)
         {
-            var normalizedString = text.Normalize(NormalizationForm.FormD);
+            if (string.IsNullOrWhiteSpace(text)) return "";
+
+            // Explicitly handle Vietnamese 'đ' and 'Đ'
+            string str = text.Replace('đ', 'd').Replace('Đ', 'D');
+
+            var normalizedString = str.Normalize(NormalizationForm.FormD);
             var stringBuilder = new StringBuilder();
 
             foreach (var c in normalizedString)

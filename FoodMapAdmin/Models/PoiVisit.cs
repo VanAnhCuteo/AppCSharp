@@ -22,6 +22,12 @@ namespace FoodMapAdmin.Models
         [ForeignKey(nameof(UserId))]
         public User? User { get; set; }
 
+        [Column("latitude", TypeName = "decimal(10,7)")]
+        public decimal? Latitude { get; set; }
+        
+        [Column("longitude", TypeName = "decimal(10,7)")]
+        public decimal? Longitude { get; set; }
+        
         [Column("visit_time")]
         public DateTime? VisitTime { get; set; }
 
