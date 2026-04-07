@@ -135,8 +135,15 @@ async function openDetails(poiId, lang = selectedLanguage) {
                 uniqueImages.forEach(imgPath => {
                     if (!imgPath.startsWith('http')) {
                         if (imgPath.startsWith('/')) imgPath = imgPath.substring(1);
+                        
                         // Prefix with server URL (platformApiBase is http://.../api/Food)
                         const serverBase = platformApiBase.split('/api')[0];
+                        
+                        // Ensure it includes the /images/ path segment if missing
+                        if (!imgPath.toLowerCase().startsWith('images/')) {
+                            imgPath = `images/${imgPath}`;
+                        }
+                        
                         imgPath = `${serverBase}/${imgPath}`;
                     }
                     const el = document.createElement('img');

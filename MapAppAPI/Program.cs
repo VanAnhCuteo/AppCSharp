@@ -26,6 +26,18 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
+
+// Serve images from the configured physical directory
+var imagePath = builder.Configuration["ImageStoragePath"];
+if (!string.IsNullOrEmpty(imagePath) && Directory.Exists(imagePath))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(imagePath),
+        RequestPath = "/images"
+    });
+}
+
 app.UseAuthorization();
 app.UseCors("AllowAllOriginsPolicy");
 app.MapControllers();

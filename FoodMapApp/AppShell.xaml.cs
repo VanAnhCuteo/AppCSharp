@@ -1,4 +1,4 @@
-﻿namespace FoodMapApp
+namespace FoodMapApp
 {
     public partial class AppShell : Shell
     {
