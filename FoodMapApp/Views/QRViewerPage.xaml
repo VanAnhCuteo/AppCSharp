@@ -1,13 +1,63 @@
 <?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="FoodMapApp.Views.QRViewerPage"
+             Title="Mã QR của quán">
 
-<ContentPage 
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    NavigationPage.HasNavigationBar="False"
-    x:Class="FoodMapApp.MainPage">
+    <AbsoluteLayout>
+        <!-- Nội dung chính -->
+        <VerticalStackLayout AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" Padding="20">
+            <Label x:Name="shopNameLabel" 
+                   Text="Tên quán" 
+                   FontSize="24" FontAttributes="Bold" 
+                   HorizontalTextAlignment="Center" 
+                   TextColor="#FF2D85"
+                   Margin="0,0,0,20" />
 
-    <Grid>
-        <WebView x:Name="mapView" />
+            <Frame x:Name="qrImageFrame" Padding="10" CornerRadius="20" HasShadow="True" BorderColor="#EEE" BackgroundColor="White">
+                <Image x:Name="qrImage"
+                       Aspect="AspectFit"
+                       HeightRequest="250" WidthRequest="250" />
+            </Frame>
+
+            <Label Text="Kéo kính quét bên dưới đè lên ảnh QR để xem" 
+                   FontSize="14" HorizontalTextAlignment="Center" 
+                   TextColor="Gray"
+                   Margin="0,30,0,0" />
+            
+            <Button x:Name="scanButton" 
+                    Text="Bật Kính Quét" 
+                    BackgroundColor="#FF2D85" 
+                    TextColor="White" 
+                    CornerRadius="15" 
+                    HeightRequest="50" 
+                    Margin="40,20,40,0"
+                    Clicked="OnScanButtonClicked" />
+        </VerticalStackLayout>
+
+        <!-- Kính quét di động (Magic Lens) -->
+        <Frame x:Name="magicLens"
+               Background="Transparent"
+               BorderColor="#FF2D85"
+               Padding="0"
+               CornerRadius="20"
+               HasShadow="False"
+               IsVisible="False"
+               WidthRequest="300"
+               HeightRequest="300"
+               AbsoluteLayout.LayoutBounds="0.5, 0.8, AutoSize, AutoSize"
+               AbsoluteLayout.LayoutFlags="PositionProportional">
+            <Frame.GestureRecognizers>
+                <PanGestureRecognizer PanUpdated="OnPanUpdated" />
+            </Frame.GestureRecognizers>
+            <Grid>
+                <BoxView Color="#FF2D85" HeightRequest="3" VerticalOptions="Start" HorizontalOptions="Fill" Margin="20,0" />
+                <BoxView Color="#FF2D85" HeightRequest="3" VerticalOptions="End" HorizontalOptions="Fill" Margin="20,0" />
+                <BoxView Color="#FF2D85" WidthRequest="3" VerticalOptions="Fill" HorizontalOptions="Start" Margin="0,20" />
+                <BoxView Color="#FF2D85" WidthRequest="3" VerticalOptions="Fill" HorizontalOptions="End" Margin="0,20" />
+                <BoxView x:Name="laserLine" Color="#FF2D85" HeightRequest="2" VerticalOptions="Center" Opacity="0.6" IsVisible="True" />
+            </Grid>
+        </Frame>
 
         <!-- Thanh Mini-player (Màu hồng đậm, tỉ lệ vàng 95px) -->
         <Border x:Name="miniPlayer"
@@ -16,7 +66,8 @@
                 Padding="12,10"
                 Margin="12,0,12,30"
                 StrokeThickness="0"
-                VerticalOptions="End">
+                AbsoluteLayout.LayoutBounds="0.5, 1, 1, 95"
+                AbsoluteLayout.LayoutFlags="PositionProportional, WidthProportional">
             <Border.StrokeShape>
                 <RoundRectangle CornerRadius="47.5" />
             </Border.StrokeShape>
@@ -38,7 +89,7 @@
                     <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="10,0,0,0">
                         <Label Text="AUDIO GUIDE" FontSize="8" FontAttributes="Bold" TextColor="White" Opacity="0.8" CharacterSpacing="2" />
                         <Label x:Name="detectedShopLabel" 
-                               Text="Quán ăn gần bạn" 
+                               Text="Tên quán" 
                                FontSize="15" 
                                FontAttributes="Bold" 
                                TextColor="White" 
@@ -58,9 +109,8 @@
                                 <Path x:Name="playIcon" 
                                       Data="M 0,0 L 12,8 L 0,16 Z" 
                                       Fill="White" 
-                                      TranslationX="2"
-                                      IsVisible="False" />
-                                <HorizontalStackLayout x:Name="pauseIcon" Spacing="4" IsVisible="True" HorizontalOptions="Center">
+                                      TranslationX="2" />
+                                <HorizontalStackLayout x:Name="pauseIcon" Spacing="4" IsVisible="False" HorizontalOptions="Center">
                                     <BoxView WidthRequest="4" HeightRequest="14" Color="White" CornerRadius="1" />
                                     <BoxView WidthRequest="4" HeightRequest="14" Color="White" CornerRadius="1" />
                                 </HorizontalStackLayout>
@@ -119,6 +169,5 @@
                 </HorizontalStackLayout>
             </Grid>
         </Border>
-    </Grid>
-
+    </AbsoluteLayout>
 </ContentPage>

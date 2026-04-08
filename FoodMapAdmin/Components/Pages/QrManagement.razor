@@ -1,0 +1,193 @@
+@page "/qr-management"
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IPoiService PoiService
+@inject NavigationManager Navigator
+@attribute [Authorize(Roles = "admin")]
+
+<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Quản lý mã QR</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý mã QR riêng biệt cho từng quán ăn trong hệ thống</p>
+    </div>
+</div>
+
+@if (pois == null)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card shadow-glass border-0" style="border-radius: 30px; overflow: hidden; background: var(--surface);">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr style="background: rgba(255, 45, 133, 0.03);">
+                        <th style="padding: 1.5rem 1rem 1.5rem 2rem;" class="uppercase-tracking">Mã ID</th>
+                        <th style="padding: 1.5rem 1rem;" class="uppercase-tracking">Quán ăn & Địa chỉ</th>
+                        <th style="padding: 1.5rem 1rem;" class="uppercase-tracking text-center">Ảnh QR Hiện tại</th>
+                        <th style="padding: 1.5rem 2rem 1.5rem 1rem;" class="uppercase-tracking text-center">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var poi in pois)
+                    {
+                        <tr class="align-middle transition-all">
+                            <td style="padding-left: 2rem; color: var(--text-muted); font-weight: 600;">#@poi.PoiId</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="poi-avatar me-3">
+                                        @(poi.Name?.Substring(0, 1).ToUpper() ?? "P")
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 800; color: var(--text-main); font-size: 1.05rem;">@poi.Name</div>
+                                        <div class="text-muted text-truncate" style="max-width: 350px; font-size: 0.85rem;">
+                                            <i class="bi bi-geo-alt-fill me-1" style="color: var(--primary); opacity: 0.6;"></i> @poi.Address
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                @if (poi.QrCode != null)
+                                {
+                                    <div class="qr-preview-wrapper mx-auto">
+                                        <img src="@poi.QrCode.QrCodeUrl" alt="QR Code" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="badge-custom badge-empty">Chưa có mã QR</span>
+                                }
+                            </td>
+                            <td style="text-align: center; padding-right: 2rem;">
+                                <button class="btn-action-premium" @onclick="() => EditQr(poi.PoiId)" title="Cập nhật mã QR">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<style>
+    .shadow-glass {
+        box-shadow: 0 20px 60px rgba(0,0,0,0.03) !important;
+        border: 1px solid var(--glass-border) !important;
+    }
+
+    .uppercase-tracking {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-weight: 800;
+        color: var(--text-muted);
+    }
+
+    .poi-avatar {
+        width: 42px;
+        height: 42px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1.2rem;
+        box-shadow: 0 8px 20px var(--primary-glow);
+    }
+
+    .qr-preview-wrapper {
+        width: 50px;
+        height: 50px;
+        padding: 4px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        border: 1px solid rgba(0,0,0,0.03);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .qr-preview-wrapper img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+
+    .badge-custom {
+        padding: 0.5rem 1.1rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: inline-block;
+    }
+
+    .badge-empty {
+        background: rgba(0, 0, 0, 0.04);
+        color: var(--text-muted);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-action-premium {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        background: rgba(255, 45, 133, 0.08);
+        color: var(--primary);
+        border: none;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+
+    .btn-action-premium:hover {
+        background: var(--primary);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px var(--primary-glow);
+    }
+
+    .transition-all {
+        transition: all 0.3s ease;
+    }
+
+    tr:hover {
+        background: rgba(255, 45, 133, 0.01) !important;
+        transform: scale(1.002);
+    }
+</style>
+
+@code {
+    private List<Poi>? pois;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // IPoiService.GetAllPoisAsync() currently doesn't include QrCode relationship.
+        // Let's check the service to see if we can get them with QrCodes.
+        pois = await PoiService.GetAllPoisAsync();
+        
+        // Manual enhancement: Get specific POIs for the list
+        // Since the user wants separate management, we might want to update PoiService 
+        // to have a GetPoisWithQrAsync or similar, but for now we'll rely on the existing one 
+        // if it handles the relationship or fetch them one by one (not efficient but okay for now).
+        // Actually, I'll update PoiService later to include QrCode in GetAll.
+    }
+
+    private void EditQr(int poiId)
+    {
+        Navigator.NavigateTo($"/qr-management/edit/{poiId}");
+    }
+}

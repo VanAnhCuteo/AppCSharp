@@ -6,7 +6,7 @@ namespace FoodMapApp
     {
         // For Android Emulator (AVD): use 10.0.2.2
         // For physical device on same WiFi: use your PC's local IP (e.g. 192.168.31.209)
-        private const string PhysicalDeviceIp = "172.20.10.3";
+        private const string PhysicalDeviceIp = "192.168.31.209";
 
         public static string BackendIp =>
             DeviceInfo.Platform == DevicePlatform.Android &&

@@ -50,5 +50,10 @@ namespace FoodMapAdmin.Models
         public ICollection<PoiImage> Images { get; set; } = new List<PoiImage>();
         public ICollection<PoiGuide> Guides { get; set; } = new List<PoiGuide>();
         public ICollection<Review> Reviews { get; set; } = new List<Review>();
+        
+        public PoiQr? QrCode { get; set; }
+
+        [NotMapped]
+        public string? QrCodeUrl { get; set; }
     }
 }

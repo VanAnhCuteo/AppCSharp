@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="FoodMapApp.Views.ShopQRListPage"
+             Title="Danh sách quán ăn">
+    
+    <Grid RowDefinitions="Auto, *">
+        <!-- Header -->
+        <VerticalStackLayout Grid.Row="0" Margin="20,10" Spacing="5">
+            <Label Text="Chọn quán để xem mã QR" 
+                   FontSize="18" FontAttributes="Bold" 
+                   TextColor="#FF2D85" />
+            <Label Text="Mã QR giúp bạn nhận diện quán nhanh chóng" 
+                   FontSize="12" TextColor="Gray" />
+        </VerticalStackLayout>
+
+        <!-- Search Bar -->
+        <!-- Future enhancement: Add search here -->
+
+        <CollectionView Grid.Row="1" x:Name="shopsCollection"
+                        Margin="10"
+                        SelectionMode="None">
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Margin="5,0" Padding="15" CornerRadius="15" HasShadow="True" BorderColor="#EEE">
+                        <Frame.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnShopTapped" CommandParameter="{Binding .}" />
+                        </Frame.GestureRecognizers>
+                        <Grid ColumnDefinitions="Auto, *">
+                            <Image Grid.Column="0" Source="{Binding image_url}" 
+                                   Aspect="AspectFill" 
+                                   HeightRequest="60" WidthRequest="60" 
+                                   Margin="0,0,15,0">
+                                <Image.Clip>
+                                    <RoundRectangleGeometry CornerRadius="10" Rect="0,0,60,60" />
+                                </Image.Clip>
+                            </Image>
+                            
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                                <Label Text="{Binding name}" 
+                                       FontSize="16" FontAttributes="Bold" 
+                                       TextColor="#333" />
+                                <Label Text="{Binding address}" 
+                                       FontSize="13" TextColor="Gray" 
+                                       LineBreakMode="TailTruncation" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <ActivityIndicator x:Name="loadingIndicator" 
+                           Grid.Row="1"
+                           IsRunning="True" 
+                           HorizontalOptions="Center" 
+                           VerticalOptions="Center" 
+                           Color="#FF2D85" />
+    </Grid>
+</ContentPage>

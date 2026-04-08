@@ -18,6 +18,16 @@ namespace FoodMapAPI.Controllers
             _translator = translator;
         }
 
+        private string? GetFullUrl(string? relativePath)
+        {
+            if (string.IsNullOrEmpty(relativePath)) return null;
+            if (relativePath.StartsWith("http")) return relativePath;
+            
+            var request = HttpContext.Request;
+            var baseUrl = $"{request.Scheme}://{request.Host}{request.PathBase}";
+            return $"{baseUrl}{(relativePath.StartsWith("/") ? "" : "/")}{relativePath}";
+        }
+
         [HttpGet]
         public async Task<List<Food>> GetFoods([FromQuery] string lang = "vi", [FromQuery] int? category_id = null)
         {
@@ -31,11 +41,15 @@ namespace FoodMapAPI.Controllers
                     await conn.OpenAsync();
 
                     // Join with poi_guides to get description for the requested language, fallback to 'vi'
-                    string query = @"SELECT p.*, COALESCE(g.description, gv.description) as description, 
-                                   (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url 
+                    // Join with poi_qrs to get the QR code URL
+                    string query = @"SELECT p.poi_id, p.category_id, p.name, p.address, p.latitude, p.longitude, p.open_time, p.range_meters,
+                                   COALESCE(g.description, gv.description) as description, 
+                                   (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url,
+                                   pq.qr_code_url
                                    FROM pois p 
                                    LEFT JOIN poi_guides g ON p.poi_id = g.poi_id AND g.language = @lang
-                                   LEFT JOIN poi_guides gv ON p.poi_id = gv.poi_id AND gv.language = 'vi'";
+                                   LEFT JOIN poi_guides gv ON p.poi_id = gv.poi_id AND gv.language = 'vi'
+                                   LEFT JOIN poi_qrs pq ON p.poi_id = pq.poi_id";
 
                     if (category_id.HasValue && category_id.Value > 0)
                     {
@@ -64,8 +78,9 @@ namespace FoodMapAPI.Controllers
                                     latitude = reader["latitude"] != DBNull.Value ? Convert.ToDouble(reader["latitude"]) : 0.0,
                                     longitude = reader["longitude"] != DBNull.Value ? Convert.ToDouble(reader["longitude"]) : 0.0,
                                     open_time = reader["open_time"].ToString() ?? "",
-                                    image_url = reader["image_url"] != DBNull.Value ? reader["image_url"].ToString() : "",
-                                    range_meters = reader["range_meters"] != DBNull.Value ? Convert.ToInt32(reader["range_meters"]) : 50
+                                    image_url = reader["image_url"] != DBNull.Value ? GetFullUrl(reader["image_url"].ToString()) : "",
+                                    range_meters = reader["range_meters"] != DBNull.Value ? Convert.ToInt32(reader["range_meters"]) : 50,
+                                    qr_code_url = reader["qr_code_url"] != DBNull.Value ? GetFullUrl(reader["qr_code_url"].ToString()) : null
                                 };
 
                                 if (lang != "vi")
@@ -107,11 +122,14 @@ namespace FoodMapAPI.Controllers
                     await conn.OpenAsync();
 
                     // 1. Get food info with description from poi_guides, fallback to 'vi'
-                    string detailQuery = @"SELECT p.*, COALESCE(g.description, gv.description) as description, 
-                                         (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url 
+                    string detailQuery = @"SELECT p.poi_id, p.category_id, p.name, p.address, p.latitude, p.longitude, p.open_time, p.range_meters,
+                                         COALESCE(g.description, gv.description) as description, 
+                                         (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url,
+                                         pq.qr_code_url
                                          FROM pois p 
                                          LEFT JOIN poi_guides g ON p.poi_id = g.poi_id AND g.language = @lang 
                                          LEFT JOIN poi_guides gv ON p.poi_id = gv.poi_id AND gv.language = 'vi'
+                                         LEFT JOIN poi_qrs pq ON p.poi_id = pq.poi_id
                                          WHERE p.poi_id = @id";
 
                     using (MySqlCommand cmd = new MySqlCommand(detailQuery, conn))
@@ -130,8 +148,9 @@ namespace FoodMapAPI.Controllers
                                 details.latitude = reader["latitude"] != DBNull.Value ? Convert.ToDouble(reader["latitude"]) : 0.0;
                                 details.longitude = reader["longitude"] != DBNull.Value ? Convert.ToDouble(reader["longitude"]) : 0.0;
                                 details.open_time = reader["open_time"].ToString() ?? "";
-                                details.image_url = reader["image_url"] != DBNull.Value ? reader["image_url"].ToString() : "";
+                                details.image_url = reader["image_url"] != DBNull.Value ? GetFullUrl(reader["image_url"].ToString()) : "";
                                 details.range_meters = reader["range_meters"] != DBNull.Value ? Convert.ToInt32(reader["range_meters"]) : 50;
+                                details.qr_code_url = reader["qr_code_url"] != DBNull.Value ? GetFullUrl(reader["qr_code_url"].ToString()) : null;
                             }
                             else
                             {
@@ -165,7 +184,7 @@ namespace FoodMapAPI.Controllers
                                 while (await reader.ReadAsync())
                                 {
                                     if (reader["image_url"] != DBNull.Value)
-                                        details.images.Add(reader["image_url"].ToString() ?? "");
+                                        details.images.Add(GetFullUrl(reader["image_url"].ToString()) ?? "");
                                 }
                             }
                         }

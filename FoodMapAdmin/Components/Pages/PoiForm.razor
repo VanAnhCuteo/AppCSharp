@@ -78,6 +78,7 @@
                             </div>
                         </Authorized>
                     </AuthorizeView>
+
                 </div>
             </div>
 
@@ -207,14 +208,12 @@
         white-space: nowrap;
     }
     
-    .transition-up {
-        transition: transform 0.4s ease;
-    }
-    
     .transition-up:hover {
         transform: translateY(-5px);
     }
 </style>
+
+@inject IJSRuntime JSRuntime
 
 @code {
     [Parameter] public Poi CurrentPoi { get; set; } = new();

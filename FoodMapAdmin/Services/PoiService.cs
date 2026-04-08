@@ -45,6 +45,7 @@ namespace FoodMapAdmin.Services
                 .AsNoTracking()
                 .Include(p => p.Category)
                 .Include(p => p.Owner)
+                .Include(p => p.QrCode)
                 .ToListAsync();
         }
 
@@ -53,6 +54,7 @@ namespace FoodMapAdmin.Services
             return await _context.Pois
                 .Where(p => p.UserId == userId)
                 .Include(p => p.Category)
+                .Include(p => p.QrCode)
                 .ToListAsync();
         }
 
@@ -63,17 +65,47 @@ namespace FoodMapAdmin.Services
                 .Include(p => p.Category)
                 .Include(p => p.Images)
                 .Include(p => p.Reviews)
+                .Include(p => p.QrCode)
                 .FirstOrDefaultAsync(p => p.PoiId == id);
         }
 
         public async Task<bool> UpdatePoiAsync(Poi poi)
         {
-            _context.Pois.Update(poi);
+            // Lấy quán ăn gốc từ database để cập nhật (giúp tránh lỗi tracking)
+            var dbPoi = await _context.Pois.FirstOrDefaultAsync(p => p.PoiId == poi.PoiId);
+            if (dbPoi == null) return false;
+
+            // Thu công cập nhật các trường quan trọng
+            dbPoi.Name = poi.Name;
+            dbPoi.Address = poi.Address;
+            dbPoi.CategoryId = poi.CategoryId;
+            dbPoi.RangeMeters = poi.RangeMeters;
+            dbPoi.Latitude = poi.Latitude;
+            dbPoi.Longitude = poi.Longitude;
+            dbPoi.OpenTime = poi.OpenTime;
+            dbPoi.UserId = poi.UserId;
+
+            // Xử lý riêng biệt cho QR Code (Vẫn bảo toàn logic: không tự xóa)
+            if (!string.IsNullOrEmpty(poi.QrCodeUrl))
+            {
+                var existingQr = await _context.PoiQrs.FirstOrDefaultAsync(q => q.PoiId == poi.PoiId);
+                if (existingQr == null)
+                {
+                    _context.PoiQrs.Add(new PoiQr { PoiId = poi.PoiId, QrCodeUrl = poi.QrCodeUrl });
+                }
+                else
+                {
+                    existingQr.QrCodeUrl = poi.QrCodeUrl;
+                    // Không cần gọi Update vì EF đã tự tracking
+                }
+            }
+
+            // Ghi nhật ký và lưu thay đổi
             var result = await _context.SaveChangesAsync() > 0;
             if (result)
             {
                 var userId = await GetCurrentUserIdAsync();
-                await _logger.LogAsync(userId, "Cập nhật thông tin", poi.Name, $"Đã sửa dữ liệu của {poi.Name}");
+                await _logger.LogAsync(userId, "Cập nhật thông tin", dbPoi.Name, $"Đã sửa dữ liệu của {dbPoi.Name}");
             }
             return result;
         }
@@ -87,6 +119,10 @@ namespace FoodMapAdmin.Services
 
             // Xóa ảnh của quán và tệp vật lý trước khi xóa quán
             await _imageService.DeleteImagesByPoiIdAsync(id);
+
+            // Xóa mã QR liên quan
+            var qr = await _context.PoiQrs.FirstOrDefaultAsync(q => q.PoiId == id);
+            if (qr != null) _context.PoiQrs.Remove(qr);
 
             _context.Pois.Remove(poi);
             var result = await _context.SaveChangesAsync() > 0;
@@ -102,6 +138,14 @@ namespace FoodMapAdmin.Services
         {
             _context.Pois.Add(poi);
             var result = await _context.SaveChangesAsync() > 0;
+            
+            // Save QR Code if exists after ID is generated
+            if (result && !string.IsNullOrEmpty(poi.QrCodeUrl))
+            {
+                _context.PoiQrs.Add(new PoiQr { PoiId = poi.PoiId, QrCodeUrl = poi.QrCodeUrl });
+                await _context.SaveChangesAsync();
+            }
+
             if (result)
             {
                 var userId = await GetCurrentUserIdAsync();

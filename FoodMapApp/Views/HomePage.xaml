@@ -28,15 +28,34 @@
             <VerticalStackLayout Padding="24,52,24,0" Spacing="20">
 
                 <!-- Greeting row -->
-                <Grid ColumnDefinitions="*,Auto">
+                <Grid ColumnDefinitions="*,Auto,Auto">
                     <VerticalStackLayout Grid.Column="0" Spacing="2">
                         <Label x:Name="GreetingLabel" FontSize="14" TextColor="White" Opacity="0.85"/>
                         <Label x:Name="UsernameLabel" FontSize="26" FontAttributes="Bold"
                                TextColor="White" CharacterSpacing="0.5"/>
                     </VerticalStackLayout>
 
-                    <!-- Location badge -->
+                    <!-- QR Button -->
                     <Border Grid.Column="1" WidthRequest="44" HeightRequest="44"
+                            StrokeThickness="0" VerticalOptions="Center" Margin="0,0,10,0">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="22"/></Border.StrokeShape>
+                        <Border.Background>
+                            <SolidColorBrush Color="#33FFFFFF"/>
+                        </Border.Background>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnQRButtonClicked" />
+                        </Border.GestureRecognizers>
+                        <Path Data="M2,2H8V8H2V2 M4,4H6V6H4V4 M14,2H20V8H14V2 M16,4H18V6H16V4 M2,14H8V20H2V14 M4,16H6V18H4V16 M14,14H16V16H14V14 M18,14H20V16H18V14 M14,18H16V20H14V18 M18,18H20V20H18V18 M10,2H12V4H10V2 M10,6H12V8H10V6 M10,10H12V12H10V10 M10,14H12V16H10V14 M10,18H12V20H10V18 M2,10H4V12H2V10 M6,10H8V12H6V10 M14,10H16V12H14V10 M18,10H20V12H18V10"
+                              Fill="White"
+                              Aspect="Uniform"
+                              WidthRequest="22"
+                              HeightRequest="22"
+                              HorizontalOptions="Center" 
+                              VerticalOptions="Center" />
+                    </Border>
+
+                    <!-- Location badge -->
+                    <Border Grid.Column="2" WidthRequest="44" HeightRequest="44"
                             StrokeThickness="0" VerticalOptions="Center">
                         <Border.StrokeShape><RoundRectangle CornerRadius="22"/></Border.StrokeShape>
                         <Border.Background>

@@ -179,6 +179,11 @@ namespace FoodMapApp.Views
             SearchEntry.Unfocus();
         }
 
+        private async void OnQRButtonClicked(object sender, EventArgs e)
+        {
+            await Shell.Current.GoToAsync("ShopQRListPage");
+        }
+
         private async void OnExploreTapped(object sender, TappedEventArgs e)
         {
             if (e.Parameter is not FoodItem food) 

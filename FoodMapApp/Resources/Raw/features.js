@@ -265,23 +265,28 @@ function processLocation(position) {
         userMarker.setLatLng([userLat, userLon]);
     }
 
-    let poisInRange = allFoodsData.map(food => {
+    // 1. Tính toán khoảng cách tất cả các quán và tìm quán gần nhất tuyệt đối
+    let allDistances = allFoodsData.map(food => {
         const dist = calculateDistance(userLat, userLon, food.latitude, food.longitude);
-        const range = food.range_meters || 50;
-        return { ...food, distance: dist, range: range };
-    }).filter(f => f.distance <= f.range);
+        return { ...food, distance: dist };
+    }).sort((a, b) => a.distance - b.distance);
+
+    let absoluteClosestPoi = allDistances.length > 0 ? allDistances[0] : null;
+
+    // 2. Lọc danh sách quán trong phạm vi 50m để phát Audio
+    let poisInRange = allDistances.filter(f => f.distance <= (f.range_meters || 50));
+    let closestInRangePoi = poisInRange.length > 0 ? poisInRange[0] : null;
 
     if (poisInRange.length > 0) {
-        console.log(`DEBUG: User in range of ${poisInRange.length} POIs. Closest: ${poisInRange.sort((a, b) => a.distance - b.distance)[0].name}`);
+        console.log(`DEBUG: User in range of ${poisInRange.length} POIs. Near: ${poisInRange[0].name}`);
     }
 
-    let closestPoi = poisInRange.length > 0 ? poisInRange.sort((a, b) => a.distance - b.distance)[0] : null;
-
     allFoodsData.forEach(food => {
-        const isClosest = closestPoi && closestPoi.id === food.id;
+        // Đổi màu XANH cho quán gần nhất tuyệt đối
+        const isClosest = absoluteClosestPoi && absoluteClosestPoi.id === food.id;
+        // Đổi màu XANH LÁ nếu đang dẫn đường
         const isNavigating = navigatingPoiId === food.id;
         
-        // Find the L.marker instance for this food
         const markerData = mapMarkers.find(m => m.food.id === food.id);
         if (markerData && markerData.marker) {
             if (isNavigating) {
@@ -293,7 +298,8 @@ function processLocation(position) {
             }
         }
 
-        if (isClosest) {
+        // Logic phát Audio tự động (Chỉ khi vào đúng phạm vi 50m)
+        if (closestInRangePoi && closestInRangePoi.id === food.id) {
             if (!playedAudioPois.has(food.id) && !poiAudioTimers[food.id]) {
                 poiAudioTimers[food.id] = setTimeout(() => {
                     if (!playedAudioPois.has(food.id)) {
@@ -304,10 +310,8 @@ function processLocation(position) {
                 }, 5000);
             }
             if (currentUserId > 0 && !visitedFoods.has(food.id) && !poiHistoryTimers[food.id]) {
-                console.log(`DEBUG: Tracking visit duration for closest POI: ${food.name}`);
                 poiHistoryTimers[food.id] = setTimeout(() => {
                     if (currentUserId > 0 && !visitedFoods.has(food.id)) {
-                        console.log(`DEBUG: Visit detected for POI: ${food.name}`);
                         visitedFoods.add(food.id);
                         handleVisit(food.id);
                     }
@@ -326,12 +330,12 @@ async function triggerAutoAudio(poiId) {
         const guideRes = await fetch(`${platformApiBase}/${poiId}/guide?lang=${selectedLanguage}`);
         if (guideRes.ok) {
             const guide = await guideRes.json();
-            playAudioGuide(`${guide.title}. ${guide.description || ''}`, guide.language || selectedLanguage);
+            playAudioGuide(`${guide.title}. ${guide.description || ''}`, guide.language || selectedLanguage, poiId);
         } else {
             const detailsRes = await fetch(`${platformApiBase}/${poiId}?lang=${selectedLanguage}`);
             if (detailsRes.ok) {
                 const data = await detailsRes.json();
-                if (data.description) playAudioGuide(`${data.name}. ${data.description}`, selectedLanguage);
+                if (data.description) playAudioGuide(`${data.name}. ${data.description}`, selectedLanguage, poiId);
             }
         }
     } catch (e) { console.error("Auto-audio error", e); }
@@ -474,9 +478,9 @@ function playCurrentAudio() {
     }
 }
 
-function playAudioGuide(text, language = 'vi-VN') {
+function playAudioGuide(text, language = 'vi-VN', poiId = currentPoiId) {
     if (text) {
-        window.location.href = `app-tts://speak?id=${currentPoiId}&text=${encodeURIComponent(text)}&lang=${language}`;
+        window.location.href = `app-tts://speak?id=${poiId}&text=${encodeURIComponent(text)}&lang=${language}`;
     }
 }
 

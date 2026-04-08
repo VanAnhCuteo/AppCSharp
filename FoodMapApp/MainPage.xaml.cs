@@ -3,29 +3,28 @@ using System.Text.Json;
 using System.Web;
 using System.Diagnostics;
 
-namespace FoodMapApp;
-
+namespace FoodMapApp
+{
     public partial class MainPage : ContentPage
     {
-        public static MainPage Instance { get; private set; }
+        public static MainPage? Instance { get; private set; }
         public static int? PendingOpenFoodId { get; set; } = null;
         public static int? PendingRouteFoodId { get; set; } = null;
 
-        // Change this to your host machine's IP if using a physical device (e.g., 192.168.1.x)
         private static string BackendUrl => AppConfig.FoodApiUrl;
 
-        private CancellationTokenSource _ttsCts;
-        private CancellationTokenSource _currentSentenceCts;
+        private CancellationTokenSource? _ttsCts;
+        private CancellationTokenSource? _currentSentenceCts;
         private readonly SemaphoreSlim _ttsSemaphore = new SemaphoreSlim(1, 1);
         private bool _isPaused = false;
-        private TaskCompletionSource<bool> _pauseTcs;
+        private TaskCompletionSource<bool>? _pauseTcs;
 
         private string[] _currentSentences = Array.Empty<string>();
         private int _currentSentenceIndex = 0;
         private string _lastSpokenText = "";
         private string _lastPoiId = "";
         private bool _isMapLoaded = false;
-        private string _foodsJson = null;
+        private string? _foodsJson = null;
         private Stopwatch _audioStopwatch = new Stopwatch();
         private string _reportingPoiId = "";
 
@@ -42,14 +41,9 @@ namespace FoodMapApp;
 
             mapView.Navigated += async (s, e) =>
             {
-                // Only initialize if we're on the map page, not for cancelled custom protocols 
-                // that some platforms might still trigger a 'Navigated' event for.
                 if (!e.Url.Contains("map.html")) return;
 
                 _isMapLoaded = true;
-                Console.WriteLine($"DEBUG: WebView Navigated to {e.Url}. Result: {e.Result}");
-                
-                // Inject dynamic API base URL from C# config to JS
                 await mapView.EvaluateJavaScriptAsync($"platformApiBase = '{AppConfig.FoodApiUrl}';");
 
                 if (_foodsJson != null)
@@ -80,15 +74,14 @@ namespace FoodMapApp;
                         bool textChanged = normalizedText != _lastSpokenText;
                         bool poiChanged = id != _lastPoiId;
                         
-                        Console.WriteLine($"DEBUG: TTS Request. ID: {id}. POI Changed: {poiChanged}. Text Changed: {textChanged}. Current Index: {_currentSentenceIndex}. IsPaused: {_isPaused}");
+                        // Luôn hiện thanh trình phát ngay lập tức
+                        _ = ShowMiniPlayer(id);
 
                         if (poiChanged)
                         {
-                            Console.WriteLine("DEBUG: POI changed, full reset.");
                             StopSpeech(true);
                             _lastPoiId = id;
                             _lastSpokenText = normalizedText;
-                            // Fluency fix: Split by sentence/phrase delimiters instead of spaces
                             _currentSentences = text.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
                                                     .Select(s => s.Trim())
                                                     .Where(s => s.Length > 0)
@@ -98,13 +91,14 @@ namespace FoodMapApp;
                         }
                         else if (_isPaused)
                         {
-                            Console.WriteLine("DEBUG: Resuming from pause.");
                             _isPaused = false;
+                            playIcon.IsVisible = false;
+                            pauseIcon.IsVisible = true;
                             _pauseTcs?.TrySetResult(true);
+                            _ = AnimateVisualizer();
                         }
                         else 
                         {
-                            // Use same content but check if we need to start or just keep playing
                             if (_currentSentences.Length == 0 || (textChanged && _currentSentenceIndex == 0))
                             {
                                 StopSpeech(true);
@@ -126,21 +120,17 @@ namespace FoodMapApp;
                     var query = HttpUtility.ParseQueryString(uri.Query);
                     bool fullReset = (query["reset"] == "true");
                     
-                    Console.WriteLine($"DEBUG: TTS STOP Request. Reset: {fullReset}. Current Index: {_currentSentenceIndex}");
-                    
                     if (fullReset)
                     {
                         StopSpeech(true);
-                        _currentSentenceIndex = 0;
-                        _lastSpokenText = "";
-                        _lastPoiId = "";
+                        miniPlayer.IsVisible = false;
                     }
                     else
                     {
-                        // Pause logic
                         _isPaused = true;
+                        playIcon.IsVisible = true;
+                        pauseIcon.IsVisible = false;
                         _currentSentenceCts?.Cancel();
-                        Console.WriteLine($"DEBUG: TTS Paused at index {_currentSentenceIndex}");
                     }
                 }
                 else if (e.Url.StartsWith("app-request-reload://markers?"))
@@ -150,12 +140,8 @@ namespace FoodMapApp;
                     var query = HttpUtility.ParseQueryString(uri.Query);
                     string lang = query["lang"] ?? "vi";
                     
-                    // Reset audio on language change
-                    StopSpeech();
-                    _currentSentenceIndex = 0;
-                    _lastSpokenText = "";
-                    _lastPoiId = "";
-
+                    StopSpeech(true);
+                    miniPlayer.IsVisible = false;
                     LoadFoods(lang);
                 }
             };
@@ -163,12 +149,97 @@ namespace FoodMapApp;
             LoadFoods();
         }
 
+        private async Task ShowMiniPlayer(string poiId)
+        {
+            try
+            {
+                miniPlayer.IsVisible = true; // Luôn hiển thị thanh trình phát
+                playIcon.IsVisible = false;
+                pauseIcon.IsVisible = true;
+
+                if (!string.IsNullOrEmpty(_foodsJson))
+                {
+                    var foods = JsonSerializer.Deserialize<List<JsonElement>>(_foodsJson);
+                    var food = foods.FirstOrDefault(f => f.GetProperty("id").GetInt32().ToString() == poiId);
+                    
+                    if (food.ValueKind != JsonValueKind.Undefined)
+                    {
+                        detectedShopLabel.Text = food.GetProperty("name").GetString();
+                        return;
+                    }
+                }
+                
+                detectedShopLabel.Text = "Quán ăn gần bạn";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DEBUG: Error showing miniplayer: {ex.Message}");
+                detectedShopLabel.Text = "Quán ăn gần bạn";
+            }
+        }
+
+        private async Task AnimateVisualizer()
+        {
+            Random rnd = new Random();
+            while (!_isPaused && pauseIcon.IsVisible && miniPlayer.IsVisible)
+            {
+                wave1.HeightRequest = rnd.Next(8, 20);
+                wave2.HeightRequest = rnd.Next(10, 25);
+                wave3.HeightRequest = rnd.Next(5, 15);
+                wave4.HeightRequest = rnd.Next(12, 28);
+                wave5.HeightRequest = rnd.Next(8, 22);
+                wave6.HeightRequest = rnd.Next(10, 24);
+                await Task.Delay(130);
+            }
+            
+            wave1.HeightRequest = 12; wave2.HeightRequest = 18; wave3.HeightRequest = 10;
+            wave4.HeightRequest = 22; wave5.HeightRequest = 14; wave6.HeightRequest = 19;
+        }
+
+        private void OnPlayAudioClicked(object sender, EventArgs e)
+        {
+            if (_isPaused)
+            {
+                _isPaused = false;
+                playIcon.IsVisible = false;
+                pauseIcon.IsVisible = true;
+                _pauseTcs?.TrySetResult(true);
+                _ = AnimateVisualizer();
+            }
+            else if (pauseIcon.IsVisible)
+            {
+                _isPaused = true;
+                playIcon.IsVisible = true;
+                pauseIcon.IsVisible = false;
+                _currentSentenceCts?.Cancel();
+            }
+        }
+
+        private void OnReplayAudioClicked(object sender, EventArgs e)
+        {
+            StopSpeech(true);
+            _currentSentenceIndex = 0;
+            _ = SpeakWithChunksAsync("vi-VN"); 
+        }
+
+        private async void OnDetailClicked(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(_lastPoiId)) return;
+            await mapView.EvaluateJavaScriptAsync($"openDetails({_lastPoiId})");
+        }
+
+        private void OnClosePlayerClicked(object sender, EventArgs e)
+        {
+            StopSpeech(true);
+            miniPlayer.IsVisible = false;
+        }
+
         private IEnumerable<Locale> _cachedLocales = null;
 
         private void StopSpeech(bool fullReset = false)
         {
             _currentSentenceCts?.Cancel();
-            _audioStopwatch.Stop(); // Always stop stopwatch on pause/reset
+            _audioStopwatch.Stop();
 
             if (fullReset)
             {
@@ -176,7 +247,6 @@ namespace FoodMapApp;
                 _isPaused = false;
                 _pauseTcs?.TrySetResult(false);
 
-                // Send log if we were tracking a POI
                 if (_audioStopwatch.Elapsed.TotalSeconds >= 1 && !string.IsNullOrEmpty(_reportingPoiId))
                 {
                     _ = SendAudioLogAsync(_reportingPoiId, (int)_audioStopwatch.Elapsed.TotalSeconds);
@@ -188,7 +258,6 @@ namespace FoodMapApp;
 
         private async Task SpeakWithChunksAsync(string lang)
         {
-            // Ensure only one TTS loop is active
             await _ttsSemaphore.WaitAsync();
 
             try
@@ -199,28 +268,24 @@ namespace FoodMapApp;
 
                 SpeechOptions options = new SpeechOptions();
                 
-                // Cache locales to avoid repeated slow calls
                 if (_cachedLocales == null)
                 {
                     _cachedLocales = await TextToSpeech.Default.GetLocalesAsync();
-                    Console.WriteLine($"DEBUG: Cached {_cachedLocales.Count()} locales.");
                 }
 
                 options.Locale = _cachedLocales.FirstOrDefault(l => l.Language.Equals(lang, StringComparison.OrdinalIgnoreCase)) ??
                                  _cachedLocales.FirstOrDefault(l => l.Language.StartsWith(lang.Split('-')[0], StringComparison.OrdinalIgnoreCase));
 
-                _reportingPoiId = _lastPoiId; // Store for reporting
-                Console.WriteLine($"DEBUG: SpeakWithChunks loop started. From index {_currentSentenceIndex}/{_currentSentences.Length}");
+                _reportingPoiId = _lastPoiId;
+                _ = AnimateVisualizer();
 
                 while (_currentSentenceIndex < _currentSentences.Length && !mainToken.IsCancellationRequested)
                 {
                     if (_isPaused)
                     {
-                        Console.WriteLine($"DEBUG: Loop waiting for resume at index {_currentSentenceIndex}");
                         _pauseTcs = new TaskCompletionSource<bool>();
                         bool resume = await _pauseTcs.Task;
                         if (!resume || mainToken.IsCancellationRequested) break;
-                        Console.WriteLine($"DEBUG: Loop resuming at index {_currentSentenceIndex}");
                     }
 
                     _currentSentenceCts = CancellationTokenSource.CreateLinkedTokenSource(mainToken);
@@ -228,15 +293,11 @@ namespace FoodMapApp;
                     
                     try
                     {
-                        Console.WriteLine($"DEBUG: Speaking index {_currentSentenceIndex}: {(sentence.Length > 20 ? sentence.Substring(0, 20) : sentence)}...");
-                        
-                        _audioStopwatch.Start(); // Start/Resume timer
+                        _audioStopwatch.Start();
                         await TextToSpeech.Default.SpeakAsync(sentence, options, _currentSentenceCts.Token);
-                        _audioStopwatch.Stop(); // Stop timer when sentence done
+                        _audioStopwatch.Stop();
                         
                         _currentSentenceIndex++;
-                        
-                        // Update JS with progress AFTER completion
                         await mapView.EvaluateJavaScriptAsync($"if(window.onTtsProgress) window.onTtsProgress({_currentSentenceIndex}, {_currentSentences.Length});");
                     }
                     catch (OperationCanceledException)
@@ -245,7 +306,6 @@ namespace FoodMapApp;
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"DEBUG: Error at index {_currentSentenceIndex}: {ex.Message}");
                         _currentSentenceIndex++;
                     }
                     finally
@@ -257,7 +317,6 @@ namespace FoodMapApp;
 
                 if (_currentSentenceIndex >= _currentSentences.Length && !mainToken.IsCancellationRequested)
                 {
-                    // Finished normally
                     if (_audioStopwatch.Elapsed.TotalSeconds >= 1 && !string.IsNullOrEmpty(_reportingPoiId))
                     {
                         _ = SendAudioLogAsync(_reportingPoiId, (int)_audioStopwatch.Elapsed.TotalSeconds);
@@ -268,6 +327,8 @@ namespace FoodMapApp;
                     _lastSpokenText = "";
                     _lastPoiId = "";
                     _reportingPoiId = "";
+                    playIcon.IsVisible = true;
+                    pauseIcon.IsVisible = false;
                     await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
                 }
             }
@@ -288,14 +349,7 @@ namespace FoodMapApp;
                 
                 using HttpClient client = new HttpClient();
                 var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
-                
-                Console.WriteLine($"DEBUG: Sending audio log for POI {poiId}, Duration: {duration}s");
                 var response = await client.PostAsync($"{BackendUrl}/{poiId}/audio-log", content);
-                
-                if (response.IsSuccessStatusCode)
-                    Console.WriteLine("DEBUG: Audio log sent successfully.");
-                else
-                    Console.WriteLine($"DEBUG: Failed to send audio log. Status: {response.StatusCode}");
             }
             catch (Exception ex)
             {
@@ -303,84 +357,73 @@ namespace FoodMapApp;
             }
         }
 
-    protected override async void OnAppearing()
-    {
-        base.OnAppearing();
-        await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-        
-        if (_isMapLoaded)
+        protected override async void OnAppearing()
         {
-            LoadFoods(); // Refresh markers and user ID
-            await TryOpenPendingDetail();
-            await TryStartPendingRoute();
-        }
-    }
-
-    public async Task TryOpenPendingDetail()
-    {
-        if (PendingOpenFoodId.HasValue && _isMapLoaded)
-        {
-            int id = PendingOpenFoodId.Value;
-            PendingOpenFoodId = null; // Clear it so it only opens once
+            base.OnAppearing();
+            await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
             
-            // Aggressive retry loop to wait for Android WebView to strictly thaw and expose features.js
-            Console.WriteLine($"DEBUG: Attempting to open pending food detail for ID: {id}");
-            for (int i = 0; i < 20; i++)
-            {
-                await Task.Delay(200);
-                try
-                {
-                    string typeofRes = await mapView.EvaluateJavaScriptAsync("typeof openDetails");
-                    Console.WriteLine($"DEBUG: WebView openDetails type check (Attempt {i+1}): {typeofRes}");
-                    
-                    if (typeofRes != null && typeofRes.Contains("function"))
-                    {
-                        Console.WriteLine($"DEBUG: Calling JS openDetails({id}) now.");
-                        await mapView.EvaluateJavaScriptAsync($"openDetails({id})");
-                        return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"DEBUG: EvaluateJS Error (Attempt {i+1}): {ex.Message}");
-                }
-            }
-            Console.WriteLine("DEBUG: Failed to open pending detail after all retries.");
-        }
-    }
-
-    public async Task TryStartPendingRoute()
-    {
-        if (PendingRouteFoodId.HasValue && _isMapLoaded)
-        {
-            int id = PendingRouteFoodId.Value;
-            PendingRouteFoodId = null; // Clear it so it only opens once
-            await Task.Delay(300); // Wait for webview to layout fully on screen
-            await mapView.EvaluateJavaScriptAsync($"window.routeToPoi({id})");
-        }
-    }
-
-    async void LoadFoods(string lang = "vi")
-    {
-        HttpClient client = new HttpClient();
-
-        try
-        {
-            _foodsJson = await client.GetStringAsync($"{BackendUrl}?lang={lang}");
-
             if (_isMapLoaded)
             {
-                int userId = Preferences.Default.Get("user_id", 0);
-                await mapView.EvaluateJavaScriptAsync($"loadFoods({_foodsJson}, {userId});");
-                
-                // Ensure pending actions are consumed even if LoadFoods finished after Navigated
+                LoadFoods(); 
                 await TryOpenPendingDetail();
                 await TryStartPendingRoute();
             }
         }
-        catch (Exception ex)
+
+        public async Task TryOpenPendingDetail()
         {
-            Console.WriteLine(ex);
+            if (PendingOpenFoodId.HasValue && _isMapLoaded)
+            {
+                int id = PendingOpenFoodId.Value;
+                PendingOpenFoodId = null;
+                
+                for (int i = 0; i < 20; i++)
+                {
+                    await Task.Delay(200);
+                    try
+                    {
+                        string typeofRes = await mapView.EvaluateJavaScriptAsync("typeof openDetails");
+                        if (typeofRes != null && typeofRes.Contains("function"))
+                        {
+                            await mapView.EvaluateJavaScriptAsync($"openDetails({id})");
+                            return;
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+
+        public async Task TryStartPendingRoute()
+        {
+            if (PendingRouteFoodId.HasValue && _isMapLoaded)
+            {
+                int id = PendingRouteFoodId.Value;
+                PendingRouteFoodId = null;
+                await Task.Delay(300);
+                await mapView.EvaluateJavaScriptAsync($"window.routeToPoi({id})");
+            }
+        }
+
+        async void LoadFoods(string lang = "vi")
+        {
+            HttpClient client = new HttpClient();
+            try
+            {
+                _foodsJson = await client.GetStringAsync($"{BackendUrl}?lang={lang}");
+
+                if (_isMapLoaded)
+                {
+                    int userId = Preferences.Default.Get("user_id", 0);
+                    await mapView.EvaluateJavaScriptAsync($"loadFoods({_foodsJson}, {userId});");
+                    await TryOpenPendingDetail();
+                    await TryStartPendingRoute();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
     }
 }

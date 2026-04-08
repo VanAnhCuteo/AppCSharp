@@ -36,9 +36,9 @@ namespace FoodMapApp
 #if ANDROID
     public class MyWebChromeClient : Android.Webkit.WebChromeClient
     {
-        public override void OnGeolocationPermissionsShowPrompt(string origin, Android.Webkit.GeolocationPermissions.ICallback callback)
+        public override void OnGeolocationPermissionsShowPrompt(string? origin, Android.Webkit.GeolocationPermissions.ICallback? callback)
         {
-            callback.Invoke(origin, true, false);
+            callback?.Invoke(origin, true, false);
         }
     }
 #endif
