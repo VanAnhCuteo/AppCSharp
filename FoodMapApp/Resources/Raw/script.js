@@ -36,9 +36,7 @@ async function loadFoods(foods, userId = 0) {
     allFoodsData = foods;
     currentUserId = userId;
 
-    if (userId > 0) {
-        await syncVisitedHistory(userId);
-    }
+
 
     if (markersGroup) map.removeLayer(markersGroup);
     mapMarkers = [];
@@ -255,22 +253,7 @@ function removeDiacritics(text) {
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-async function syncVisitedHistory(userId) {
-    try {
-        const res = await fetch(`${platformApiBase}/history/${userId}`);
-        if (res.ok) {
-            const history = await res.json();
-            console.log("Synced history from server:", history);
-            if (Array.isArray(history)) {
-                history.forEach(item => {
-                    if (item.id) visitedFoods.add(item.id);
-                });
-            }
-        }
-    } catch (e) {
-        console.error("History sync error:", e);
-    }
-}
+
 
 // Global hook for C# routing
 window.routeToPoi = async function(id) {

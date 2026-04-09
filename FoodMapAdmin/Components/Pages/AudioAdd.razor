@@ -4,7 +4,6 @@
 @using Microsoft.AspNetCore.Authorization
 @inject IPoiGuideService GuideService
 @inject IPoiService PoiService
-@inject IPoiService PoiService
 @inject NavigationManager Navigation
 @inject ITranslationService TranslationService
 @attribute [Authorize(Roles = "admin")]
@@ -26,7 +25,7 @@
         <h3>@(isSaving ? "Đang xử lý kịch bản..." : "Đang chuẩn bị...")</h3>
         @if (isSaving)
         {
-            <p>Hệ thống đang tự động dịch sang Tiếng Anh & Tiếng Trung để đảm bảo trải nghiệm đa ngôn ngữ. Vui lòng đợi trong giây lát...</p>
+            <p>Hệ thống đang tự động dịch sang các ngôn ngữ đã chọn để đảm bảo trải nghiệm đa ngôn ngữ cho du khách. Vui lòng đợi trong giây lát...</p>
         }
     </div>
 }
@@ -37,6 +36,7 @@ else
         AvailablePois="availablePois" 
         IsAddMode="true" 
         Title="Thông tin bản thuyết minh mới"
+        SelectedLanguages="selectedLangs"
         OnSubmit="HandleSubmit" 
         OnCancel="GoBack" />
 }
@@ -95,6 +95,7 @@ else
     private PoiGuide newGuide = new() { Language = "vi" };
     private List<Poi>? availablePois;
     private bool isSaving = false;
+    private List<string> selectedLangs = new() { "en", "zh", "ko", "ja" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -124,20 +125,39 @@ else
             bool success = await GuideService.CreateGuideAsync(newGuide);
             if (success)
             {
-                // 2. Auto-translate and save for other languages
-                // We use a specific order and wait for each to ensure stability
-                var targetLangs = new[] { "en", "zh" };
-                foreach (var lang in targetLangs)
+                // 2. Auto-translate and save for SELECTED languages
+                // Find the POI name to protect it during translation
+                var poiName = availablePois?.FirstOrDefault(p => p.PoiId == newGuide.PoiId)?.Name ?? "";
+                var placeholder = "[[POI_NAME]]";
+
+                foreach (var lang in selectedLangs)
                 {
                     try 
                     {
                         // Normalize title and script for translation
-                        var sourceTitle = newGuide.Title?.Trim();
+                        var sourceTitle = newGuide.Title?.Trim() ?? "";
                         var sourceDesc = newGuide.Description?.Trim() ?? "";
 
-                        var tTitle = await TranslationService.TranslateAsync(sourceTitle!, lang);
+                        // Inject placeholder for the POI name
+                        if (!string.IsNullOrEmpty(poiName))
+                        {
+                            sourceTitle = sourceTitle.Replace(poiName, placeholder);
+                            sourceDesc = sourceDesc.Replace(poiName, placeholder);
+                        }
+
+                        var tTitle = await TranslationService.TranslateAsync(sourceTitle, lang);
                         var tDesc = await TranslationService.TranslateAsync(sourceDesc, lang);
                         
+                        // Swap placeholder back with original POI name
+                        if (!string.IsNullOrEmpty(poiName))
+                        {
+                            tTitle = tTitle?.Replace(placeholder, poiName) ?? "";
+                            tDesc = tDesc?.Replace(placeholder, poiName) ?? "";
+                            // Some translation APIs might add spaces around brackets or lowercase the placeholder
+                            tTitle = tTitle.Replace("[[ POI_NAME ]]", poiName).Replace("[[ poi_name ]]", poiName);
+                            tDesc = tDesc.Replace("[[ POI_NAME ]]", poiName).Replace("[[ poi_name ]]", poiName);
+                        }
+
                         var tGuide = new PoiGuide {
                             PoiId = newGuide.PoiId,
                             Title = tTitle,
@@ -145,6 +165,9 @@ else
                             Language = lang
                         };
                         await GuideService.CreateGuideAsync(tGuide);
+                        
+                        // Add a small delay to be kind to the translation API and improve reliability
+                        await Task.Delay(500);
                     }
                     catch (Exception ex)
                     {

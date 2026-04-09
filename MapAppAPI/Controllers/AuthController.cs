@@ -191,5 +191,43 @@ namespace FoodMapAPI.Controllers
                 return StatusCode(500, new { success = false, message = $"Database error: {ex.Message}" });
             }
         }
+        [HttpPost("update-location")]
+        public async Task<IActionResult> UpdateLocation([FromBody] LocationUpdateRequest request)
+        {
+            if (request.user_id <= 0) return BadRequest(new { success = false, message = "Invalid user ID" });
+
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+
+                    // Upsert logic: Update if exists, Insert if not
+                    string query = @"
+                        INSERT INTO user_locations (user_id, latitude, longitude, last_active) 
+                        VALUES (@userId, @lat, @lng, NOW())
+                        ON DUPLICATE KEY UPDATE 
+                        latitude = @lat, 
+                        longitude = @lng, 
+                        last_active = NOW()";
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@userId", request.user_id);
+                        cmd.Parameters.AddWithValue("@lat", request.latitude);
+                        cmd.Parameters.AddWithValue("@lng", request.longitude);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    return Ok(new { success = true });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = $"Database error: {ex.Message}" });
+            }
+        }
     }
 }

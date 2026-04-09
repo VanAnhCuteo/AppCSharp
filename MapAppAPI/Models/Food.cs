@@ -14,6 +14,7 @@ namespace FoodMapAPI.Models
         public string? open_time { get; set; }
         public string? image_url { get; set; }
         public int range_meters { get; set; } = 50;
+        public int total_listens { get; set; }
 
         [JsonPropertyName("qr_code_url")]
         public string? qr_code_url { get; set; }

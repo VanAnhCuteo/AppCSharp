@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FoodMapAdmin.Models
@@ -10,6 +10,7 @@ namespace FoodMapAdmin.Models
         [Column("guide_id")]
         public int GuideId { get; set; }
 
+        [Required(ErrorMessage = "Vui lòng chọn quán ăn")]
         [Column("poi_id")]
         public int? PoiId { get; set; }
 

@@ -22,13 +22,17 @@ namespace FoodMapAdmin.Services
         private readonly IActivityLogger _logger;
         private readonly AuthenticationStateProvider _authStateProvider;
         private readonly IPoiImageService _imageService;
+        private readonly IConfiguration _configuration;
+        private readonly string _storagePath;
 
-        public PoiService(ApplicationDbContext context, IActivityLogger logger, AuthenticationStateProvider authStateProvider, IPoiImageService imageService)
+        public PoiService(ApplicationDbContext context, IActivityLogger logger, AuthenticationStateProvider authStateProvider, IPoiImageService imageService, IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
             _authStateProvider = authStateProvider;
             _imageService = imageService;
+            _configuration = configuration;
+            _storagePath = _configuration["ImageStoragePath"] ?? @"d:\MapApp\FoodMapApp\Resources\Raw\images";
         }
 
         private async Task<int?> GetCurrentUserIdAsync()
@@ -64,7 +68,6 @@ namespace FoodMapAdmin.Services
                 .AsNoTracking() // Quan trọng: Không track khi lấy dữ liệu để sửa, tránh auto-update
                 .Include(p => p.Category)
                 .Include(p => p.Images)
-                .Include(p => p.Reviews)
                 .Include(p => p.QrCode)
                 .FirstOrDefaultAsync(p => p.PoiId == id);
         }
@@ -85,18 +88,30 @@ namespace FoodMapAdmin.Services
             dbPoi.OpenTime = poi.OpenTime;
             dbPoi.UserId = poi.UserId;
 
-            // Xử lý riêng biệt cho QR Code (Vẫn bảo toàn logic: không tự xóa)
-            if (!string.IsNullOrEmpty(poi.QrCodeUrl))
+            // Xử lý thông minh cho QR Code (Tự động dọn dẹp tệp cũ)
+            var existingQr = await _context.PoiQrs.FirstOrDefaultAsync(q => q.PoiId == poi.PoiId);
+            
+            if (string.IsNullOrEmpty(poi.QrCodeUrl))
             {
-                var existingQr = await _context.PoiQrs.FirstOrDefaultAsync(q => q.PoiId == poi.PoiId);
+                // Hành động: Xóa QR hiện tại
+                if (existingQr != null)
+                {
+                    DeletePhysicalQrFile(existingQr.QrCodeUrl);
+                    _context.PoiQrs.Remove(existingQr);
+                }
+            }
+            else
+            {
+                // Hành động: Thêm mới hoặc Cập nhật QR
                 if (existingQr == null)
                 {
                     _context.PoiQrs.Add(new PoiQr { PoiId = poi.PoiId, QrCodeUrl = poi.QrCodeUrl });
                 }
-                else
+                else if (existingQr.QrCodeUrl != poi.QrCodeUrl)
                 {
+                    // Nếu URL thay đổi (có ảnh mới), xóa tệp cũ
+                    DeletePhysicalQrFile(existingQr.QrCodeUrl);
                     existingQr.QrCodeUrl = poi.QrCodeUrl;
-                    // Không cần gọi Update vì EF đã tự tracking
                 }
             }
 
@@ -120,9 +135,13 @@ namespace FoodMapAdmin.Services
             // Xóa ảnh của quán và tệp vật lý trước khi xóa quán
             await _imageService.DeleteImagesByPoiIdAsync(id);
 
-            // Xóa mã QR liên quan
+            // Xóa mã QR liên quan và tệp vật lý
             var qr = await _context.PoiQrs.FirstOrDefaultAsync(q => q.PoiId == id);
-            if (qr != null) _context.PoiQrs.Remove(qr);
+            if (qr != null) 
+            {
+                DeletePhysicalQrFile(qr.QrCodeUrl);
+                _context.PoiQrs.Remove(qr);
+            }
 
             _context.Pois.Remove(poi);
             var result = await _context.SaveChangesAsync() > 0;
@@ -152,6 +171,23 @@ namespace FoodMapAdmin.Services
                 await _logger.LogAsync(userId, "Thêm quán ăn mới", poi.Name, $"Đã tạo mới {poi.Name}");
             }
             return result;
+        }
+        private void DeletePhysicalQrFile(string? qrUrl)
+        {
+            if (string.IsNullOrEmpty(qrUrl)) return;
+            try
+            {
+                var fileName = Path.GetFileName(qrUrl);
+                var filePath = Path.Combine(_storagePath, fileName);
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting QR file: {ex.Message}");
+            }
         }
     }
 }

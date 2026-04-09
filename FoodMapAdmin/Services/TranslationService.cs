@@ -33,12 +33,14 @@ namespace FoodMapAdmin.Services
 
             try
             {
-                string fromLang = "vi";
+                string fromLang = "vi-VN";
                 // Map internal codes to MyMemory codes
                 string toLang = targetLang switch
                 {
-                    "en" => "en",
-                    "zh" => "zh",
+                    "en" => "en-GB",
+                    "zh" => "zh-CN",
+                    "ko" => "ko-KR",
+                    "ja" => "ja-JP",
                     _ => targetLang
                 };
 

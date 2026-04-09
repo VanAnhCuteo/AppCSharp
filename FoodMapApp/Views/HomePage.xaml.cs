@@ -85,23 +85,45 @@ namespace FoodMapApp.Views
                 var foods = await HttpService.GetAsync<List<FoodItem>>(url);
                 if (foods != null)
                 {
-                    _allRestaurants = foods;
-                    RestaurantsCollection.ItemsSource = _allRestaurants;
+                    _allRestaurants = foods.OrderByDescending(f => f.total_listens).ToList();
+                    
+                    // Update main collection and recommended collection
+                    UpdateCollections(_allRestaurants);
 
                     // Update visibility if searching
                     if (!string.IsNullOrWhiteSpace(SearchEntry.Text))
                         OnSearchTextChanged(null, new TextChangedEventArgs(null, SearchEntry.Text));
-                    else
-                    {
-                        RestaurantsCollection.IsVisible = _allRestaurants.Any();
-                        NoResultsLabel.IsVisible = !_allRestaurants.Any();
-                    }
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error loading restaurants: {ex.Message}");
             }
+        }
+
+        private void UpdateCollections(List<FoodItem> source)
+        {
+            if (source == null || !source.Any())
+            {
+                RestaurantsCollection.ItemsSource = null;
+                RestaurantsCollection.IsVisible = false;
+                RecommendedRestaurantsCollection.ItemsSource = null;
+                RecommendedSection.IsVisible = false;
+                NoResultsLabel.IsVisible = true;
+                return;
+            }
+
+            // Top 3 for prominent
+            var prominent = source.Take(3).ToList();
+            RestaurantsCollection.ItemsSource = prominent;
+            RestaurantsCollection.IsVisible = prominent.Any();
+
+            // The rest for recommended
+            var recommended = source.Skip(3).ToList();
+            RecommendedRestaurantsCollection.ItemsSource = recommended;
+            RecommendedSection.IsVisible = recommended.Any();
+            
+            NoResultsLabel.IsVisible = false;
         }
 
         private async void OnCategoryTapped(object sender, TappedEventArgs e)
@@ -156,15 +178,11 @@ namespace FoodMapApp.Views
 
             if (filtered.Any())
             {
-                RestaurantsCollection.ItemsSource = filtered;
-                RestaurantsCollection.IsVisible = true;
-                NoResultsLabel.IsVisible = false;
+                UpdateCollections(filtered);
             }
             else
             {
-                RestaurantsCollection.ItemsSource = null;
-                RestaurantsCollection.IsVisible = false;
-                NoResultsLabel.IsVisible = true;
+                UpdateCollections(new List<FoodItem>());
             }
         }
 
@@ -252,6 +270,7 @@ namespace FoodMapApp.Views
         public double longitude { get; set; }
         public string? open_time { get; set; }
         public string? image_url { get; set; }
+        public int total_listens { get; set; }
 
         public string? first_image
         {

@@ -306,18 +306,19 @@
         await LoadMapData();
     }
 
+
+
     private async Task TestHeatmap()
     {
         activeMode = "heatmap";
         isLoading = true;
-        activeUserCount = 50; // Show the count
+        activeUserCount = 50; 
         StateHasChanged();
 
         try
         {
             await JSRuntime.InvokeVoidAsync("mapViewer.clearMarkers");
             
-            // Simulate 50 people with a wider distribution (lẻ tẻ)
             var random = new Random();
             var testPoints = new List<UserHeatPoint>();
             double baseLat = 10.762622;
@@ -327,7 +328,6 @@
             {
                 testPoints.Add(new UserHeatPoint
                 {
-                    // Increased variance for wider distribution (0.15 instead of 0.05)
                     Lat = baseLat + (random.NextDouble() - 0.5) * 0.15,
                     Lng = baseLng + (random.NextDouble() - 0.5) * 0.15,
                     Count = random.Next(1, 3)
@@ -375,7 +375,7 @@
             }
             else
             {
-                var heatPoints = await AnalyticsService.GetUserVisitLocationsAsync();
+                var heatPoints = await AnalyticsService.GetActiveUserLocationsAsync();
                 activeUserCount = heatPoints.Count; 
                 await JSRuntime.InvokeVoidAsync("mapViewer.clearMarkers");
                 await JSRuntime.InvokeVoidAsync("mapViewer.updateHeatmap", heatPoints);

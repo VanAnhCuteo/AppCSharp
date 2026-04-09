@@ -51,8 +51,32 @@ function closeDetails() {
 }
 
 async function setSelectedLang(lang, el) {
-    console.log(`DEBUG: Language switched to: ${lang}`);
-    const wasPlaying = isAudioSpeaking && !isAudioPaused;
+    console.log(`DEBUG: Language switch requested to: ${lang}`);
+    
+    // If audio is currently playing, ask for confirmation
+    if (isAudioSpeaking || isAudioPaused) {
+        // Pause audio first to be polite during the dialog
+        const originalStatus = isAudioPaused;
+        if (!isAudioPaused) {
+            window.location.href = `app-tts://stop?id=${currentPoiId}&reset=false`;
+            stopAudioTimer();
+            isAudioPaused = true;
+        }
+
+        const confirmSwitch = confirm("Bạn muốn chuyển ngôn ngữ?");
+        
+        if (!confirmSwitch) {
+            console.log("DEBUG: Language switch cancelled by user.");
+            // Resume if it was playing before
+            if (!originalStatus) {
+                resumeAudioProfessional();
+            }
+            return;
+        }
+        
+        // If confirmed, stop completely and reset timer for new language
+        stopAudioProfessional();
+    }
     
     selectedLanguage = lang;
     document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
@@ -61,11 +85,12 @@ async function setSelectedLang(lang, el) {
     // Request C# to reload markers for this language
     window.location.href = `app-request-reload://markers?lang=${lang}`;
 
-    // Reload current sheet details if open and play audio
+    // Reload current sheet details if open
     if (currentBasePoiId) {
         await openDetails(currentBasePoiId, lang);
-        if (wasPlaying) {
-            resumeAudioProfessional();
+        // Automatically start playing in new language if we confirmed the switch
+        if (confirmSwitch) {
+            setTimeout(() => resumeAudioProfessional(), 500); 
         }
     }
 }
@@ -99,7 +124,7 @@ async function openDetails(poiId, lang = selectedLanguage) {
             
             currentPoiId = data.id; 
             document.getElementById('sheet-title').innerText = data.name;
-            document.getElementById('sheet-visitors').innerText = `${data.visitor_count} visits`;
+
             document.getElementById('sheet-address').innerText = data.address || '';
             document.getElementById('sheet-time').innerText = data.open_time || '';
 
@@ -157,63 +182,30 @@ async function openDetails(poiId, lang = selectedLanguage) {
                 imgContainer.innerHTML = '<div style="padding: 20px; color: #888; font-style: italic;">No additional images</div>';
             }
         }
-        loadReviews(poiId, lang);
+
         const guideRes = await fetch(`${platformApiBase}/${poiId}/guide?lang=${lang}`);
         if (guideRes.ok) {
             currentAudioGuide = await guideRes.json();
-            if (audioSection) audioSection.classList.remove('hidden');
+            // Show speaker but update its state
+            const speakerBtn = document.getElementById('sheet-speaker-btn');
+            if (speakerBtn) {
+                speakerBtn.classList.remove('hidden');
+                if (isAudioSpeaking && !isAudioPaused) speakerBtn.classList.add('playing');
+                else speakerBtn.classList.remove('playing');
+            }
         } else {
             currentAudioGuide = null;
+            // Fallback: If POI has description, still show speaker button
+            const speakerBtn = document.getElementById('sheet-speaker-btn');
+            if (speakerBtn) {
+                if (currentPoiDescription && currentPoiDescription.trim().length > 0) {
+                    speakerBtn.classList.remove('hidden');
+                } else {
+                    speakerBtn.classList.add('hidden');
+                }
+            }
         }
     } catch (e) { console.error("Error fetching details", e); }
-}
-
-// Reviews Logic
-async function loadReviews(poiId, lang = selectedLanguage) {
-    try {
-        const revRes = await fetch(`${platformApiBase}/${poiId}/reviews?lang=${lang}`);
-        const revContainer = document.getElementById('sheet-reviews-list');
-        revContainer.innerHTML = '';
-        if (revRes.ok) {
-            const reviews = await revRes.json();
-            if (reviews.length === 0) {
-                revContainer.innerHTML = '<p style="color: #999; font-size: 14px;">No reviews yet. Be the first!</p>';
-            } else {
-                reviews.forEach(r => {
-                    revContainer.innerHTML += `
-                        <div class="review-item">
-                            <span class="review-date">${r.created_at || 'Just now'}</span>
-                            <div class="review-rating">⭐ ${r.rating}/5</div>
-                            <p class="review-comment">${r.comment}</p>
-                        </div>
-                    `;
-                });
-            }
-        }
-    } catch (e) { console.error("Error loading reviews", e); }
-}
-
-const submitBtn = document.getElementById('submit-review-btn');
-if (submitBtn) {
-    submitBtn.onclick = async () => {
-        if (!currentPoiId) return;
-        const comment = document.getElementById('review-comment').value;
-        if (!comment || comment.trim().length === 0) {
-            alert("Please enter a review comment.");
-            return;
-        }
-        try {
-            const res = await fetch(`${platformApiBase}/${currentPoiId}/reviews`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rating: 5, comment: comment, user_id: 1 })
-            });
-            if (res.ok) {
-                document.getElementById('review-comment').value = '';
-                loadReviews(currentPoiId);
-            }
-        } catch (e) { console.error("Failed to submit review", e); }
-    };
 }
 
 // Geofencing & Audio Logic
@@ -273,12 +265,27 @@ function processLocation(position) {
 
     let absoluteClosestPoi = allDistances.length > 0 ? allDistances[0] : null;
 
-    // 2. Lọc danh sách quán trong phạm vi 50m để phát Audio
+    // 2. Lọc danh sách QUÁN TRONG PHẠM VI RIÊNG
     let poisInRange = allDistances.filter(f => f.distance <= (f.range_meters || 50));
-    let closestInRangePoi = poisInRange.length > 0 ? poisInRange[0] : null;
+    
+    // Sắp xếp quán trong phạm vi theo khoảng cách (Gần nhất lên đầu)
+    poisInRange.sort((a, b) => a.distance - b.distance);
 
     if (poisInRange.length > 0) {
-        console.log(`DEBUG: User in range of ${poisInRange.length} POIs. Near: ${poisInRange[0].name}`);
+        // TÌM QUÁN CHƯA NGHE GẦN NHẤT ĐỂ KÍCH HOẠT (Tránh trigger đồng thời gây nhiễu hàng đợi)
+        const nextTarget = poisInRange.find(food => !playedAudioPois.has(food.id) && !poiAudioTimers[food.id]);
+        
+        if (nextTarget) {
+            console.log(`DEBUG: Priority target found in range: ${nextTarget.name}`);
+            poiAudioTimers[nextTarget.id] = setTimeout(() => {
+                if (!playedAudioPois.has(nextTarget.id)) {
+                    console.log(`DEBUG: Triggering auto-audio (Priority): ${nextTarget.name}`);
+                    playedAudioPois.add(nextTarget.id);
+                    triggerAutoAudio(nextTarget.id);
+                }
+                delete poiAudioTimers[nextTarget.id];
+            }, 5000);
+        }
     }
 
     allFoodsData.forEach(food => {
@@ -298,29 +305,12 @@ function processLocation(position) {
             }
         }
 
-        // Logic phát Audio tự động (Chỉ khi vào đúng phạm vi 50m)
-        if (closestInRangePoi && closestInRangePoi.id === food.id) {
-            if (!playedAudioPois.has(food.id) && !poiAudioTimers[food.id]) {
-                poiAudioTimers[food.id] = setTimeout(() => {
-                    if (!playedAudioPois.has(food.id)) {
-                        playedAudioPois.add(food.id);
-                        triggerAutoAudio(food.id);
-                    }
-                    delete poiAudioTimers[food.id];
-                }, 5000);
-            }
-            if (currentUserId > 0 && !visitedFoods.has(food.id) && !poiHistoryTimers[food.id]) {
-                poiHistoryTimers[food.id] = setTimeout(() => {
-                    if (currentUserId > 0 && !visitedFoods.has(food.id)) {
-                        visitedFoods.add(food.id);
-                        handleVisit(food.id);
-                    }
-                    delete poiHistoryTimers[food.id];
-                }, 1000);
-            }
-        } else {
-            if (poiAudioTimers[food.id]) { clearTimeout(poiAudioTimers[food.id]); delete poiAudioTimers[food.id]; }
-            if (poiHistoryTimers[food.id]) { clearTimeout(poiHistoryTimers[food.id]); delete poiHistoryTimers[food.id]; }
+        // Nếu người dùng đi ra khỏi phạm vi quán RIÊNG trước khi hết 5 giây -> Hủy bộ đếm
+        const stillInRange = poisInRange.some(p => p.id === food.id);
+        if (!stillInRange && poiAudioTimers[food.id]) {
+            console.log(`DEBUG: User left range of ${food.name}, cancelling countdown`);
+            clearTimeout(poiAudioTimers[food.id]);
+            delete poiAudioTimers[food.id];
         }
     });
 }
@@ -330,39 +320,16 @@ async function triggerAutoAudio(poiId) {
         const guideRes = await fetch(`${platformApiBase}/${poiId}/guide?lang=${selectedLanguage}`);
         if (guideRes.ok) {
             const guide = await guideRes.json();
-            playAudioGuide(`${guide.title}. ${guide.description || ''}`, guide.language || selectedLanguage, poiId);
+            // AUTO requests do NOT have manual=true
+            playAudioGuide(`${guide.title}. ${guide.description || ''}`, guide.language || selectedLanguage, poiId, false);
         } else {
             const detailsRes = await fetch(`${platformApiBase}/${poiId}?lang=${selectedLanguage}`);
             if (detailsRes.ok) {
                 const data = await detailsRes.json();
-                if (data.description) playAudioGuide(`${data.name}. ${data.description}`, selectedLanguage, poiId);
+                if (data.description) playAudioGuide(`${data.name}. ${data.description}`, selectedLanguage, poiId, false);
             }
         }
     } catch (e) { console.error("Auto-audio error", e); }
-}
-
-async function handleVisit(poiId) {
-    console.log(`DEBUG: handleVisit attempt for POI: ${poiId}. Authenticated User: ${currentUserId}`);
-    if (currentUserId <= 0) {
-        console.warn("DEBUG: Skipping visit log - User not authenticated.");
-        return;
-    }
-
-    try {
-        const visitUrl = `${platformApiBase}/${poiId}/visit`;
-        console.log(`DEBUG: Sending visit log to: ${visitUrl}`);
-        const res = await fetch(visitUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: currentUserId })
-        });
-        console.log(`DEBUG: Visit log response: ${res.status}`);
-        const guideRes = await fetch(`${platformApiBase}/${poiId}/guide?lang=${selectedLanguage}`);
-        if (guideRes.ok) {
-            const guide = await guideRes.json();
-            playAudioGuide(`${guide.title}. ${guide.description || ''}`, guide.language);
-        }
-    } catch (e) { console.error("Geofence error", e); }
 }
 
 // ── AUDIO PLAYER LOGIC ──
@@ -383,66 +350,47 @@ function resumeAudioProfessional() {
     isAudioSpeaking = true;
     isAudioPaused = false;
     
-    const audioCard = document.querySelector('.audio-card');
-    if (audioCard) {
-        audioCard.classList.remove('hidden');
-        audioCard.classList.add('audio-playing');
-    }
+    // UI Updates
+    const speakerBtn = document.getElementById('sheet-speaker-btn');
+    if (speakerBtn) speakerBtn.classList.add('playing');
     
-    // Update play/pause icon and text
-    const playIcon = document.getElementById('main-play-icon');
-    const pauseIcon = document.getElementById('main-pause-icon');
     const statusText = document.getElementById('audio-status-text');
-
-    if (playIcon) playIcon.classList.add('hidden');
-    if (pauseIcon) pauseIcon.classList.remove('hidden');
     if (statusText) statusText.innerText = "Đang phát...";
 
     startAudioTimer();
-    playCurrentAudio();
+    playCurrentAudio(true); // MANUAL trigger
 }
 
 function pauseAudioProfessional() {
     isAudioPaused = true;
-    const audioCard = document.querySelector('.audio-card');
-    if (audioCard) audioCard.classList.remove('audio-playing');
     
-    const playIcon = document.getElementById('main-play-icon');
-    const pauseIcon = document.getElementById('main-pause-icon');
+    const speakerBtn = document.getElementById('sheet-speaker-btn');
+    if (speakerBtn) speakerBtn.classList.remove('playing');
+    
     const statusText = document.getElementById('audio-status-text');
-
-    if (playIcon) playIcon.classList.remove('hidden');
-    if (pauseIcon) pauseIcon.classList.add('hidden');
     if (statusText) statusText.innerText = "Đã tạm dừng";
 
     stopAudioTimer();
+    // Pause doesn't need to specify manual as it doesn't enqueue
     window.location.href = `app-tts://stop?id=${currentPoiId}&reset=false`;
 }
 
 function stopAudioProfessional() {
-    const wasSpeaking = isAudioSpeaking || isAudioPaused;
+    const wasActive = isAudioSpeaking || isAudioPaused;
     isAudioSpeaking = false;
     isAudioPaused = false;
     
-    const audioCard = document.querySelector('.audio-card');
-    if (audioCard) {
-        // Keep it visible but remove playing animation
-        audioCard.classList.remove('audio-playing');
-    }
-
-    const playIcon = document.getElementById('main-play-icon');
-    const pauseIcon = document.getElementById('main-pause-icon');
+    const speakerBtn = document.getElementById('sheet-speaker-btn');
+    if (speakerBtn) speakerBtn.classList.remove('playing');
+    
     const statusText = document.getElementById('audio-status-text');
-
-    if (playIcon) playIcon.classList.remove('hidden');
-    if (pauseIcon) pauseIcon.classList.add('hidden');
     if (statusText) statusText.innerText = "Bản dịch Audio";
     
     resetAudioTimer();
     const progressFill = document.getElementById('audio-progress-fill');
     if (progressFill) progressFill.style.width = '0%';
 
-    if (wasSpeaking) {
+    if (wasActive) {
         window.location.href = `app-tts://stop?id=${currentPoiId}&reset=true`;
     }
 }
@@ -458,13 +406,13 @@ function restartAudio() {
     const progressFill = document.getElementById('audio-progress-fill');
     if (progressFill) progressFill.style.width = '0%';
     
-    // Start fresh
+    // Start fresh - MANUAL
     setTimeout(() => {
         resumeAudioProfessional();
     }, 100);
 }
 
-function playCurrentAudio() {
+function playCurrentAudio(isManual = true) {
     let text = "";
     if (currentAudioGuide) {
         text = `${currentAudioGuide.title}. ${currentAudioGuide.description || ''}`;
@@ -474,13 +422,21 @@ function playCurrentAudio() {
     }
 
     if (text) {
-        window.location.href = `app-tts://speak?id=${currentPoiId}&text=${encodeURIComponent(text)}&lang=${selectedLanguage}`;
+        window.location.href = `app-tts://speak?id=${currentPoiId}&text=${encodeURIComponent(text)}&lang=${selectedLanguage}&manual=${isManual}`;
     }
 }
 
-function playAudioGuide(text, language = 'vi-VN', poiId = currentPoiId) {
+function playAudioGuide(text, language = 'vi-VN', poiId = currentPoiId, isManual = true) {
     if (text) {
-        window.location.href = `app-tts://speak?id=${poiId}&text=${encodeURIComponent(text)}&lang=${language}`;
+        isAudioSpeaking = true;
+        isAudioPaused = false;
+        
+        // Sync speaker btn if available
+        const speakerBtn = document.getElementById('sheet-speaker-btn');
+        if (speakerBtn) speakerBtn.classList.add('playing');
+
+        startAudioTimer();
+        window.location.href = `app-tts://speak?id=${poiId}&text=${encodeURIComponent(text)}&lang=${language}&manual=${isManual}`;
     }
 }
 
@@ -526,16 +482,15 @@ window.onTtsFinished = function() {
 };
 
 function resetPlayerForNewPoi() {
-    isAudioSpeaking = false;
-    isAudioPaused = false;
-    resetAudioTimer();
-    const audioSection = document.getElementById('sheet-audio-section');
-    if (audioSection) {
-        audioSection.classList.add('hidden');
-        audioSection.classList.remove('audio-playing');
+    // If NOT playing, reset everything. 
+    // If ALREADY playing, we keep the mini-player visible but the new sheet will sync in openDetails
+    if (!isAudioSpeaking && !isAudioPaused) {
+        resetAudioTimer();
+        const statusBar = document.getElementById('audio-status-bar');
+        if (statusBar) statusBar.classList.add('hidden');
+        const progressFill = document.getElementById('audio-progress-fill');
+        if (progressFill) progressFill.style.width = '0%';
     }
-    const progressFill = document.getElementById('audio-progress-fill');
-    if (progressFill) progressFill.style.width = '0%';
 }
 
 function centerOnUser() {

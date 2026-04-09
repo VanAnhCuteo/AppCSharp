@@ -70,11 +70,19 @@
                         <div class="lang-btn" onclick="setSelectedLang('zh-CN', this)">
                             <img src="images/cn_flag.png" alt="CN">
                         </div>
+                        <div class="lang-btn" onclick="setSelectedLang('ko-KR', this)">
+                            <img src="images/kr_flag.png" alt="KR">
+                        </div>
+                        <div class="lang-btn" onclick="setSelectedLang('ja-JP', this)">
+                            <img src="images/jp_flag.png" alt="JP">
+                        </div>
                     </div>
                 </div>
-                <div class="sheet-meta">
-                    <span id="sheet-visitors">0 visits</span>
-                </div>
+                <button id="sheet-speaker-btn" class="speaker-btn" onclick="toggleAudioProfessional()">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.03,19.86 21,16.28 21,12C21,7.72 18.03,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16.02C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/>
+                    </svg>
+                </button>
             </div>
 
             <!-- Images Carousel -->
@@ -93,31 +101,6 @@
                     <span id="sheet-time"></span>
                 </div>
 
-                <!-- Compact Premium Audio Player -->
-                <div id="sheet-audio-section" class="audio-card hidden">
-                    <div class="audio-card-body">
-                        <button class="audio-play-btn" onclick="toggleAudioProfessional()" id="main-audio-toggle">
-                            <svg id="main-play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                            <svg id="main-pause-icon" class="hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                        </button>
-                        
-                        <div class="audio-card-center">
-                            <div class="audio-status-row">
-                                <span id="audio-status-text">Bản dịch Audio</span>
-                                <span id="mini-player-timer">00:00</span>
-                            </div>
-                            <div class="audio-progress-container">
-                                <div class="audio-progress-track">
-                                    <div id="audio-progress-fill" class="audio-progress-fill"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button class="audio-replay-btn" onclick="restartAudio()" title="Nghe lại">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
-                        </button>
-                    </div>
-                </div>
                 <!-- Navigation Button -->
                 <button id="get-directions-btn" class="resto-btn" style="background: var(--pink-dark); width: 100%; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 14px; height: 50px;">
                     <svg fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>
@@ -125,31 +108,7 @@
                 </button>
             </div>
 
-            <!-- Reviews Section -->
-            <div class="sheet-reviews-section">
-                <h3>Reviews</h3>
-                <div id="sheet-reviews-list"></div>
 
-                <div class="review-form">
-                    <textarea id="review-comment" class="review-input" placeholder="Chia sẻ cảm nhận của bạn..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text"></textarea>
-                    <button id="submit-review-btn" class="resto-btn">Submit Review</button>
-                </div>
-            </div>
-            <!-- Integrated Audio Status Bar -->
-            <div id="audio-status-bar" class="audio-status-bar hidden">
-                <div class="mini-player-visual">
-                    <div class="mini-bar"></div>
-                    <div class="mini-bar"></div>
-                    <div class="mini-bar"></div>
-                </div>
-                <span id="mini-player-timer">00:00</span>
-                <div class="audio-progress-track">
-                    <div id="audio-progress-fill" class="audio-progress-fill"></div>
-                </div>
-                <button class="mini-stop-btn" onclick="stopAudioProfessional()">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
-                </button>
-            </div>
         </div>
     </div>
 

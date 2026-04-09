@@ -7,7 +7,7 @@ namespace FoodMapAdmin.Services
     public interface IAnalyticsService
     {
         Task<List<PoiAudioStat>> GetTopAudioStatsAsync(int count = 5);
-        Task<List<UserHeatPoint>> GetUserVisitLocationsAsync();
+        Task<List<UserHeatPoint>> GetActiveUserLocationsAsync();
     }
 
     public class AnalyticsService : IAnalyticsService
@@ -40,15 +40,16 @@ namespace FoodMapAdmin.Services
             return stats;
         }
 
-        public async Task<List<UserHeatPoint>> GetUserVisitLocationsAsync()
+        public async Task<List<UserHeatPoint>> GetActiveUserLocationsAsync()
         {
-            return await _context.PoiVisits
+            var tenMinutesAgo = DateTime.Now.AddMinutes(-10);
+            return await _context.UserLocations
                 .AsNoTracking()
-                .Where(v => v.Latitude.HasValue && v.Longitude.HasValue)
-                .Select(v => new UserHeatPoint
+                .Where(u => u.LastActive > tenMinutesAgo)
+                .Select(u => new UserHeatPoint
                 {
-                    Lat = (double)v.Latitude.Value,
-                    Lng = (double)v.Longitude.Value,
+                    Lat = (double)u.Latitude,
+                    Lng = (double)u.Longitude,
                     Count = 1
                 })
                 .ToListAsync();

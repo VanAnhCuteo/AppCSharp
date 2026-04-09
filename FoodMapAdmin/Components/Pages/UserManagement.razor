@@ -4,6 +4,7 @@
 @using FoodMapAdmin.Services
 @inject IUserService UserService
 @inject NavigationManager Navigator
+@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Quản lý Người dùng - FoodMap Admin</PageTitle>
@@ -12,6 +13,14 @@
     <div>
         <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Người dùng</h2>
         <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý tài khoản quản trị viên và chủ nhà hàng</p>
+    </div>
+    <div class="filter-wrapper">
+        <div class="filter-group">
+            <button class="filter-btn @(currentFilter == "all" ? "active" : "")" @onclick='() => FilterUsers("all")'>Tất cả</button>
+            <button class="filter-btn @(currentFilter == "admin" ? "active" : "")" @onclick='() => FilterUsers("admin")'>Quản trị</button>
+            <button class="filter-btn @(currentFilter == "CNH" ? "active" : "")" @onclick='() => FilterUsers("CNH")'>Chủ quán</button>
+            <button class="filter-btn @(currentFilter == "user" ? "active" : "")" @onclick='() => FilterUsers("user")'>Khách hàng</button>
+        </div>
     </div>
 </div>
 
@@ -41,7 +50,7 @@
                 }
                 else
                 {
-                    @foreach (var user in users)
+                    @foreach (var user in filteredUsers)
                     {
                         <tr class="align-middle transition-all">
                             <td style="padding-left: 2rem; color: var(--text-muted); font-weight: 600;">#@user.UserId</td>
@@ -77,10 +86,17 @@
                             </td>
                             <td style="text-align: center; padding-right: 2rem; white-space: nowrap;">
                                 <div style="display: flex !important; flex-direction: row !important; justify-content: center; align-items: center; gap: 0.75rem;">
-                                    <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick='() => Navigator.NavigateTo($"/users/edit/{user.UserId}")'>
-                                        <i class="bi bi-pencil-square"></i>
-                                    </button>
-                                    <button class="action-btn btn-delete" title="Xóa" @onclick="() => DeleteUser(user.UserId)"><i class="bi bi-trash-fill"></i></button>
+                                    @if (user.UserId != currentUserId)
+                                    {
+                                        <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick='() => Navigator.NavigateTo($"/users/edit/{user.UserId}")'>
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <button class="action-btn btn-delete" title="Xóa" @onclick="() => DeleteUser(user.UserId)"><i class="bi bi-trash-fill"></i></button>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-custom badge-user" style="opacity: 0.6; font-size: 0.65rem;">Hồ sơ của bạn</span>
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -150,23 +166,83 @@
 
     .transition-all { transition: all 0.3s ease; }
     tr:hover { background: rgba(255, 45, 133, 0.01) !important; }
+
+    /* Filters Styling */
+    .filter-wrapper {
+        margin-top: 10px;
+    }
+    .filter-group {
+        display: flex;
+        gap: 0.5rem;
+        background: rgba(0,0,0,0.03);
+        padding: 0.4rem;
+        border-radius: 16px;
+        width: fit-content;
+    }
+    .filter-btn {
+        padding: 0.5rem 1.2rem;
+        border-radius: 12px;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        font-weight: 700;
+        font-size: 0.85rem;
+        transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+    }
+    .filter-btn.active {
+        background: white;
+        color: var(--primary);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .filter-btn:hover:not(.active) {
+        color: var(--text-main);
+    }
 </style>
 @inject IJSRuntime JSRuntime
 
 @code {
     private List<User>? users;
+    private List<User> filteredUsers = new();
+    private string currentFilter = "all";
+    private int currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
         try 
         {
-            var allUsers = await UserService.GetAllUsersAsync();
-            users = allUsers?.Where(u => u.Role != "admin").ToList();
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userClaim = authState.User;
+            var userIdStr = userClaim.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            int.TryParse(userIdStr, out currentUserId);
+
+            users = await UserService.GetAllUsersAsync();
+            ApplyFilter();
         }
         catch (Exception ex)
         {
              Console.WriteLine($"Error loading users: {ex.Message}");
              users = new List<User>();
+             filteredUsers = new List<User>();
+        }
+    }
+
+    private void FilterUsers(string role)
+    {
+        currentFilter = role;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (users == null) return;
+        
+        if (currentFilter == "all")
+        {
+            filteredUsers = users.ToList();
+        }
+        else
+        {
+            filteredUsers = users.Where(u => u.Role == currentFilter).ToList();
         }
     }
 
@@ -176,6 +252,7 @@
         if (confirmed && await UserService.DeleteUserAsync(id))
         {
             users = users?.Where(u => u.UserId != id).ToList();
+            ApplyFilter();
         }
     }
 }

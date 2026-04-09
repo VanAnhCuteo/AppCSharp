@@ -45,7 +45,8 @@ namespace FoodMapAPI.Controllers
                     string query = @"SELECT p.poi_id, p.category_id, p.name, p.address, p.latitude, p.longitude, p.open_time, p.range_meters,
                                    COALESCE(g.description, gv.description) as description, 
                                    (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url,
-                                   pq.qr_code_url
+                                   pq.qr_code_url,
+                                   (SELECT COUNT(*) FROM poi_audio_logs l WHERE l.poi_id = p.poi_id) as total_listens
                                    FROM pois p 
                                    LEFT JOIN poi_guides g ON p.poi_id = g.poi_id AND g.language = @lang
                                    LEFT JOIN poi_guides gv ON p.poi_id = gv.poi_id AND gv.language = 'vi'
@@ -80,12 +81,13 @@ namespace FoodMapAPI.Controllers
                                     open_time = reader["open_time"].ToString() ?? "",
                                     image_url = reader["image_url"] != DBNull.Value ? GetFullUrl(reader["image_url"].ToString()) : "",
                                     range_meters = reader["range_meters"] != DBNull.Value ? Convert.ToInt32(reader["range_meters"]) : 50,
-                                    qr_code_url = reader["qr_code_url"] != DBNull.Value ? GetFullUrl(reader["qr_code_url"].ToString()) : null
+                                    qr_code_url = reader["qr_code_url"] != DBNull.Value ? GetFullUrl(reader["qr_code_url"].ToString()) : null,
+                                    total_listens = reader["total_listens"] != DBNull.Value ? Convert.ToInt32(reader["total_listens"]) : 0
                                 };
 
                                 if (lang != "vi")
                                 {
-                                    food.name = await _translator.TranslateAsync(food.name, lang);
+                                    // food.name = await _translator.TranslateAsync(food.name, lang); // Don't translate brand names
                                     food.description = await _translator.TranslateAsync(food.description, lang);
                                     food.address = await _translator.TranslateAsync(food.address, lang);
                                 }
@@ -161,17 +163,12 @@ namespace FoodMapAPI.Controllers
 
                     if (lang != "vi")
                     {
-                        details.name = await _translator.TranslateAsync(details.name, lang);
+                        // details.name = await _translator.TranslateAsync(details.name, lang); // Don't translate brand names
                         details.description = await _translator.TranslateAsync(details.description, lang);
                         details.address = await _translator.TranslateAsync(details.address, lang);
                     }
 
-                    // 2. Get unique visitor count
-                    using (MySqlCommand cmd = new MySqlCommand("SELECT COUNT(DISTINCT user_id) FROM poi_visits WHERE poi_id = @id", conn))
-                    {
-                        cmd.Parameters.AddWithValue("@id", id);
-                        details.visitor_count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-                    }
+
 
                     // 3. Get images (assuming poi_images table exists)
                     try
@@ -237,98 +234,7 @@ namespace FoodMapAPI.Controllers
             return Ok(categories);
         }
 
-        [HttpGet("{id}/reviews")]
-        public async Task<IActionResult> GetReviews(int id)
-        {
-            List<Review> reviews = new List<Review>();
-            string connStr = _configuration.GetConnectionString("DefaultConnection");
-            try
-            {
-                using (MySqlConnection conn = new MySqlConnection(connStr))
-                {
-                    await conn.OpenAsync();
-                    using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM reviews WHERE poi_id = @id ORDER BY created_at DESC", conn))
-                    {
-                        cmd.Parameters.AddWithValue("@id", id);
-                        using (var reader = await cmd.ExecuteReaderAsync())
-                        {
-                            while (await reader.ReadAsync())
-                            {
-                                reviews.Add(new Review
-                                {
-                                    id = reader["review_id"] != DBNull.Value ? Convert.ToInt32(reader["review_id"]) : 0,
-                                    poi_id = reader["poi_id"] != DBNull.Value ? Convert.ToInt32(reader["poi_id"]) : 0,
-                                    user_id = reader["user_id"] != DBNull.Value ? Convert.ToInt32(reader["user_id"]) : 0,
-                                    rating = reader["rating"] != DBNull.Value ? Convert.ToInt32(reader["rating"]) : 5,
-                                    comment = reader["comment"].ToString() ?? "",
-                                    created_at = reader["created_at"]?.ToString()
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"SQL Error in GetReviews: {ex.Message}");
-            }
-            return Ok(reviews);
-        }
 
-        [HttpPost("{id}/reviews")]
-        public async Task<IActionResult> AddReview(int id, [FromBody] Review review)
-        {
-            string connStr = _configuration.GetConnectionString("DefaultConnection");
-            try
-            {
-                using (MySqlConnection conn = new MySqlConnection(connStr))
-                {
-                    await conn.OpenAsync();
-                    // Table: reviews(poi_id, user_id, rating, comment)
-                    using (MySqlCommand cmd = new MySqlCommand("INSERT INTO reviews (poi_id, user_id, rating, comment) VALUES (@poi, @user, @rating, @comment)", conn))
-                    {
-                        cmd.Parameters.AddWithValue("@poi", id);
-                        cmd.Parameters.AddWithValue("@user", review.user_id > 0 ? review.user_id : 1);
-                        cmd.Parameters.AddWithValue("@rating", review.rating > 0 ? review.rating : 5);
-                        cmd.Parameters.AddWithValue("@comment", review.comment ?? "");
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            return Ok(new { success = true });
-        }
-
-        [HttpPost("{id}/visit")]
-        public async Task<IActionResult> LogVisit(int id, [FromBody] Visit visitReq)
-        {
-            string connStr = _configuration.GetConnectionString("DefaultConnection");
-            try
-            {
-                using (MySqlConnection conn = new MySqlConnection(connStr))
-                {
-                    await conn.OpenAsync();
-                    // Only insert if not already visited by this user
-                    string query = @"INSERT INTO poi_visits (poi_id, user_id) 
-                                   SELECT @poi, @user 
-                                   WHERE NOT EXISTS (SELECT 1 FROM poi_visits WHERE poi_id = @poi AND user_id = @user)";
-                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@poi", id);
-                        cmd.Parameters.AddWithValue("@user", visitReq != null && visitReq.user_id > 0 ? visitReq.user_id : 1);
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            return Ok(new { success = true });
-        }
 
         [HttpPost("{id}/audio-log")]
         public async Task<IActionResult> LogAudio(int id, [FromBody] AudioLogRequest logReq)
@@ -483,86 +389,6 @@ namespace FoodMapAPI.Controllers
             return NotFound();
         }
 
-        [HttpGet("history/{userId}")]
-        public async Task<IActionResult> GetVisitHistory(int userId)
-        {
-            List<object> history = new List<object>();
-            string connStr = _configuration.GetConnectionString("DefaultConnection");
 
-            try
-            {
-                using (MySqlConnection conn = new MySqlConnection(connStr))
-                {
-                    await conn.OpenAsync();
-                    // Join poi_visits with pois to get name and address
-                    string query = @"SELECT p.poi_id, p.name, p.address 
-                                   FROM poi_visits v 
-                                   JOIN pois p ON v.poi_id = p.poi_id 
-                                   WHERE v.user_id = @userId 
-                                   ORDER BY v.visit_time DESC";
-
-                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@userId", userId);
-                        using (var reader = await cmd.ExecuteReaderAsync())
-                        {
-                            while (await reader.ReadAsync())
-                            {
-                                history.Add(new
-                                {
-                                    id = Convert.ToInt32(reader["poi_id"]),
-                                    name = reader["name"].ToString(),
-                                    address = reader["address"].ToString()
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-
-            return Ok(history);
-        }
-
-        [HttpGet("reviews/user/{userId}")]
-        public async Task<IActionResult> GetUserReviews(int userId)
-        {
-            List<Review> reviews = new List<Review>();
-            string connStr = _configuration.GetConnectionString("DefaultConnection");
-            try
-            {
-                using (MySqlConnection conn = new MySqlConnection(connStr))
-                {
-                    await conn.OpenAsync();
-                    using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM reviews WHERE user_id = @user ORDER BY created_at DESC", conn))
-                    {
-                        cmd.Parameters.AddWithValue("@user", userId);
-                        using (var reader = await cmd.ExecuteReaderAsync())
-                        {
-                            while (await reader.ReadAsync())
-                            {
-                                reviews.Add(new Review
-                                {
-                                    id = Convert.ToInt32(reader["review_id"]),
-                                    poi_id = Convert.ToInt32(reader["poi_id"]),
-                                    user_id = Convert.ToInt32(reader["user_id"]),
-                                    rating = Convert.ToInt32(reader["rating"]),
-                                    comment = reader["comment"].ToString() ?? "",
-                                    created_at = reader["created_at"]?.ToString()
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            return Ok(reviews);
-        }
     }
 }

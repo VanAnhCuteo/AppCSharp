@@ -20,12 +20,23 @@
     </button>
 </div>
 
-@if (poi == null)
+@if (isLoading)
 {
     <div class="text-center py-5">
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Đang tải...</span>
         </div>
+    </div>
+}
+else if (poi == null)
+{
+    <div class="card shadow-glass border-0 mx-auto text-center p-5" style="max-width: 500px; border-radius: 30px;">
+        <i class="bi bi-exclamation-triangle-fill text-warning mb-3" style="font-size: 3.5rem;"></i>
+        <h3 style="font-weight: 800;">Không tìm thấy quán ăn</h3>
+        <p class="text-muted">ID quán ăn không hợp lệ hoặc quán ăn đã bị xóa khỏi hệ thống.</p>
+        <button class="glass-btn btn-save-premium mt-3" @onclick="GoBack">
+            <i class="bi bi-arrow-left me-2"></i> Quay lại danh sách
+        </button>
     </div>
 }
 else
@@ -259,14 +270,22 @@ else
     private string? currentQrUrl;
     private IBrowserFile? selectedFile;
     private bool isSaving = false;
+    private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        poi = await PoiService.GetPoiByIdAsync(PoiId);
-        if (poi != null && poi.QrCode != null)
+        try
         {
-            currentQrUrl = poi.QrCode.QrCodeUrl;
-            poi.QrCodeUrl = currentQrUrl; // Sync to not-mapped property for service logic
+            poi = await PoiService.GetPoiByIdAsync(PoiId);
+            if (poi != null && poi.QrCode != null)
+            {
+                currentQrUrl = poi.QrCode.QrCodeUrl;
+                poi.QrCodeUrl = currentQrUrl;
+            }
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 

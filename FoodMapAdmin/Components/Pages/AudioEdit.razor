@@ -111,6 +111,64 @@ else
                 </div>
             </div>
         </div>
+
+        <!-- KOREAN COLUMN -->
+        <div class="col-lg-4">
+            <div class="lang-card ko shadow-sm">
+                <div class="lang-header">
+                    <span class="badge-lang ko">TIẾNG HÀN</span>
+                    <button class="btn-magic ko" @onclick='() => TranslateFromVi("ko")' disabled="@isProcessing">
+                        @if (processingLang == "ko_tr") { <span class="spinner-border spinner-border-sm"></span> }
+                        else { <i class="bi bi-magic me-1"></i> } Dịch từ bản VI
+                    </button>
+                </div>
+                <div class="lang-body">
+                    <div class="mb-3">
+                        <label class="small-label">TIÊU ĐỀ (KO)</label>
+                        <InputText @bind-Value="koGuide.Title" class="form-control-modern" placeholder="한국어 제목..." />
+                    </div>
+                    <div class="mb-3">
+                        <label class="small-label">KỊCH BẢN (KO)</label>
+                        <InputTextArea @bind-Value="koGuide.Description" class="form-control-modern textarea-fixed" placeholder="한국어 대본..." />
+                    </div>
+                </div>
+                <div class="lang-footer">
+                    <button class="btn-save-lang ko" @onclick="() => SaveLang(koGuide)" disabled="@isProcessing">
+                        @if (processingLang == "ko") { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        <i class="bi bi-check2-circle me-1"></i> Lưu bản KO
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- JAPANESE COLUMN -->
+        <div class="col-lg-4">
+            <div class="lang-card ja shadow-sm">
+                <div class="lang-header">
+                    <span class="badge-lang ja">TIẾNG NHẬT</span>
+                    <button class="btn-magic ja" @onclick='() => TranslateFromVi("ja")' disabled="@isProcessing">
+                        @if (processingLang == "ja_tr") { <span class="spinner-border spinner-border-sm"></span> }
+                        else { <i class="bi bi-magic me-1"></i> } Dịch từ bản VI
+                    </button>
+                </div>
+                <div class="lang-body">
+                    <div class="mb-3">
+                        <label class="small-label">TIÊU ĐỀ (JA)</label>
+                        <InputText @bind-Value="jaGuide.Title" class="form-control-modern" placeholder="日本語。..." />
+                    </div>
+                    <div class="mb-3">
+                        <label class="small-label">KỊCH BẢN (JA)</label>
+                        <InputTextArea @bind-Value="jaGuide.Description" class="form-control-modern textarea-fixed" placeholder="日本語の台本..." />
+                    </div>
+                </div>
+                <div class="lang-footer">
+                    <button class="btn-save-lang ja" @onclick="() => SaveLang(jaGuide)" disabled="@isProcessing">
+                        @if (processingLang == "ja") { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        <i class="bi bi-check2-circle me-1"></i> Lưu bản JA
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 }
 
@@ -128,6 +186,8 @@ else
     .lang-card.vi { border-top: 4px solid var(--primary); }
     .lang-card.en { border-top: 4px solid #4299E1; }
     .lang-card.zh { border-top: 4px solid #F56565; }
+    .lang-card.ko { border-top: 4px solid #38A169; }
+    .lang-card.ja { border-top: 4px solid #805AD5; }
 
     .lang-header {
         padding: 1rem 1.2rem;
@@ -146,6 +206,8 @@ else
     .badge-lang.vi { background: rgba(255, 45, 133, 0.1); color: var(--primary); }
     .badge-lang.en { background: #EBF4FF; color: #3182CE; }
     .badge-lang.zh { background: #FFF5F5; color: #E53E3E; }
+    .badge-lang.ko { background: #F0FFF4; color: #2F855A; }
+    .badge-lang.ja { background: #FAF5FF; color: #6B46C1; }
 
     .lang-body { padding: 1.2rem; flex-grow: 1; }
     .small-label { font-size: 0.6rem; font-weight: 800; color: #AAA; letter-spacing: 0.8px; margin-bottom: 0.4rem; display: block; }
@@ -166,6 +228,8 @@ else
     .btn-save-lang.vi { background: var(--primary); color: white; }
     .btn-save-lang.en { background: #4299E1; color: white; }
     .btn-save-lang.zh { background: #F56565; color: white; }
+    .btn-save-lang.ko { background: #38A169; color: white; }
+    .btn-save-lang.ja { background: #805AD5; color: white; }
     .btn-save-lang:hover { opacity: 0.9; transform: scale(1.02); }
 
     .btn-magic {
@@ -176,6 +240,10 @@ else
     .btn-magic.en:hover { background: #EBF4FF; }
     .btn-magic.zh { color: #E53E3E; border-color: #fed7d7; }
     .btn-magic.zh:hover { background: #FFF5F5; }
+    .btn-magic.ko { color: #2F855A; border-color: #c6f6d5; }
+    .btn-magic.ko:hover { background: #F0FFF4; }
+    .btn-magic.ja { color: #6B46C1; border-color: #e9d8fd; }
+    .btn-magic.ja:hover { background: #FAF5FF; }
 
     .btn-save-lang:disabled, .btn-magic:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -211,6 +279,8 @@ else
     private PoiGuide viGuide = new() { Language = "vi" };
     private PoiGuide enGuide = new() { Language = "en" };
     private PoiGuide zhGuide = new() { Language = "zh" };
+    private PoiGuide koGuide = new() { Language = "ko" };
+    private PoiGuide jaGuide = new() { Language = "ja" };
     private Poi? currentPoi;
     private bool isLoading = true;
     private bool isProcessing = false;
@@ -233,6 +303,8 @@ else
             viGuide = allPoiGuides.FirstOrDefault(g => g.Language == "vi") ?? new PoiGuide { PoiId = poiId, Language = "vi" };
             enGuide = allPoiGuides.FirstOrDefault(g => g.Language == "en") ?? new PoiGuide { PoiId = poiId, Language = "en" };
             zhGuide = allPoiGuides.FirstOrDefault(g => g.Language == "zh") ?? new PoiGuide { PoiId = poiId, Language = "zh" };
+            koGuide = allPoiGuides.FirstOrDefault(g => g.Language == "ko") ?? new PoiGuide { PoiId = poiId, Language = "ko" };
+            jaGuide = allPoiGuides.FirstOrDefault(g => g.Language == "ja") ?? new PoiGuide { PoiId = poiId, Language = "ja" };
         }
         finally
         {
@@ -282,13 +354,46 @@ else
 
         try 
         {
-            var targetGuide = targetLang == "en" ? enGuide : zhGuide;
+            var targetGuide = targetLang switch {
+                "en" => enGuide,
+                "zh" => zhGuide,
+                "ko" => koGuide,
+                "ja" => jaGuide,
+                _ => enGuide
+            };
             
+            var poiName = currentPoi?.Name ?? "";
+            var placeholder = "[[POI_NAME]]";
+
             if (!string.IsNullOrEmpty(viGuide.Title))
-                targetGuide.Title = await TranslationService.TranslateAsync(viGuide.Title, targetLang);
+            {
+                var sourceTitle = viGuide.Title;
+                if (!string.IsNullOrEmpty(poiName)) sourceTitle = sourceTitle.Replace(poiName, placeholder);
+                
+                var tTitle = await TranslationService.TranslateAsync(sourceTitle, targetLang);
+                
+                if (!string.IsNullOrEmpty(poiName))
+                {
+                    tTitle = tTitle?.Replace(placeholder, poiName) ?? "";
+                    tTitle = tTitle.Replace("[[ POI_NAME ]]", poiName).Replace("[[ poi_name ]]", poiName);
+                }
+                targetGuide.Title = tTitle;
+            }
             
             if (!string.IsNullOrEmpty(viGuide.Description))
-                targetGuide.Description = await TranslationService.TranslateAsync(viGuide.Description, targetLang);
+            {
+                var sourceDesc = viGuide.Description;
+                if (!string.IsNullOrEmpty(poiName)) sourceDesc = sourceDesc.Replace(poiName, placeholder);
+                
+                var tDesc = await TranslationService.TranslateAsync(sourceDesc, targetLang);
+                
+                if (!string.IsNullOrEmpty(poiName))
+                {
+                    tDesc = tDesc?.Replace(placeholder, poiName) ?? "";
+                    tDesc = tDesc.Replace("[[ POI_NAME ]]", poiName).Replace("[[ poi_name ]]", poiName);
+                }
+                targetGuide.Description = tDesc;
+            }
         }
         catch (Exception ex)
         {

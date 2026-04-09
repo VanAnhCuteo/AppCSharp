@@ -3,8 +3,11 @@ namespace FoodMapAdmin.Models
     public class DashboardStats
     {
         public int TotalPois { get; set; }
-        public int TotalReviews { get; set; }
+
         public int TotalUsers { get; set; }
+        public int TotalAdmins { get; set; }
+        public int TotalOwners { get; set; }
+        public int TotalCustomers { get; set; }
         public List<ActivityDto> RecentActivities { get; set; } = new();
     }
 

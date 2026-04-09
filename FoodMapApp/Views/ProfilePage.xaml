@@ -72,77 +72,10 @@
                     <Frame.Shadow>
                         <Shadow Brush="#FF6A88" Offset="0,8" Opacity="0.1" Radius="16"/>
                     </Frame.Shadow>
-                    <Grid ColumnDefinitions="*,1,*,1,*" RowDefinitions="Auto,Auto" RowSpacing="4">
-                        <Label Grid.Row="0" Grid.Column="0" x:Name="VisitCountLabel" Text="0" FontSize="26" FontAttributes="Bold" TextColor="#FF6A88" HorizontalOptions="Center" VerticalOptions="End"/>
-                        <BoxView Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" WidthRequest="1" BackgroundColor="#FFE4EA" HorizontalOptions="Center" VerticalOptions="Fill" Margin="0,4"/>
-                        <Label Grid.Row="0" Grid.Column="2" x:Name="ReviewCountLabel" Text="0" FontSize="26" FontAttributes="Bold" TextColor="#FFAD9F" HorizontalOptions="Center" VerticalOptions="End"/>
-                        <BoxView Grid.Row="0" Grid.Column="3" Grid.RowSpan="2" WidthRequest="1" BackgroundColor="#FFE4EA" HorizontalOptions="Center" VerticalOptions="Fill" Margin="0,4"/>
-                        <Label Grid.Row="0" Grid.Column="4" Text="Vĩnh Khánh" FontSize="18" FontAttributes="Bold" TextColor="#FF6A88" HorizontalOptions="Center" VerticalOptions="End" Margin="0,0,0,5"/>
-                        <Label Grid.Row="1" Grid.Column="0" x:Name="VisitLabel" FontSize="11" TextColor="#A1A1B5" HorizontalOptions="Center" VerticalOptions="Start" FontAttributes="Bold"/>
-                        <Label Grid.Row="1" Grid.Column="2" x:Name="ReviewLabel" FontSize="11" TextColor="#A1A1B5" HorizontalOptions="Center" VerticalOptions="Start" FontAttributes="Bold"/>
-                        <Label Grid.Row="1" Grid.Column="4" x:Name="AreaLabel" FontSize="11" TextColor="#A1A1B5" HorizontalOptions="Center" VerticalOptions="Start" FontAttributes="Bold"/>
-                    </Grid>
+
                 </Frame>
 
-                <VerticalStackLayout Spacing="16">
-                    <Label x:Name="HistoryTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#323242"/>
-                    <CollectionView x:Name="HistoryCollection">
-                        <CollectionView.EmptyView>
-                            <Label x:Name="HistoryEmptyLabel" TextColor="#A1A1B5" FontSize="14" Margin="0,10" HorizontalOptions="Center"/>
-                        </CollectionView.EmptyView>
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Border BackgroundColor="White" StrokeThickness="0" Padding="16,12" Margin="0,0,0,10">
-                                    <Border.StrokeShape><RoundRectangle CornerRadius="18"/></Border.StrokeShape>
-                                    <Border.Shadow>
-                                        <Shadow Brush="#FF6A88" Offset="0,4" Opacity="0.06" Radius="8"/>
-                                    </Border.Shadow>
-                                    <Grid ColumnDefinitions="Auto,*,Auto">
-                                        <Border Grid.Column="0" WidthRequest="46" HeightRequest="46" BackgroundColor="#FFF5F7" StrokeThickness="0" Margin="0,0,14,0" VerticalOptions="Center">
-                                            <Border.StrokeShape><RoundRectangle CornerRadius="23"/></Border.StrokeShape>
-                                            <Path Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 M12,20 C7.58,20 4,16.42 4,12 C4,7.58 7.58,4 12,4 C16.42,4 20,7.58 20,12 C20,16.42 16.42,20 12,20 M12,6 C8.69,6 6,8.69 6,12 C6,15.31 8.69,18 12,18 C15.31,18 18,15.31 18,12 C18,8.69 15.31,6 12,6 Z" Fill="#FF6A88" Aspect="Uniform" WidthRequest="20" HeightRequest="20" HorizontalOptions="Center" VerticalOptions="Center"/>
-                                        </Border>
-                                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
-                                            <Label Text="{Binding name}" FontSize="15" FontAttributes="Bold" TextColor="#323242"/>
-                                            <Label Text="{Binding address}" FontSize="12" TextColor="#8E8E9F" LineBreakMode="TailTruncation"/>
-                                        </VerticalStackLayout>
-                                        <Label Grid.Column="2" Text="›" FontSize="22" TextColor="#FFAD9F" VerticalOptions="Center" FontAttributes="Bold"/>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </VerticalStackLayout>
 
-                <VerticalStackLayout Spacing="16">
-                    <Label x:Name="ReviewTitleLabel" FontSize="18" FontAttributes="Bold" TextColor="#323242"/>
-                    <CollectionView x:Name="ReviewsCollection">
-                        <CollectionView.EmptyView>
-                            <Label x:Name="ReviewEmptyLabel" TextColor="#A1A1B5" FontSize="14" Margin="0,10" HorizontalOptions="Center"/>
-                        </CollectionView.EmptyView>
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Border BackgroundColor="White" StrokeThickness="0" Padding="18,16" Margin="0,0,0,10">
-                                    <Border.StrokeShape><RoundRectangle CornerRadius="18"/></Border.StrokeShape>
-                                    <Border.Shadow>
-                                        <Shadow Brush="#FF6A88" Offset="0,4" Opacity="0.06" Radius="8"/>
-                                    </Border.Shadow>
-                                    <VerticalStackLayout Spacing="8">
-                                        <HorizontalStackLayout Spacing="4">
-                                            <Path Data="M12,17.27 L18.18,21 L16.54,13.97 L22,9.24 L14.81,8.63 L12,2 L9.19,8.63 L2,9.24 L7.46,13.97 L5.82,21 L12,17.27 Z" Fill="#FFB400" Aspect="Uniform" WidthRequest="14" HeightRequest="14"/>
-                                            <Path Data="M12,17.27 L18.18,21 L16.54,13.97 L22,9.24 L14.81,8.63 L12,2 L9.19,8.63 L2,9.24 L7.46,13.97 L5.82,21 L12,17.27 Z" Fill="#FFB400" Aspect="Uniform" WidthRequest="14" HeightRequest="14"/>
-                                            <Path Data="M12,17.27 L18.18,21 L16.54,13.97 L22,9.24 L14.81,8.63 L12,2 L9.19,8.63 L2,9.24 L7.46,13.97 L5.82,21 L12,17.27 Z" Fill="#FFB400" Aspect="Uniform" WidthRequest="14" HeightRequest="14"/>
-                                            <Path Data="M12,17.27 L18.18,21 L16.54,13.97 L22,9.24 L14.81,8.63 L12,2 L9.19,8.63 L2,9.24 L7.46,13.97 L5.82,21 L12,17.27 Z" Fill="#FFB400" Aspect="Uniform" WidthRequest="14" HeightRequest="14"/>
-                                            <Path Data="M12,17.27 L18.18,21 L16.54,13.97 L22,9.24 L14.81,8.63 L12,2 L9.19,8.63 L2,9.24 L7.46,13.97 L5.82,21 L12,17.27 Z" Fill="#FFB400" Aspect="Uniform" WidthRequest="14" HeightRequest="14"/>
-                                        </HorizontalStackLayout>
-                                        <Label Text="{Binding comment}" FontSize="14" TextColor="#555567" LineHeight="1.4"/>
-                                        <Label Text="{Binding created_at}" FontSize="11" TextColor="#A1A1B5" Margin="0,2,0,0"/>
-                                    </VerticalStackLayout>
-                                </Border>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </VerticalStackLayout>
 
                 <Button x:Name="LogoutButton" Clicked="OnLogoutClicked" BackgroundColor="Transparent" TextColor="#FF6A88" BorderColor="#FF6A88" BorderWidth="1.5" CornerRadius="18" FontAttributes="Bold" FontSize="16" HeightRequest="60" Margin="0,16,0,0"/>
             </VerticalStackLayout>

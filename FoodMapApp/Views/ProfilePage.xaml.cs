@@ -17,18 +17,12 @@ namespace FoodMapApp.Views
             base.OnAppearing();
 
             // Set all Vietnamese text from code-behind (Fixes "missing text" issue)
-            VisitLabel.Text = "Quán đã ghé";
-            ReviewLabel.Text = "Đánh giá";
-            AreaLabel.Text = "Khu vực";
-            HistoryTitleLabel.Text = "Lịch Sử Foodtour";
-            HistoryEmptyLabel.Text = "Chưa ghé quán nào";
-            ReviewTitleLabel.Text = "Đánh Giá Đã Viết";
-            ReviewEmptyLabel.Text = "Chưa có lượt đánh giá nào";
+
+
             LogoutButton.Text = "Đăng Xuất";
             EditProfileButton.Text = "Chỉnh sửa";
 
             LoadProfileFromSession();
-            await LoadHistory();
         }
 
         private void LoadProfileFromSession()
@@ -91,44 +85,7 @@ namespace FoodMapApp.Views
             }
         }
 
-        private async Task LoadHistory()
-        {
-            int userId = Preferences.Default.Get("user_id", 0);
-            if (userId == 0) return;
 
-            string baseUrl = AppConfig.BaseUrl;
-
-            try
-            {
-                var visits = await HttpService.GetAsync<List<VisitHistory>>($"{baseUrl}/food/history/{userId}");
-                if (visits != null && visits.Any())
-                {
-                    HistoryCollection.ItemsSource = visits.Take(5).ToList();
-                    VisitCountLabel.Text = visits.Count.ToString();
-                }
-                else
-                {
-                    HistoryCollection.ItemsSource = new List<VisitHistory>();
-                    VisitCountLabel.Text = "0";
-                }
-
-                var reviews = await HttpService.GetAsync<List<ReviewHistory>>($"{baseUrl}/food/reviews/user/{userId}");
-                if (reviews != null)
-                {
-                    ReviewsCollection.ItemsSource = reviews;
-                    ReviewCountLabel.Text = reviews.Count.ToString();
-                }
-                else
-                {
-                    ReviewsCollection.ItemsSource = new List<ReviewHistory>();
-                    ReviewCountLabel.Text = "0";
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading profile history: {ex.Message}");
-            }
-        }
 
         private async void OnLogoutClicked(object sender, EventArgs e)
         {
@@ -141,15 +98,5 @@ namespace FoodMapApp.Views
         }
     }
 
-    public class VisitHistory
-    {
-        public string? name { get; set; }
-        public string? address { get; set; }
-    }
 
-    public class ReviewHistory
-    {
-        public string? comment { get; set; }
-        public string? created_at { get; set; }
-    }
 }

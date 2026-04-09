@@ -164,7 +164,7 @@ namespace FoodMapAdmin.Services
                         var poi = await _context.Pois
                             .Include(p => p.Images)
                             .Include(p => p.Guides)
-                            .Include(p => p.Reviews)
+
                             .FirstOrDefaultAsync(p => p.PoiId == pending.PoiId.Value);
 
                         if (poi != null) 
@@ -172,7 +172,7 @@ namespace FoodMapAdmin.Services
                             // Clear related data first (though Cascade Delete might handle this, explicit is safer)
                             if (poi.Images?.Any() == true) _context.PoiImages.RemoveRange(poi.Images);
                             if (poi.Guides?.Any() == true) _context.PoiGuides.RemoveRange(poi.Guides);
-                            if (poi.Reviews?.Any() == true) _context.Reviews.RemoveRange(poi.Reviews);
+
                             
                             _context.Pois.Remove(poi);
                             actionLabel = "Phê duyệt xóa";

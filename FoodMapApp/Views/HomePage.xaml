@@ -144,9 +144,7 @@
                     <Grid ColumnDefinitions="*,Auto" Padding="24,0">
                         <Label Grid.Column="0" x:Name="TopRestaurantLabel" Text="Quán nổi bật"
                                FontSize="19" FontAttributes="Bold" TextColor="#323242"/>
-                        <Label Grid.Column="1" x:Name="SeeAllLabel" Text="Tất cả"
-                               FontSize="13" TextColor="#FF6A88"
-                               FontAttributes="Bold" VerticalOptions="Center"/>
+
                     </Grid>
 
                     <CollectionView x:Name="RestaurantsCollection" HeightRequest="240"
@@ -167,7 +165,6 @@
                                             <Border.StrokeShape><RoundRectangle CornerRadius="28"/></Border.StrokeShape>
                                             
                                             <!-- We use AspectFill so it looks premium -->
-                                            <!-- We use AspectFill so it looks premium -->
                                             <Grid>
                                                 <!-- Fallback vector (visible if image is transparent or fails) -->
                                                 <Path Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 M12,20 C7.58,20 4,16.42 4,12 C4,7.58 7.58,4 12,4 C16.42,4 20,7.58 20,12 C20,16.42 16.42,20 12,20 M12,6 C8.69,6 6,8.69 6,12 C6,15.31 8.69,18 12,18 C15.31,18 18,15.31 18,12 C18,8.69 15.31,6 12,6 Z"
@@ -184,12 +181,7 @@
                                                     FontAttributes="Bold" TextColor="#323242"
                                                     LineBreakMode="TailTruncation"/>
                                             <HorizontalStackLayout Spacing="4">
-                                                <!-- Small Star Vector -->
-                                                <Path Data="M12,17.27 L18.18,21 L16.54,13.97 L22,9.24 L14.81,8.63 L12,2 L9.19,8.63 L2,9.24 L7.46,13.97 L5.82,21 L12,17.27 Z"
-                                                      Fill="#FFB400" Aspect="Uniform" WidthRequest="12" HeightRequest="12" VerticalOptions="Center"/>
-                                                <Label Text="4.8" FontSize="11" TextColor="#323242"
-                                                       FontAttributes="Bold" VerticalOptions="Center"/>
-                                                <Label Text="· Gần đây" FontSize="11" TextColor="#A1A1B5" VerticalOptions="Center"/>
+                                                <Label Text="Gần đây" FontSize="11" TextColor="#A1A1B5" VerticalOptions="Center"/>
                                             </HorizontalStackLayout>
                                             <!-- Explore chip -->
                                             <Border BackgroundColor="#FFF0F3" Padding="12,6"
@@ -202,6 +194,44 @@
                                                 <Label Text="Chi tiết ›" FontSize="10"
                                                        TextColor="#FF6A88" FontAttributes="Bold"/>
                                             </Border>
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- ── RECOMMENDED RESTAURANTS ── -->
+                <VerticalStackLayout Spacing="16" x:Name="RecommendedSection">
+                    <Grid Padding="24,0">
+                        <Label x:Name="RecommendedLabel" Text="Quán bạn có thể biết"
+                               FontSize="19" FontAttributes="Bold" TextColor="#323242"/>
+                    </Grid>
+
+                    <CollectionView x:Name="RecommendedRestaurantsCollection" Margin="24,0" SelectionMode="None">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="viewmodels:FoodItem">
+                                <Border Padding="0" Margin="0,0,0,16" StrokeThickness="0" BackgroundColor="White">
+                                    <Border.StrokeShape><RoundRectangle CornerRadius="20"/></Border.StrokeShape>
+                                    <Border.Shadow>
+                                        <Shadow Brush="#FF6A88" Offset="0,4" Opacity="0.08" Radius="12"/>
+                                    </Border.Shadow>
+                                    <Grid ColumnDefinitions="100,*" HeightRequest="100">
+                                        <Image Grid.Column="0" Source="{Binding first_image}" Aspect="AspectFill"
+                                               WidthRequest="100" HeightRequest="100">
+                                            <Image.Clip>
+                                                <RoundRectangleGeometry CornerRadius="20,0,0,20"/>
+                                            </Image.Clip>
+                                        </Image>
+                                        <VerticalStackLayout Grid.Column="1" Padding="16,12" Spacing="4" VerticalOptions="Center">
+                                            <Label Text="{Binding name}" FontSize="15" FontAttributes="Bold" TextColor="#323242"/>
+                                            <Label Text="{Binding address}" FontSize="12" TextColor="#8E8E9F" LineBreakMode="TailTruncation"/>
+                                            <Label Text="Xem quán ›" FontSize="11" TextColor="#FF6A88" FontAttributes="Bold" Margin="0,4,0,0">
+                                                <Label.GestureRecognizers>
+                                                    <TapGestureRecognizer Tapped="OnExploreTapped" CommandParameter="{Binding .}"/>
+                                                </Label.GestureRecognizers>
+                                            </Label>
                                         </VerticalStackLayout>
                                     </Grid>
                                 </Border>
@@ -232,10 +262,10 @@
                             <BoxView Grid.Column="0" BackgroundColor="#FF6A88"
                                      CornerRadius="2.5" WidthRequest="5" Margin="0,16"/>
                             <VerticalStackLayout Grid.Column="1" Spacing="4" Padding="16,18">
-                                <Label x:Name="Event1Title" Text="Cocktail Night" FontSize="15" FontAttributes="Bold"
+                                <Label x:Name="Event1Title" Text="Khung giờ vàng" FontSize="15" FontAttributes="Bold"
                                        TextColor="#323242"/>
-                                <Label x:Name="Event1Desc" Text="Giảm 30% thức uống từ 17:00 - 19:00" FontSize="13" TextColor="#6D6D80"/>
-                                <Label x:Name="Event1Sub" Text="Áp dụng hội viên" FontSize="11" TextColor="#A1A1B5"/>
+                                <Label x:Name="Event1Desc" Text="Tặng 1 món ăn kèm từ 17:00 - 19:00" FontSize="13" TextColor="#6D6D80"/>
+                                <Label x:Name="Event1Sub" Text="Áp dụng với hóa đơn 50k" FontSize="11" TextColor="#A1A1B5"/>
                             </VerticalStackLayout>
                             <Path Grid.Column="2" Data="M12,21.35 L10.55,20.03 C5.4,15.36 2,12.28 2,8.5 C2,5.42 4.42,3 7.5,3 C9.24,3 10.91,3.81 12,5.09 C13.09,3.81 14.76,3 16.5,3 C19.58,3 22,5.42 22,8.5 C22,12.28 18.6,15.36 13.45,20.04 L12,21.35 Z"
                                   Fill="#FFF0F3" Aspect="Uniform" WidthRequest="28" HeightRequest="28"

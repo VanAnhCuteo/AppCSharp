@@ -32,7 +32,7 @@
                             <option value="@poi.PoiId">@poi.Name</option>
                         }
                     </InputSelect>
-                    <ValidationMessage For="@(()=>Guide.PoiId)" />
+                    <ValidationMessage For="@(()=>Guide.PoiId)" class="modern-error" />
                 </div>
             }
 
@@ -50,9 +50,34 @@
                               class="af-textarea"
                               placeholder="Ghi lại câu chuyện của quán ăn bằng Tiếng Việt... Hệ thống sẽ tự động đồng bộ sang các ngôn ngữ khác sau khi lưu." />
                 <div class="af-footer-info">
-                    <p class="af-hint"><i class="bi bi-magic me-1"></i> Tự động dịch Anh & Trung khi bạn nhấn Lưu.</p>
+                    <p class="af-hint"><i class="bi bi-magic me-1"></i> Hệ thống sẽ tự động dịch sang các ngôn ngữ được chọn bên dưới sau khi lưu.</p>
                 </div>
             </div>
+
+            @if (IsAddMode)
+            {
+                <div class="af-field mt-2">
+                    <label>CHỌN NGÔN NGỮ MUỐN TỰ ĐỘNG DỊCH</label>
+                    <div class="lang-selector-grid">
+                        <label class="lang-check">
+                            <input type="checkbox" checked="@SelectedLanguages.Contains("en")" @onchange="@((e) => ToggleLang("en", e.Value))" />
+                            <span>Tiếng Anh (EN)</span>
+                        </label>
+                        <label class="lang-check">
+                            <input type="checkbox" checked="@SelectedLanguages.Contains("zh")" @onchange="@((e) => ToggleLang("zh", e.Value))" />
+                            <span>Tiếng Trung (ZH)</span>
+                        </label>
+                        <label class="lang-check">
+                            <input type="checkbox" checked="@SelectedLanguages.Contains("ko")" @onchange="@((e) => ToggleLang("ko", e.Value))" />
+                            <span>Tiếng Hàn (KO)</span>
+                        </label>
+                        <label class="lang-check">
+                            <input type="checkbox" checked="@SelectedLanguages.Contains("ja")" @onchange="@((e) => ToggleLang("ja", e.Value))" />
+                            <span>Tiếng Nhật (JA)</span>
+                        </label>
+                    </div>
+                </div>
+            }
 
             <!-- Actions -->
             <div class="af-actions-row">
@@ -164,6 +189,37 @@
     }
     .af-btn-sec:hover { background: #EEE; color: #333; }
 
+    .modern-error {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #E53E3E;
+        margin-top: 0.4rem;
+        padding-left: 0.5rem;
+    }
+
+    .lang-selector-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        background: #F8F9FC;
+        padding: 15px;
+        border-radius: 12px;
+    }
+    .lang-check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 5px;
+    }
+    .lang-check input {
+        width: 18px;
+        height: 18px;
+        accent-color: #FF2D85;
+    }
+
     .animate-fade-in { animation: fadeIn 0.8s cubic-bezier(0.19, 1, 0.22, 1); }
     @@keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 </style>
@@ -173,6 +229,7 @@
     [Parameter] public List<Poi> AvailablePois { get; set; } = new();
     [Parameter] public bool IsAddMode { get; set; } = true;
     [Parameter] public string Title { get; set; } = "Thông tin Audio Guide";
+    [Parameter] public List<string> SelectedLanguages { get; set; } = new();
     [Parameter] public EventCallback OnSubmit { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
 
@@ -182,6 +239,15 @@
     private void OnContentInput(ChangeEventArgs e) {
         Guide.Description = e.Value?.ToString();
         StateHasChanged();
+    }
+
+    private void ToggleLang(string lang, object checkedVal)
+    {
+        bool isChecked = (bool)(checkedVal ?? false);
+        if (isChecked && !SelectedLanguages.Contains(lang))
+            SelectedLanguages.Add(lang);
+        else if (!isChecked && SelectedLanguages.Contains(lang))
+            SelectedLanguages.Remove(lang);
     }
 
     private async Task HandleValidSubmit() => await OnSubmit.InvokeAsync();

@@ -74,6 +74,8 @@
                                     <div class="lang-dot @(group.Guides.Any(g => g.Language == "vi") ? "active" : "")" title="Tiếng Việt">VI</div>
                                     <div class="lang-dot @(group.Guides.Any(g => g.Language == "en") ? "active" : "")" title="Tiếng Anh">EN</div>
                                     <div class="lang-dot @(group.Guides.Any(g => g.Language == "zh") ? "active" : "")" title="Tiếng Trung">ZH</div>
+                                    <div class="lang-dot @(group.Guides.Any(g => g.Language == "ko") ? "active" : "")" title="Tiếng Hàn">KO</div>
+                                    <div class="lang-dot @(group.Guides.Any(g => g.Language == "ja") ? "active" : "")" title="Tiếng Nhật">JA</div>
                                 </div>
                             </td>
                             <td style="text-align: center;">
@@ -92,6 +94,16 @@
                                             disabled="@(!group.Guides.Any(g => g.Language == "zh"))"
                                             @onclick="@(() => PlayAudio(group, "zh"))">
                                         <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "zh" && isActuallyPlaying && !isPaused ? "bi-pause-fill" : "bi-play-fill")"></i>
+                                    </button>
+                                    <button class="btn-play-mini ko @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "ko" && isActuallyPlaying && !isPaused ? "playing" : "")" 
+                                            disabled="@(!group.Guides.Any(g => g.Language == "ko"))"
+                                            @onclick="@(() => PlayAudio(group, "ko"))">
+                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "ko" && isActuallyPlaying && !isPaused ? "bi-pause-fill" : "bi-play-fill")"></i>
+                                    </button>
+                                    <button class="btn-play-mini ja @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "ja" && isActuallyPlaying && !isPaused ? "playing" : "")" 
+                                            disabled="@(!group.Guides.Any(g => g.Language == "ja"))"
+                                            @onclick="@(() => PlayAudio(group, "ja"))">
+                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "ja" && isActuallyPlaying && !isPaused ? "bi-pause-fill" : "bi-play-fill")"></i>
                                     </button>
                                 </div>
                             </td>
@@ -242,6 +254,8 @@
     .btn-play-mini.vi:hover:not(:disabled) { background: #E6FFFA; color: #38B2AC; }
     .btn-play-mini.en:hover:not(:disabled) { background: #EBF4FF; color: #4299E1; }
     .btn-play-mini.zh:hover:not(:disabled) { background: #FFF5F5; color: #E53E3E; }
+    .btn-play-mini.ko:hover:not(:disabled) { background: #F5F3FF; color: #7C3AED; }
+    .btn-play-mini.ja:hover:not(:disabled) { background: #FFF1F2; color: #E11D48; }
     
     .btn-play-mini.playing {
         background: var(--primary) !important;
@@ -395,15 +409,21 @@
     }
 
     [JSInvokable]
-    public void OnTtsFinished() {
+    public async Task OnTtsFinished() {
         isActuallyPlaying = false;
         isPaused = false;
         ttsProgress = 100;
-        Task.Delay(1000).ContinueWith(_ => {
+        await InvokeAsync(StateHasChanged);
+
+        // Wait a bit to let the user see the progress at 100%
+        await Task.Delay(1000);
+
+        // Only hide the player if no NEW audio has started playing in the meantime
+        if (!isActuallyPlaying) {
             isPlayerVisible = false;
             currentPlayingPoi = null;
-            InvokeAsync(StateHasChanged);
-        });
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task TogglePlayPause() {

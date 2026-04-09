@@ -16,27 +16,37 @@
 }
 else
 {
-    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
-        <div class="card shadow" style="border-left: 4px solid var(--primary); background: #fff; text-align: center;">
-            <p style="color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">Tổng số quán ăn</p>
-            <h2 style="font-size: 2.8rem; margin: 0; color: var(--text-main);">@stats.TotalPois</h2>
-            <p style="color: #00acc1; font-size: 0.9rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; justify-content: center;">
-                <i class="bi bi-graph-up-arrow"></i> Hoạt động ổn định
-            </p>
+    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
+        <div class="card shadow-glass stats-card" style="border-left: 5px solid var(--primary); background: #fff;">
+            <div class="stats-icon" style="background: rgba(255, 45, 133, 0.1); color: var(--primary);"><i class="bi bi-shop"></i></div>
+            <div class="stats-data">
+                <p class="stats-label">Tổng số quán ăn</p>
+                <h2 class="stats-value">@stats.TotalPois</h2>
+            </div>
         </div>
-        <div class="card shadow" style="border-left: 4px solid var(--accent); background: #fff; text-align: center;">
-            <p style="color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">Tổng số đánh giá</p>
-            <h2 style="font-size: 2.8rem; margin: 0; color: var(--text-main);">@stats.TotalReviews</h2>
-            <p style="color: #43a047; font-size: 0.9rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; justify-content: center;">
-                <i class="bi bi-chat-heart"></i> Đánh giá từ khách hàng
-            </p>
+
+        <div class="card shadow-glass stats-card" style="border-left: 5px solid #6c5ce7; background: #fff;">
+            <div class="stats-icon" style="background: rgba(108, 92, 231, 0.1); color: #6c5ce7;"><i class="bi bi-shield-lock"></i></div>
+            <div class="stats-data">
+                <p class="stats-label">Quản trị viên</p>
+                <h2 class="stats-value">@stats.TotalAdmins</h2>
+            </div>
         </div>
-        <div class="card shadow" style="border-left: 4px solid #00e5ff; background: #fff; text-align: center;">
-            <p style="color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">Người dùng đăng ký</p>
-            <h2 style="font-size: 2.8rem; margin: 0; color: var(--text-main);">@stats.TotalUsers</h2>
-            <p style="color: var(--primary); font-size: 0.9rem; margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; justify-content: center;">
-                <i class="bi bi-people"></i> Hệ thống đang phát triển .
-            </p>
+
+        <div class="card shadow-glass stats-card" style="border-left: 5px solid #00b8d4; background: #fff;">
+            <div class="stats-icon" style="background: rgba(0, 184, 212, 0.1); color: #00b8d4;"><i class="bi bi-person-badge"></i></div>
+            <div class="stats-data">
+                <p class="stats-label">Chủ nhà hàng</p>
+                <h2 class="stats-value">@stats.TotalOwners</h2>
+            </div>
+        </div>
+
+        <div class="card shadow-glass stats-card" style="border-left: 5px solid #ff7675; background: #fff;">
+            <div class="stats-icon" style="background: rgba(255, 118, 117, 0.1); color: #ff7675;"><i class="bi bi-people"></i></div>
+            <div class="stats-data">
+                <p class="stats-label">Khách hàng</p>
+                <h2 class="stats-value">@stats.TotalCustomers</h2>
+            </div>
         </div>
     </div>
 
@@ -66,7 +76,6 @@ else
                             <tr class="align-middle" style="text-align: center;">
                                 <td style="padding: 1.2rem 1rem;">
                                     <span class="badge-activity @(activity.ActionType switch { 
-                                        "Đánh giá mới" => "activity-cyan", 
                                         "Đăng ký mới" => "activity-pink",
                                         "Thêm quán ăn mới" => "activity-pink",
                                         "Cập nhật thông tin" => "activity-cyan",
@@ -103,6 +112,56 @@ else
         
         .table-hover tbody tr:hover {
             background-color: rgba(255, 45, 133, 0.01) !important;
+        }
+
+        /* Stats Cards Styling */
+        .stats-card {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            padding: 1.5rem;
+            border-radius: 24px;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            border: 1px solid rgba(0,0,0,0.03);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        }
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+        }
+        .stats-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            margin-right: 1.2rem;
+            flex-shrink: 0;
+        }
+        .stats-data {
+            display: flex;
+            flex-direction: column;
+        }
+        .stats-label {
+            color: var(--text-muted);
+            margin-bottom: 2px;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+        }
+        .stats-value {
+            font-size: 1.8rem;
+            font-weight: 900;
+            margin: 0;
+            color: var(--text-main);
+            line-height: 1;
+        }
+        .shadow-glass {
+            box-shadow: 0 15px 35px rgba(0,0,0,0.03) !important;
+            border: 1px solid rgba(255, 45, 133, 0.05) !important;
         }
     </style>
 }

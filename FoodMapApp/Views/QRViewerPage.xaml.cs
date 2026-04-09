@@ -1,5 +1,9 @@
 using FoodMapApp.Models;
 using System.Threading;
+using System.Diagnostics;
+using System.Net.Http;
+using System.Text.Json;
+using System.Text;
 using ZXing;
 
 namespace FoodMapApp.Views;
@@ -20,6 +24,8 @@ public partial class QRViewerPage : ContentPage
     private bool _isPaused = false;
     private readonly SemaphoreSlim _ttsSemaphore = new SemaphoreSlim(1, 1);
     private Locale _vietnameseLocale;
+    private bool _shouldResumeOnAppearing = false;
+    private Stopwatch _audioStopwatch = new Stopwatch();
 
     public FoodModel Shop
     {
@@ -181,7 +187,9 @@ public partial class QRViewerPage : ContentPage
                 
                 try
                 {
+                    _audioStopwatch.Start();
                     await TextToSpeech.Default.SpeakAsync(text, options, cancelToken: _currentSentenceCts.Token);
+                    _audioStopwatch.Stop();
                     _currentChunkIndex++;
                 }
                 catch (OperationCanceledException)
@@ -197,6 +205,7 @@ public partial class QRViewerPage : ContentPage
 
             if (_currentChunkIndex >= _chunks.Length)
             {
+                ReportAndResetAudioStats();
                 _currentChunkIndex = 0;
                 playIcon.IsVisible = true;
                 pauseIcon.IsVisible = false;
@@ -246,6 +255,7 @@ public partial class QRViewerPage : ContentPage
             _isPaused = true;
             playIcon.IsVisible = true;
             pauseIcon.IsVisible = false;
+            _audioStopwatch.Stop();
             _currentSentenceCts?.Cancel();
         }
         else
@@ -256,6 +266,7 @@ public partial class QRViewerPage : ContentPage
 
     private void OnReplayAudioClicked(object sender, EventArgs e)
     {
+        ReportAndResetAudioStats();
         _ttsCts?.Cancel();
         _currentChunkIndex = 0;
         _isPaused = false;
@@ -264,6 +275,7 @@ public partial class QRViewerPage : ContentPage
 
     private void OnClosePlayerClicked(object sender, EventArgs e)
     {
+        ReportAndResetAudioStats();
         _ttsCts?.Cancel();
         miniPlayer.IsVisible = false;
         scanButton.IsVisible = true;
@@ -276,14 +288,54 @@ public partial class QRViewerPage : ContentPage
     private void OnDetailClicked(object sender, EventArgs e)
     {
         if (_shop == null) return;
+        ReportAndResetAudioStats();
         _ttsCts?.Cancel();
         MainPage.PendingOpenFoodId = _shop.id;
         Shell.Current.GoToAsync("//MainPage");
     }
 
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        if (_shouldResumeOnAppearing && _shop != null && _chunks.Length > 0)
+        {
+            _ = PlayAudioWithChunksAsync();
+        }
+    }
+
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        ReportAndResetAudioStats();
+        // Record if it was playing (not paused and pauseIcon is visible)
+        _shouldResumeOnAppearing = !_isPaused && pauseIcon.IsVisible;
         _ttsCts?.Cancel();
+    }
+
+    private void ReportAndResetAudioStats()
+    {
+        _audioStopwatch.Stop();
+        if (_audioStopwatch.Elapsed.TotalSeconds >= 1 && _shop != null)
+        {
+            _ = SendAudioLogAsync(_shop.id, (int)_audioStopwatch.Elapsed.TotalSeconds);
+        }
+        _audioStopwatch.Reset();
+    }
+
+    private async Task SendAudioLogAsync(int poiId, int duration)
+    {
+        try
+        {
+            int userId = Preferences.Default.Get("user_id", 1);
+            var payload = new { user_id = userId, duration_seconds = duration };
+            
+            using HttpClient client = new HttpClient();
+            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            await client.PostAsync($"{AppConfig.FoodApiUrl}/{poiId}/audio-log", content);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG: Error sending QR audio log: {ex.Message}");
+        }
     }
 }

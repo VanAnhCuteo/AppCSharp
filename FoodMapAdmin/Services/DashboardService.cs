@@ -24,8 +24,11 @@ namespace FoodMapAdmin.Services
 
             // 1. Lấy thống kê cơ bản
             stats.TotalPois = await _context.Pois.CountAsync();
-            stats.TotalReviews = await _context.Reviews.CountAsync();
+
             stats.TotalUsers = await _context.Users.CountAsync();
+            stats.TotalAdmins = await _context.Users.CountAsync(u => u.Role == "admin");
+            stats.TotalOwners = await _context.Users.CountAsync(u => u.Role == "CNH");
+            stats.TotalCustomers = await _context.Users.CountAsync(u => u.Role == "user");
 
             // 2. Lấy hoạt động gần đây từ bảng activity_logs
             stats.RecentActivities = await _context.ActivityLogs
