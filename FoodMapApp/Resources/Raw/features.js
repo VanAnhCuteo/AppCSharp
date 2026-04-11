@@ -52,45 +52,41 @@ function closeDetails() {
 
 async function setSelectedLang(lang, el) {
     console.log(`DEBUG: Language switch requested to: ${lang}`);
-    
+    let confirmed = true;
+
     // If audio is currently playing, ask for confirmation
     if (isAudioSpeaking || isAudioPaused) {
-        // Pause audio first to be polite during the dialog
-        const originalStatus = isAudioPaused;
-        if (!isAudioPaused) {
-            window.location.href = `app-tts://stop?id=${currentPoiId}&reset=false`;
-            stopAudioTimer();
-            isAudioPaused = true;
-        }
-
-        const confirmSwitch = confirm("Bạn muốn chuyển ngôn ngữ?");
+        // We don't need to send a separate stop request here 
+        // because the reload request below will trigger a full StopSpeech in C#.
+        // We just politely ask the user first.
+        confirmed = confirm("Bạn muốn chuyển ngôn ngữ?");
         
-        if (!confirmSwitch) {
+        if (!confirmed) {
             console.log("DEBUG: Language switch cancelled by user.");
-            // Resume if it was playing before
-            if (!originalStatus) {
-                resumeAudioProfessional();
-            }
             return;
         }
         
-        // If confirmed, stop completely and reset timer for new language
-        stopAudioProfessional();
+        // Reset internal state immediately to prevent UI flickering or "zombie" resume calls
+        isAudioSpeaking = false;
+        isAudioPaused = false;
+        const speakerBtn = document.getElementById('sheet-speaker-btn');
+        if (speakerBtn) speakerBtn.classList.remove('playing');
     }
     
     selectedLanguage = lang;
+    playedAudioPois.clear(); // Quan trọng: Xoá lịch sử đã nghe để geofencing kích hoạt lại với ngôn ngữ mới
     document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
     el.classList.add('active');
 
-    // Request C# to reload markers for this language
+    // Request C# to reload markers and STOP current speech definitive
     window.location.href = `app-request-reload://markers?lang=${lang}`;
 
     // Reload current sheet details if open
     if (currentBasePoiId) {
         await openDetails(currentBasePoiId, lang);
         // Automatically start playing in new language if we confirmed the switch
-        if (confirmSwitch) {
-            setTimeout(() => resumeAudioProfessional(), 500); 
+        if (confirmed) {
+            setTimeout(() => resumeAudioProfessional(), 800); // Increased delay slightly for C# cleanup
         }
     }
 }
@@ -339,8 +335,8 @@ let isAudioSpeaking = false;
 let isAudioPaused = false;
 
 function toggleAudioProfessional() {
-    if (isAudioSpeaking && !isAudioPaused) {
-        pauseAudioProfessional();
+    if (isAudioSpeaking || isAudioPaused) {
+        stopAudioProfessional();
     } else {
         resumeAudioProfessional();
     }
@@ -350,67 +346,30 @@ function resumeAudioProfessional() {
     isAudioSpeaking = true;
     isAudioPaused = false;
     
-    // UI Updates
+    // UI Update for the small speaker button in sheet header
     const speakerBtn = document.getElementById('sheet-speaker-btn');
     if (speakerBtn) speakerBtn.classList.add('playing');
     
-    const statusText = document.getElementById('audio-status-text');
-    if (statusText) statusText.innerText = "Đang phát...";
-
-    startAudioTimer();
     playCurrentAudio(true); // MANUAL trigger
 }
 
-function pauseAudioProfessional() {
-    isAudioPaused = true;
+function stopAudioProfessional() {
+    isAudioSpeaking = false;
+    isAudioPaused = false;
     
     const speakerBtn = document.getElementById('sheet-speaker-btn');
-    if (speakerBtn) speakerBtn.classList.remove('playing');
+    if (speakerBtn) {
+        speakerBtn.classList.remove('playing');
+    }
     
-    const statusText = document.getElementById('audio-status-text');
-    if (statusText) statusText.innerText = "Đã tạm dừng";
-
-    stopAudioTimer();
-    // Pause doesn't need to specify manual as it doesn't enqueue
+    // We use reset=false here to NOT clear the auto-audio queue when simply 
+    // stopping or toggling manual audio in the sheet.
     window.location.href = `app-tts://stop?id=${currentPoiId}&reset=false`;
 }
 
-function stopAudioProfessional() {
-    const wasActive = isAudioSpeaking || isAudioPaused;
-    isAudioSpeaking = false;
-    isAudioPaused = false;
-    
-    const speakerBtn = document.getElementById('sheet-speaker-btn');
-    if (speakerBtn) speakerBtn.classList.remove('playing');
-    
-    const statusText = document.getElementById('audio-status-text');
-    if (statusText) statusText.innerText = "Bản dịch Audio";
-    
-    resetAudioTimer();
-    const progressFill = document.getElementById('audio-progress-fill');
-    if (progressFill) progressFill.style.width = '0%';
-
-    if (wasActive) {
-        window.location.href = `app-tts://stop?id=${currentPoiId}&reset=true`;
-    }
-}
-
-function restartAudio() {
-    // Send stop with reset=true to C#
-    window.location.href = `app-tts://stop?reset=true`;
-    
-    // Reset local state
-    isAudioSpeaking = false;
-    isAudioPaused = false;
-    resetAudioTimer();
-    const progressFill = document.getElementById('audio-progress-fill');
-    if (progressFill) progressFill.style.width = '0%';
-    
-    // Start fresh - MANUAL
-    setTimeout(() => {
-        resumeAudioProfessional();
-    }, 100);
-}
+// These are now handled by C# native player
+function pauseAudioProfessional() {}
+function restartAudio() {}
 
 function playCurrentAudio(isManual = true) {
     let text = "";
@@ -431,61 +390,30 @@ function playAudioGuide(text, language = 'vi-VN', poiId = currentPoiId, isManual
         isAudioSpeaking = true;
         isAudioPaused = false;
         
-        // Sync speaker btn if available
         const speakerBtn = document.getElementById('sheet-speaker-btn');
         if (speakerBtn) speakerBtn.classList.add('playing');
 
-        startAudioTimer();
         window.location.href = `app-tts://speak?id=${poiId}&text=${encodeURIComponent(text)}&lang=${language}&manual=${isManual}`;
     }
 }
 
-// Timer Logic
-function startAudioTimer() {
-    if (audioTimerInterval) return;
-    audioTimerInterval = setInterval(() => {
-        audioSeconds++;
-        const mins = Math.floor(audioSeconds / 60).toString().padStart(2, '0');
-        const secs = (audioSeconds % 60).toString().padStart(2, '0');
-        const timerEl = document.getElementById('mini-player-timer');
-        if (timerEl) timerEl.innerText = `${mins}:${secs}`;
-    }, 1000);
-}
-
-function stopAudioTimer() {
-    if (audioTimerInterval) {
-        clearInterval(audioTimerInterval);
-        audioTimerInterval = null;
-    }
-}
-
-function resetAudioTimer() {
-    stopAudioTimer();
-    audioSeconds = 0;
-    const timerEl = document.getElementById('mini-player-timer');
-    if (timerEl) timerEl.innerText = "00:00";
-}
-
 // Callbacks from C#
 window.onTtsProgress = function(index, total) {
-    console.log(`TTS Progress: ${index + 1}/${total}`);
-    const progressFill = document.getElementById('audio-progress-fill');
-    if (progressFill && total > 0) {
-        const percent = ((index + 1) / total) * 100;
-        progressFill.style.width = `${percent}%`;
-    }
+    // Progress is now shown on the C# manualMiniPlayer
 };
 
 window.onTtsFinished = function() {
     console.log("TTS Finished");
-    stopAudioProfessional();
+    isAudioSpeaking = false;
+    isAudioPaused = false;
+    const speakerBtn = document.getElementById('sheet-speaker-btn');
+    if (speakerBtn) speakerBtn.classList.remove('playing');
 };
 
 function resetPlayerForNewPoi() {
     // If NOT playing, reset everything. 
     // If ALREADY playing, we keep the mini-player visible but the new sheet will sync in openDetails
     if (!isAudioSpeaking && !isAudioPaused) {
-        resetAudioTimer();
         const statusBar = document.getElementById('audio-status-bar');
         if (statusBar) statusBar.classList.add('hidden');
         const progressFill = document.getElementById('audio-progress-fill');

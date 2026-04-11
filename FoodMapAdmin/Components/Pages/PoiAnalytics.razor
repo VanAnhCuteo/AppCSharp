@@ -7,222 +7,319 @@
 
 <PageTitle>Thống kê địa điểm - FoodMap Admin</PageTitle>
 
-<div class="container-fluid px-4 py-4">
-    <div class="d-flex justify-content-between align-items-center mb-5 mt-2 animate-fade-in">
+<div class="analytics-wrapper">
+
+    @* ── Header ── *@
+    <div class="d-flex justify-content-between align-items-center mb-5 animate-fade-in">
         <div>
-            <h1 class="h3 mb-0 text-gray-800 fw-bold" style="font-size: 2rem; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Thống kê Nghe Thuyết Minh</h1>
+            <h1 class="analytics-title">Thống kê Nghe Thuyết Minh</h1>
             <p class="text-muted mb-0" style="font-size: 0.9rem; font-weight: 500;">Phân tích hiệu suất và lượt tương tác với các địa điểm.</p>
         </div>
-        <button class="btn-refresh-premium" @onclick="RefreshData" title="Làm mới">
+        <button class="btn-refresh" @onclick="RefreshData" title="Làm mới dữ liệu">
             <i class="bi bi-arrow-clockwise"></i>
+            <span>Làm mới</span>
         </button>
     </div>
 
-@if (topStats == null)
-{
-    <div class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Đang tải...</span>
+    @if (topStats == null)
+    {
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p class="text-muted mt-3">Đang tải dữ liệu thống kê...</p>
         </div>
-    </div>
-}
-else if (!topStats.Any())
-{
-    <div class="alert alert-info shadow-sm border-0">
-        <i class="bi bi-info-circle me-2"></i> Chưa có dữ liệu thống kê nghe thuyết minh.
-    </div>
-}
-else
-{
-    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 4rem;">
-        <!-- Card 1: Hot nhất -->
-        <div class="card shadow-sm stat-card-modern" style="border-left: 5px solid var(--primary); background: #fff;">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <p class="stat-label">ĐỊA ĐIỂM HOT NHẤT</p>
-                    <i class="bi bi-fire text-primary opacity-50 fs-4"></i>
+    }
+    else if (!topStats.Any())
+    {
+        <div class="empty-state-box">
+            <i class="bi bi-bar-chart-line"></i>
+            <h4>Chưa có dữ liệu</h4>
+            <p>Chưa có lượt nghe thuyết minh nào được ghi nhận.</p>
+        </div>
+    }
+    else
+    {
+        @* ── Summary KPI Cards ── *@
+        <div class="kpi-row mb-5 animate-fade-in">
+            @if (topByListens != null)
+            {
+                <div class="kpi-card kpi-pink">
+                    <div class="kpi-icon"><i class="bi bi-fire"></i></div>
+                    <div class="kpi-content">
+                        <div class="kpi-value">@topByListens.TotalListens.ToString("N0")</div>
+                        <div class="kpi-label">Lượt nghe cao nhất</div>
+                        <div class="kpi-sub" title="@topByListens.PoiName">@topByListens.PoiName</div>
+                    </div>
                 </div>
-                <h2 class="stat-value">@topStats[0].TotalListens</h2>
-                <div class="stat-desc text-truncate" title="@topStats[0].PoiName">
-                    <i class="bi bi-geo-alt-fill me-1 text-primary"></i> @topStats[0].PoiName
+            }
+            @if (topByEngagement != null)
+            {
+                <div class="kpi-card kpi-blue">
+                    <div class="kpi-icon"><i class="bi bi-clock-history"></i></div>
+                    <div class="kpi-content">
+                        <div class="kpi-value">@topByEngagement.AverageDurationSeconds.ToString("N1")<small>s</small></div>
+                        <div class="kpi-label">Tương tác lâu nhất</div>
+                        <div class="kpi-sub" title="@topByEngagement.PoiName">@topByEngagement.PoiName</div>
+                    </div>
+                </div>
+            }
+            <div class="kpi-card kpi-green">
+                <div class="kpi-icon"><i class="bi bi-headphones"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-value">@totalListens.ToString("N0")</div>
+                    <div class="kpi-label">Tổng lượt nghe</div>
+                    <div class="kpi-sub">Top @topStats.Count địa điểm</div>
+                </div>
+            </div>
+            <div class="kpi-card kpi-orange">
+                <div class="kpi-icon"><i class="bi bi-graph-up"></i></div>
+                <div class="kpi-content">
+                    <div class="kpi-value">@avgEngagement.ToString("N1")<small>s</small></div>
+                    <div class="kpi-label">Trung bình tương tác</div>
+                    <div class="kpi-sub">Toàn bộ địa điểm</div>
                 </div>
             </div>
         </div>
 
-        <!-- Card 2: Tương tác cao nhất -->
-        <div class="card shadow-sm stat-card-modern" style="border-left: 5px solid #00acc1; background: #fff;">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <p class="stat-label">TƯƠNG TÁC CAO NHẤT</p>
-                    <i class="bi bi-graph-up-arrow text-info opacity-50 fs-4"></i>
+        @* ── Leaderboard ── *@
+        <div class="leaderboard-card animate-stagger">
+            <div class="leaderboard-header">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="leaderboard-icon"><i class="bi bi-trophy-fill"></i></div>
+                    <div>
+                        <h4 class="mb-0 fw-800">Bảng xếp hạng địa điểm</h4>
+                        <p class="mb-0 small text-muted">Theo số lượt nghe thuyết minh</p>
+                    </div>
                 </div>
-                @{
-                    var bestEngagement = topStats.OrderByDescending(s => s.AverageDurationSeconds).First();
+                <div class="leaderboard-total-badge">Top @topStats.Count</div>
+            </div>
+
+            <div class="leaderboard-body">
+                @for (int i = 0; i < topStats.Count; i++)
+                {
+                    var stat = topStats[i];
+                    var listensPct = maxListens > 0 ? (double)stat.TotalListens / maxListens * 100 : 0;
+                    var durationPct = maxDuration > 0 ? stat.AverageDurationSeconds / maxDuration * 100 : 0;
+                    var rankClass = i == 0 ? "rank-gold" : i == 1 ? "rank-silver" : i == 2 ? "rank-bronze" : "rank-default";
+                    var rankIcon = i == 0 ? "bi-trophy-fill" : i == 1 ? "bi-award-fill" : i == 2 ? "bi-patch-check-fill" : "bi-hash";
+
+                    <div class="leaderboard-row @(i == 0 ? "row-highlight" : "")">
+                        <div class="rank-col">
+                            <div class="rank-badge @rankClass">
+                                <i class="bi @rankIcon"></i>
+                                <span>@(i + 1)</span>
+                            </div>
+                        </div>
+
+                        <div class="info-col">
+                            <div class="poi-name">@stat.PoiName</div>
+                            <div class="poi-id">ID: #@stat.PoiId</div>
+                        </div>
+
+                        <div class="bar-col">
+                            <div class="bar-label-row">
+                                <span class="bar-metric-label"><i class="bi bi-headphones me-1"></i>Lượt nghe</span>
+                                <span class="bar-value pink">@stat.TotalListens.ToString("N0")</span>
+                            </div>
+                            <div class="bar-track">
+                                <div class="bar-fill bar-pink" style="width: @(listensPct.ToString("F1"))%"></div>
+                            </div>
+                        </div>
+
+                        <div class="bar-col">
+                            <div class="bar-label-row">
+                                <span class="bar-metric-label"><i class="bi bi-clock me-1"></i>Thời gian TB</span>
+                                <span class="bar-value blue">@stat.AverageDurationSeconds.ToString("N1")s</span>
+                            </div>
+                            <div class="bar-track">
+                                <div class="bar-fill bar-blue" style="width: @(durationPct.ToString("F1"))%"></div>
+                            </div>
+                        </div>
+
+                        <div class="score-col">
+                            @if (listensPct > 70)
+                            {
+                                <div class="engagement-score score-hot">
+                                    <i class="bi bi-fire me-1"></i><span>Hot</span>
+                                </div>
+                            }
+                            else if (listensPct > 40)
+                            {
+                                <div class="engagement-score score-warm">
+                                    <i class="bi bi-graph-up me-1"></i><span>Tốt</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="engagement-score score-cool">
+                                    <i class="bi bi-arrow-up-right me-1"></i><span>Mới</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
                 }
-                <h2 class="stat-value">@bestEngagement.AverageDurationSeconds.ToString("N1")<small class="fs-6 ms-1">s/lượt</small></h2>
-                <div class="stat-desc text-truncate" title="@bestEngagement.PoiName">
-                    <i class="bi bi-heart-fill me-1 text-info"></i> @bestEngagement.PoiName
-                </div>
             </div>
         </div>
-    </div>
-
-    <div class="card shadow-sm border-0 bg-white" style="border-radius: 15px; overflow: hidden;">
-        <div class="card-header bg-white py-4 px-4 border-0">
-            <h4 class="mb-0 fw-bold" style="color: var(--text-main);">Top 5 địa điểm nổi bật</h4>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr style="background: rgba(255, 45, 133, 0.02); border-bottom: 2px solid rgba(0,0,0,0.03);">
-                            <th class="py-3 text-center" style="width: 80px; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Hạng</th>
-                            <th class="py-3 text-center" style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Địa điểm</th>
-                            <th class="py-3 text-center" style="width: 150px; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Lượt nghe</th>
-                            <th class="py-3 text-center" style="width: 180px; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Thời gian TB</th>
-                            <th class="py-3 text-center pe-4" style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Mức độ quan tâm</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @for (int i = 0; i < topStats.Count; i++)
-                        {
-                            var stat = topStats[i];
-                            <tr class="align-middle">
-                                <td class="text-center ps-4">
-                                    <div class="rank-circle @(i == 0 ? "rank-1" : i == 1 ? "rank-2" : i == 2 ? "rank-3" : "rank-other") mx-auto">
-                                        @(i + 1)
-                                    </div>
-                                </td>
-                                <td class="text-center">
-                                    <div class="fw-bold text-dark fs-6">@stat.PoiName</div>
-                                    <div class="small text-muted">ID: #@stat.PoiId</div>
-                                </td>
-                                <td class="text-center">
-                                    <span class="fw-bold text-primary fs-5">@stat.TotalListens.ToString("N0")</span>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-light text-info border border-info border-opacity-10 px-3 py-2 fw-semibold">
-                                        @stat.AverageDurationSeconds.ToString("N1") s
-                                    </span>
-                                </td>
-                                <td class="text-center pe-4">
-                                    <div class="d-flex align-items-center justify-content-center gap-2">
-                                        <div class="progress" style="height: 8px; width: 100px; border-radius: 4px; background: #f0f0f0;">
-                                            @{
-                                                double maxListens = topStats.Max(s => s.TotalListens);
-                                                double percentage = maxListens > 0 ? (double)stat.TotalListens / maxListens * 100 : 0;
-                                            }
-                                            <div class="progress-bar @(i == 0 ? "bg-primary" : "bg-info")" role="progressbar" style="width: @(percentage)%" aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                        <span class="small fw-bold text-muted" style="width: 35px">@(Math.Round(percentage))%</span>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-}
+    }
 </div>
 
 <style>
-    .btn-refresh-premium {
-        width: 45px;
-        height: 45px;
-        border-radius: 14px;
-        background: white;
-        border: 1px solid rgba(255, 45, 133, 0.2);
-        color: var(--primary);
-        font-size: 1.4rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 8px 20px rgba(255, 45, 133, 0.1);
-        transition: all 0.3s ease;
-    }
-    .btn-refresh-premium:hover {
-        background: var(--primary);
-        color: white;
-        transform: rotate(180deg) scale(1.1);
-        box-shadow: 0 10px 25px var(--primary-glow);
-    }
-    .btn-refresh-premium:active {
-        transform: scale(0.95);
+    .analytics-wrapper { max-width: 1200px; }
+
+    .analytics-title {
+        font-size: 2.2rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -1px;
+        margin-bottom: 0.3rem;
     }
 
-    .animate-fade-in {
-        animation: fadeIn 0.8s ease-out;
+    /* ── Refresh ── */
+    .btn-refresh {
+        display: flex; align-items: center; gap: 8px;
+        background: white; border: 1px solid rgba(255, 45, 133, 0.2); color: var(--primary);
+        padding: 0.65rem 1.4rem; border-radius: 14px; font-weight: 700; font-size: 0.9rem;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 6px 20px rgba(255, 45, 133, 0.08); cursor: pointer;
     }
-    @@keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-10px); }
+    .btn-refresh:hover {
+        background: var(--primary); color: white;
+        box-shadow: 0 10px 25px var(--primary-glow); transform: translateY(-2px);
+    }
+    .btn-refresh:hover i { animation: spin360 0.5s ease; }
+    @@keyframes spin360 { to { transform: rotate(360deg); } }
+
+    /* ── Loading ── */
+    .loading-container { text-align: center; padding: 5rem 0; }
+    .loading-spinner {
+        width: 48px; height: 48px;
+        border: 4px solid rgba(255,45,133,0.1); border-top-color: var(--primary);
+        border-radius: 50%; animation: spinA 0.9s linear infinite; margin: 0 auto;
+    }
+    @@keyframes spinA { to { transform: rotate(360deg); } }
+
+    /* ── Empty ── */
+    .empty-state-box {
+        text-align: center; padding: 5rem 2rem;
+        background: rgba(255,255,255,0.6); border-radius: 30px;
+        border: 2px dashed rgba(255,45,133,0.15);
+    }
+    .empty-state-box i { font-size: 4rem; color: rgba(255,45,133,0.2); display: block; margin-bottom: 1.5rem; }
+
+    /* ── KPI Row ── */
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.2rem; }
+    .kpi-card {
+        background: white; border-radius: 24px; padding: 1.6rem;
+        display: flex; align-items: center; gap: 1.2rem;
+        border: 1px solid rgba(0,0,0,0.04); box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+        transition: all 0.3s ease;
+    }
+    .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 16px 36px rgba(0,0,0,0.08); }
+    .kpi-icon {
+        width: 54px; height: 54px; border-radius: 18px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem; flex-shrink: 0;
+    }
+    .kpi-pink .kpi-icon { background: rgba(255,45,133,0.1); color: var(--primary); }
+    .kpi-blue .kpi-icon { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .kpi-green .kpi-icon { background: rgba(16,185,129,0.1); color: #10b981; }
+    .kpi-orange .kpi-icon { background: rgba(245,158,11,0.1); color: #f59e0b; }
+    .kpi-value { font-size: 2rem; font-weight: 900; color: var(--text-main); line-height: 1.1; }
+    .kpi-value small { font-size: 1rem; font-weight: 700; opacity: 0.6; }
+    .kpi-label { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; color: #aaa; letter-spacing: 0.5px; margin-top: 2px; }
+    .kpi-sub { font-size: 0.8rem; font-weight: 600; color: #888; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+
+    /* ── Leaderboard ── */
+    .leaderboard-card {
+        background: rgba(255,255,255,0.75); backdrop-filter: blur(12px);
+        border: 1px solid rgba(255,255,255,0.5); border-radius: 30px;
+        overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,0.04);
+    }
+    .leaderboard-header {
+        padding: 1.8rem 2.2rem; background: rgba(255,255,255,0.5);
+        border-bottom: 1px solid #f0f0f0;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .leaderboard-icon {
+        width: 48px; height: 48px; border-radius: 16px;
+        background: linear-gradient(135deg, #ffd700, #ffa500);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; color: white; box-shadow: 0 6px 16px rgba(255,165,0,0.3);
+    }
+    .fw-800 { font-weight: 800; }
+    .leaderboard-total-badge {
+        background: rgba(255,45,133,0.08); color: var(--primary);
+        border: 1px solid rgba(255,45,133,0.15); border-radius: 14px;
+        padding: 0.5rem 1.2rem; font-size: 0.8rem; font-weight: 800;
+    }
+    .leaderboard-body { padding: 1rem 0; }
+    .leaderboard-row {
+        display: grid;
+        grid-template-columns: 70px 1fr 1.3fr 1.3fr 90px;
+        align-items: center; gap: 1.5rem;
+        padding: 1.2rem 2.2rem;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+        transition: background 0.2s;
+    }
+    .leaderboard-row:last-child { border-bottom: none; }
+    .leaderboard-row:hover { background: rgba(255,45,133,0.02); }
+    .row-highlight { background: rgba(255,215,0,0.03); }
+
+    /* Rank */
+    .rank-badge {
+        width: 46px; height: 46px; border-radius: 14px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        font-size: 0.65rem; font-weight: 900; gap: 1px;
+    }
+    .rank-badge i { font-size: 0.95rem; }
+    .rank-gold { background: linear-gradient(135deg, #FFD700, #FFA500); color: white; box-shadow: 0 6px 16px rgba(255,165,0,0.35); }
+    .rank-silver { background: linear-gradient(135deg, #C0C0C0, #A0A0A0); color: white; box-shadow: 0 4px 14px rgba(160,160,160,0.3); }
+    .rank-bronze { background: linear-gradient(135deg, #CD7F32, #A0522D); color: white; box-shadow: 0 4px 14px rgba(160,82,45,0.3); }
+    .rank-default { background: #f0f2f5; color: #888; }
+
+    /* Info */
+    .poi-name { font-weight: 800; font-size: 0.98rem; color: var(--text-main); }
+    .poi-id { font-size: 0.75rem; color: #aaa; font-weight: 600; margin-top: 2px; }
+
+    /* Bars */
+    .bar-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .bar-metric-label { font-size: 0.68rem; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: 0.3px; }
+    .bar-value { font-size: 0.88rem; font-weight: 800; }
+    .bar-value.pink { color: var(--primary); }
+    .bar-value.blue { color: #3b82f6; }
+    .bar-track { height: 7px; background: #f0f2f5; border-radius: 10px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 10px; transition: width 1.2s cubic-bezier(0.17, 0.67, 0.35, 1); }
+    .bar-pink { background: linear-gradient(90deg, var(--primary), var(--primary-dark)); }
+    .bar-blue { background: linear-gradient(90deg, #60a5fa, #3b82f6); }
+
+    /* Engagement Score */
+    .engagement-score {
+        display: inline-flex; align-items: center;
+        padding: 0.45rem 0.9rem; border-radius: 12px;
+        font-size: 0.78rem; font-weight: 800; white-space: nowrap;
+    }
+    .score-hot { background: rgba(255,45,133,0.1); color: var(--primary); border: 1px solid rgba(255,45,133,0.2); }
+    .score-warm { background: rgba(245,158,11,0.1); color: #d97706; border: 1px solid rgba(245,158,11,0.2); }
+    .score-cool { background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.15); }
+
+    /* Animations */
+    .animate-fade-in { animation: fadeInUp 0.6s ease-out; }
+    .animate-stagger { animation: fadeInUp 0.7s 0.1s ease-out both; }
+    @@keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(16px); }
         to { opacity: 1; transform: translateY(0); }
-    }
-
-    .stat-card-modern {
-        border-radius: 16px;
-        border: none;
-        transition: all 0.3s ease;
-    }
-    .stat-card-modern:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 25px rgba(0,0,0,0.08) !important;
-    }
-    .stat-label {
-        color: var(--text-muted);
-        margin-bottom: 0.5rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        font-size: 0.75rem;
-        letter-spacing: 0.5px;
-    }
-    .stat-value {
-        font-size: 2.8rem;
-        font-weight: 800;
-        margin: 0;
-        color: var(--text-main);
-        line-height: 1.2;
-    }
-    .stat-desc {
-        color: #666;
-        font-size: 0.9rem;
-        margin-top: 0.8rem;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-    }
-
-    /* Rank Circles */
-    .rank-circle {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        font-size: 0.85rem;
-        color: white;
-    }
-    .rank-1 { background: #FFD700; box-shadow: 0 4px 10px rgba(255, 215, 0, 0.3); }
-    .rank-2 { background: #C0C0C0; box-shadow: 0 4px 10px rgba(192, 192, 192, 0.3); }
-    .rank-3 { background: #CD7F32; box-shadow: 0 4px 10px rgba(205, 127, 50, 0.3); }
-    .rank-other { background: #f0f0f0; color: #888; }
-
-    .table-hover tbody tr:hover {
-        background-color: rgba(255, 45, 133, 0.01) !important;
-    }
-
-    .progress {
-        box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
     }
 </style>
 
-
 @code {
     private List<PoiAudioStat>? topStats;
+    private int maxListens;
+    private double maxDuration;
+    private PoiAudioStat? topByListens;
+    private PoiAudioStat? topByEngagement;
+    private int totalListens;
+    private double avgEngagement;
 
     protected override async Task OnInitializedAsync()
     {
@@ -233,5 +330,15 @@ else
     {
         topStats = null;
         topStats = await AnalyticsService.GetTopAudioStatsAsync(5);
+        
+        if (topStats != null && topStats.Any())
+        {
+            maxListens = topStats.Max(s => s.TotalListens);
+            maxDuration = topStats.Max(s => s.AverageDurationSeconds);
+            topByListens = topStats[0];
+            topByEngagement = topStats.OrderByDescending(s => s.AverageDurationSeconds).FirstOrDefault();
+            totalListens = topStats.Sum(s => s.TotalListens);
+            avgEngagement = topStats.Average(s => s.AverageDurationSeconds);
+        }
     }
 }

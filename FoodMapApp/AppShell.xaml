@@ -49,6 +49,14 @@
                 ContentTemplate="{DataTemplate local:MainPage}"
                 Route="MainPage"/>
         </Tab>
+        <Tab Title="Các Tour">
+            <Tab.Icon>
+                <FontImageSource Glyph="&#x1F6A9;" FontFamily="OpenSansRegular" Color="#FF6A88" Size="22"/>
+            </Tab.Icon>
+            <ShellContent
+                ContentTemplate="{DataTemplate local:FoodTourPage}"
+                Route="FoodTourPage"/>
+        </Tab>
         <Tab Title="Thông Tin">
             <Tab.Icon>
                 <FontImageSource Glyph="&#x1F464;" FontFamily="OpenSansRegular" Color="#FF6A88" Size="22"/>

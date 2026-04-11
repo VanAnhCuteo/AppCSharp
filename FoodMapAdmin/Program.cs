@@ -37,6 +37,7 @@ builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITranslationService, TranslationService>();
+builder.Services.AddScoped<ITourService, TourService>();
 
 // CORS
 builder.Services.AddCors(options =>
@@ -125,6 +126,10 @@ using (var scope = app.Services.CreateScope())
         try {
             db.Database.ExecuteSqlRaw("ALTER TABLE poi_image_pending_changes MODIFY poi_id INT NULL;");
         } catch { /* Already fixed or exists */ }
+
+        try {
+            db.Database.ExecuteSqlRaw("ALTER TABLE tours DROP COLUMN image_url;");
+        } catch { /* Already dropped or doesn't exist */ }
 
         var user = db.Users.FirstOrDefault(u => u.Username == "vananh");
         if (user != null && user.Role != "admin")

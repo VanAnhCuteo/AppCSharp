@@ -9,116 +9,131 @@
     <Grid>
         <WebView x:Name="mapView" />
 
-        <!-- Thanh Mini-player (Màu hồng đậm, tỉ lệ vàng 95px) -->
-        <Border x:Name="miniPlayer"
-                IsVisible="False"
-                BackgroundColor="#FF2D85"
-                Padding="12,10"
-                Margin="12,0,12,30"
-                StrokeThickness="0"
-                VerticalOptions="End">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="47.5" />
-            </Border.StrokeShape>
-            <Border.Shadow>
-                <Shadow Brush="Black" Offset="0,5" Radius="15" Opacity="0.2" />
-            </Border.Shadow>
-            <Grid ColumnDefinitions="*, Auto">
-                <!-- Vùng 1: Thông tin + Sóng âm (Đã tối ưu Grid để không chồng lấn) -->
-                <Grid Grid.Column="0" ColumnDefinitions="Auto, *" VerticalOptions="Center" Margin="10,0,10,0">
-                    <HorizontalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="2.5" HeightRequest="30">
-                        <BoxView x:Name="wave1" WidthRequest="3" HeightRequest="12" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
-                        <BoxView x:Name="wave2" WidthRequest="3" HeightRequest="18" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
-                        <BoxView x:Name="wave3" WidthRequest="3" HeightRequest="10" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
-                        <BoxView x:Name="wave4" WidthRequest="3" HeightRequest="22" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
-                        <BoxView x:Name="wave5" WidthRequest="3" HeightRequest="14" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
-                        <BoxView x:Name="wave6" WidthRequest="3" HeightRequest="19" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+        <VerticalStackLayout VerticalOptions="End" 
+                             Margin="12,0,12,30" 
+                             Spacing="10"
+                             InputTransparent="False">
+            
+            <!-- 1. Manual Mini-player (Thanh Thủ công - Nằm trên) -->
+            <Border x:Name="manualMiniPlayer"
+                    IsVisible="False"
+                    BackgroundColor="#FF2D85"
+                    Padding="12,10"
+                    StrokeThickness="0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="47.5" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="Black" Offset="0,5" Radius="15" Opacity="0.2" />
+                </Border.Shadow>
+                <Grid ColumnDefinitions="*, Auto">
+                    <Grid Grid.Column="0" ColumnDefinitions="Auto, *" VerticalOptions="Center" Margin="10,0,10,0">
+                        <HorizontalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="2.5" HeightRequest="30">
+                            <BoxView x:Name="mWave1" WidthRequest="3" HeightRequest="12" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+                            <BoxView x:Name="mWave2" WidthRequest="3" HeightRequest="18" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+                            <BoxView x:Name="mWave3" WidthRequest="3" HeightRequest="10" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+                            <BoxView x:Name="mWave4" WidthRequest="3" HeightRequest="22" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+                            <BoxView x:Name="mWave5" WidthRequest="3" HeightRequest="14" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+                            <BoxView x:Name="mWave6" WidthRequest="3" HeightRequest="19" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="10,0,0,0">
+                            <Label x:Name="manualModeLabel" Text="BẠN ĐANG NGHE CHỈ DẪN" FontSize="8" FontAttributes="Bold" TextColor="White" Opacity="0.8" CharacterSpacing="2" />
+                            <Label x:Name="manualShopLabel" Text="..." FontSize="15" FontAttributes="Bold" TextColor="White" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <HorizontalStackLayout Grid.Column="1" Spacing="12" VerticalOptions="Center" Margin="0,0,10,0">
+                        <Grid WidthRequest="46" HeightRequest="46">
+                            <Border Padding="0" BackgroundColor="Transparent" Stroke="White" StrokeThickness="1.5">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
+                                <Grid HorizontalOptions="Center" VerticalOptions="Center">
+                                    <Path x:Name="mPlayIcon" Data="M 0,0 L 12,8 L 0,16 Z" Fill="White" TranslationX="2" IsVisible="False" />
+                                    <HorizontalStackLayout x:Name="mPauseIcon" Spacing="4" IsVisible="True" HorizontalOptions="Center">
+                                        <BoxView WidthRequest="4" HeightRequest="14" Color="White" CornerRadius="1" /><BoxView WidthRequest="4" HeightRequest="14" Color="White" CornerRadius="1" />
+                                    </HorizontalStackLayout>
+                                </Grid>
+                            </Border>
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnManualPlayClicked" /></Grid.GestureRecognizers>
+                        </Grid>
+                        <Grid WidthRequest="46" HeightRequest="46">
+                            <Border Padding="0" BackgroundColor="Transparent" Stroke="White" StrokeThickness="1.5">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
+                                <Path Data="M17.65,6.35 C16.2,4.9 14.21,4 12,4 c-4.42,0-7.99,3.58-7.99,8 s3.57,8 7.99,8 c3.73,0 6.84,-2.55 7.73,-6 h-2.08 c-0.82,2.33 -3.04,4 -5.65,4 c-3.31,0 -6,-2.69 -6,-6 s2.69,-6 6,-6 c1.66,0 3.14,0.69 4.22,1.78 L13,11 h7 V4 L17.65,6.35 z" Fill="White" HorizontalOptions="Center" VerticalOptions="Center" WidthRequest="22" HeightRequest="22" />
+                            </Border>
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnManualReplayClicked" /></Grid.GestureRecognizers>
+                        </Grid>
+                        <Grid WidthRequest="32" HeightRequest="32">
+                            <Label Text="✕" TextColor="White" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" Opacity="0.8" />
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnManualCloseClicked" /></Grid.GestureRecognizers>
+                        </Grid>
                     </HorizontalStackLayout>
-                    
-                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="10,0,0,0">
-                        <Label Text="AUDIO GUIDE" FontSize="8" FontAttributes="Bold" TextColor="White" Opacity="0.8" CharacterSpacing="2" />
-                        <Label x:Name="detectedShopLabel" 
-                               Text="Quán ăn gần bạn" 
-                               FontSize="15" 
-                               FontAttributes="Bold" 
-                               TextColor="White" 
-                               LineBreakMode="TailTruncation" />
-                    </VerticalStackLayout>
                 </Grid>
-                
-                <!-- Vùng 2: Nhóm nút bấm điều khiển (Spacing chuẩn) -->
-                <HorizontalStackLayout Grid.Column="1" Spacing="12" VerticalOptions="Center" Margin="0,0,10,0">
-                    <!-- Nút Play/Pause (Căn tâm tuyệt đối) -->
-                    <Grid WidthRequest="46" HeightRequest="46">
-                        <Border Padding="0" BackgroundColor="Transparent" Stroke="White" StrokeThickness="1.5">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="23" />
-                            </Border.StrokeShape>
-                            <Grid HorizontalOptions="Center" VerticalOptions="Center">
-                                <Path x:Name="playIcon" 
-                                      Data="M 0,0 L 12,8 L 0,16 Z" 
-                                      Fill="White" 
-                                      TranslationX="2"
-                                      IsVisible="False" />
-                                <HorizontalStackLayout x:Name="pauseIcon" Spacing="4" IsVisible="True" HorizontalOptions="Center">
-                                    <BoxView WidthRequest="4" HeightRequest="14" Color="White" CornerRadius="1" />
-                                    <BoxView WidthRequest="4" HeightRequest="14" Color="White" CornerRadius="1" />
-                                </HorizontalStackLayout>
-                            </Grid>
-                        </Border>
-                        <Grid.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnPlayAudioClicked" />
-                        </Grid.GestureRecognizers>
-                    </Grid>
+            </Border>
 
-                    <!-- Nút Replay - Đã sửa lại Vector chuẩn mượt mà -->
-                    <Grid WidthRequest="46" HeightRequest="46">
-                        <Border Padding="0" BackgroundColor="Transparent" Stroke="White" StrokeThickness="1.5">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="23" />
-                            </Border.StrokeShape>
-                            <Path Data="M17.65,6.35 C16.2,4.9 14.21,4 12,4 c-4.42,0-7.99,3.58-7.99,8 s3.57,8 7.99,8 c3.73,0 6.84,-2.55 7.73,-6 h-2.08 c-0.82,2.33 -3.04,4 -5.65,4 c-3.31,0 -6,-2.69 -6,-6 s2.69,-6 6,-6 c1.66,0 3.14,0.69 4.22,1.78 L13,11 h7 V4 L17.65,6.35 z" 
-                                  Fill="White"
-                                  HorizontalOptions="Center" 
-                                  VerticalOptions="Center"
-                                  WidthRequest="22"
-                                  HeightRequest="22" />
-                        </Border>
-                        <Grid.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnReplayAudioClicked" />
-                        </Grid.GestureRecognizers>
+            <!-- 2. Auto Mini-player (Thanh Tự động - Nằm dưới) -->
+            <Border x:Name="miniPlayer"
+                    IsVisible="False"
+                    BackgroundColor="#FF2D85"
+                    Padding="12,10"
+                    StrokeThickness="0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="47.5" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="Black" Offset="0,5" Radius="15" Opacity="0.2" />
+                </Border.Shadow>
+                <Grid ColumnDefinitions="*, Auto">
+                    <!-- Vùng 1: Thông tin + Sóng âm -->
+                    <Grid Grid.Column="0" ColumnDefinitions="Auto, *" VerticalOptions="Center" Margin="10,0,10,0">
+                        <HorizontalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="2.5" HeightRequest="30">
+                            <BoxView x:Name="wave1" WidthRequest="3" HeightRequest="12" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+                            <BoxView x:Name="wave2" WidthRequest="3" HeightRequest="18" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+                            <BoxView x:Name="wave3" WidthRequest="3" HeightRequest="10" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+                            <BoxView x:Name="wave4" WidthRequest="3" HeightRequest="22" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+                            <BoxView x:Name="wave5" WidthRequest="3" HeightRequest="14" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+                            <BoxView x:Name="wave6" WidthRequest="3" HeightRequest="19" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="10,0,0,0">
+                            <Label x:Name="audioModeLabel" Text="BẠN ĐANG Ở GẦN QUÁN NÀY" FontSize="8" FontAttributes="Bold" TextColor="White" Opacity="0.8" CharacterSpacing="2" />
+                            <Label x:Name="detectedShopLabel" Text="Đang tìm quán..." FontSize="15" FontAttributes="Bold" TextColor="White" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
                     </Grid>
-
-                    <!-- Nút Chi tiết - Dùng Path để căn giữa tuyệt đối -->
-                    <Grid WidthRequest="46" HeightRequest="46">
-                        <Border Padding="0" BackgroundColor="Transparent" Stroke="White" StrokeThickness="1.5">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="23" />
-                            </Border.StrokeShape>
-                            <Path Data="M 0,0 L 7,7 L 0,14" 
-                                  Stroke="White" 
-                                  StrokeThickness="2.5" 
-                                  StrokeLineCap="Round" 
-                                  StrokeLineJoin="Round"
-                                  HorizontalOptions="Center" 
-                                  VerticalOptions="Center" 
-                                  TranslationX="1" />
-                        </Border>
-                        <Grid.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnDetailClicked" />
-                        </Grid.GestureRecognizers>
-                    </Grid>
-
-                    <!-- Nút Đóng (X) -->
-                    <Grid WidthRequest="32" HeightRequest="32">
-                        <Label Text="✕" TextColor="White" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" Opacity="0.8" />
-                        <Grid.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnClosePlayerClicked" />
-                        </Grid.GestureRecognizers>
-                    </Grid>
-                </HorizontalStackLayout>
-            </Grid>
-        </Border>
+                    
+                    <!-- Vùng 2: Nhóm nút bấm điều khiển -->
+                    <HorizontalStackLayout Grid.Column="1" Spacing="12" VerticalOptions="Center" Margin="0,0,10,0">
+                        <Grid WidthRequest="46" HeightRequest="46">
+                            <Border Padding="0" BackgroundColor="Transparent" Stroke="White" StrokeThickness="1.5">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
+                                <Grid HorizontalOptions="Center" VerticalOptions="Center">
+                                    <Path x:Name="playIcon" Data="M 0,0 L 12,8 L 0,16 Z" Fill="White" TranslationX="2" IsVisible="False" />
+                                    <HorizontalStackLayout x:Name="pauseIcon" Spacing="4" IsVisible="True" HorizontalOptions="Center">
+                                        <BoxView WidthRequest="4" HeightRequest="14" Color="White" CornerRadius="1" /><BoxView WidthRequest="4" HeightRequest="14" Color="White" CornerRadius="1" />
+                                    </HorizontalStackLayout>
+                                </Grid>
+                            </Border>
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnPlayAudioClicked" /></Grid.GestureRecognizers>
+                        </Grid>
+                        <Grid WidthRequest="46" HeightRequest="46">
+                            <Border Padding="0" BackgroundColor="Transparent" Stroke="White" StrokeThickness="1.5">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
+                                <Path Data="M17.65,6.35 C16.2,4.9 14.21,4 12,4 c-4.42,0-7.99,3.58-7.99,8 s3.57,8 7.99,8 c3.73,0 6.84,-2.55 7.73,-6 h-2.08 c-0.82,2.33 -3.04,4 -5.65,4 c-3.31,0 -6,-2.69 -6,-6 s2.69,-6 6,-6 c1.66,0 3.14,0.69 4.22,1.78 L13,11 h7 V4 L17.65,6.35 z" Fill="White" HorizontalOptions="Center" VerticalOptions="Center" WidthRequest="22" HeightRequest="22" />
+                            </Border>
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnReplayAudioClicked" /></Grid.GestureRecognizers>
+                        </Grid>
+                        <Grid WidthRequest="46" HeightRequest="46">
+                            <Border Padding="0" BackgroundColor="Transparent" Stroke="White" StrokeThickness="1.5">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
+                                <Path Data="M 0,0 L 7,7 L 0,14" Stroke="White" StrokeThickness="2.5" StrokeLineCap="Round" StrokeLineJoin="Round" HorizontalOptions="Center" VerticalOptions="Center" TranslationX="1" />
+                            </Border>
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnDetailClicked" /></Grid.GestureRecognizers>
+                        </Grid>
+                        <Grid WidthRequest="32" HeightRequest="32">
+                            <Label Text="✕" TextColor="White" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" Opacity="0.8" />
+                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnClosePlayerClicked" /></Grid.GestureRecognizers>
+                        </Grid>
+                    </HorizontalStackLayout>
+                </Grid>
+            </Border>
+        </VerticalStackLayout>
     </Grid>
 
 </ContentPage>

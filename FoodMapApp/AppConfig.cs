@@ -18,6 +18,7 @@ namespace FoodMapApp
 
         public static string BaseUrl    => $"http://{BackendIp}:5000/api";
         public static string FoodApiUrl => $"{BaseUrl}/Food";
+        public static string TourApiUrl => $"{BaseUrl}/Tour";
         public static string AuthApiUrl => $"{BaseUrl}/Auth";
     }
 }

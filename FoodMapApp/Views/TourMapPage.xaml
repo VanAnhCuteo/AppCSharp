@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="FoodMapApp.Views.TourMapPage"
+             NavigationPage.HasNavigationBar="False">
+
+    <Grid>
+        <WebView x:Name="tourMapView" />
+
+        <!-- Top Header Overlay -->
+        <Border VerticalOptions="Start" Margin="20,45,20,0" Padding="15,10" 
+                BackgroundColor="#BBFFFFFF" StrokeShape="RoundRectangle 12" StrokeThickness="0">
+            <Grid ColumnDefinitions="Auto, *">
+                <Button Text="←" Clicked="OnBackClicked" BackgroundColor="Transparent" TextColor="#333" FontSize="20" Grid.Column="0" />
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="10,0">
+                    <Label x:Name="tourTitleLabel" Text="Đang tải tour..." FontAttributes="Bold" FontSize="16" />
+                    <Label x:Name="tourSubtitleLabel" Text="..." FontSize="12" TextColor="#666" />
+                </VerticalStackLayout>
+            </Grid>
+        </Border>
+
+        <!-- Bottom Sheet Info -->
+        <Border VerticalOptions="End" Margin="15,0,15,30" Padding="20"
+                BackgroundColor="White" StrokeShape="RoundRectangle 24" StrokeThickness="0">
+            <Border.Shadow>
+                <Shadow Brush="Black" Offset="0,5" Radius="15" Opacity="0.15" />
+            </Border.Shadow>
+            <VerticalStackLayout Spacing="10">
+                <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                    <Border BackgroundColor="#FF6A88" StrokeShape="RoundRectangle 12" WidthRequest="32" HeightRequest="32">
+                        <Label x:Name="stopNumberLabel" Text="1" TextColor="White" VerticalOptions="Center" HorizontalOptions="Center" FontAttributes="Bold" />
+                    </Border>
+                    <VerticalStackLayout>
+                        <Label x:Name="currentStopLabel" Text="Điểm dừng hiện tại" FontSize="12" TextColor="#999" CharacterSpacing="1" />
+                        <Label x:Name="stopNameLabel" Text="Đang chọn điểm..." FontSize="18" FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                </HorizontalStackLayout>
+
+                <BoxView HeightRequest="1" Color="#EEE" />
+
+                <Grid ColumnDefinitions="*, *">
+                    <VerticalStackLayout Grid.Column="0" Spacing="2">
+                        <Label Text="Thời gian dừng" FontSize="11" TextColor="#777" />
+                        <Label x:Name="stopDurationLabel" Text="-- phút" FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="1" Spacing="2">
+                        <Label Text="Giá dao động" FontSize="11" TextColor="#777" />
+                        <Label x:Name="stopPriceLabel" Text="-- VNĐ" FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                </Grid>
+
+                <Button Text="Đến điểm tiếp theo" Clicked="OnNextStopClicked" 
+                        BackgroundColor="#333" CornerRadius="12" HeightRequest="50" Margin="0,5,0,0" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

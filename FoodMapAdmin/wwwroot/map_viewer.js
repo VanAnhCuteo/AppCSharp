@@ -133,19 +133,21 @@ window.mapViewer = {
             }
 
             const cfg = {
-                radius: 0.008, // Smaller radius to make it more discrete
-                maxOpacity: .6,
+                radius: 0.0005, // Khoảng 50m theo yêu cầu
+                maxOpacity: .9, // Giữ độ đậm
+                blur: .80,
                 scaleRadius: true,
-                useLocalExtrema: true,
+                useLocalExtrema: false,
                 latField: 'lat',
                 lngField: 'lng',
                 valueField: 'count',
                 gradient: {
-                    '.2': 'rgba(20, 184, 220, 0.1)',
-                    '.4': '#14B8DC',
-                    '.6': '#26c6da',
-                    '.8': '#80deea',
-                    '1.0': '#ffffff'
+                    '.1': '#0000FF',   // Blue đậm (Lạnh)
+                    '.25': '#00FFFF',  // Cyan
+                    '.45': '#00FF00',  // Green mẫu chuẩn
+                    '.65': '#FFFF00',  // Yellow
+                    '.85': '#FF8000',  // Orange
+                    '1.0': '#FF0000'   // Red đậm (Hot)
                 }
             };
 
@@ -158,7 +160,7 @@ window.mapViewer = {
             this.map.addLayer(this.heatmapLayer);
             
             this.heatmapLayer.setData({
-                max: 10,
+                max: 2, // Chỉ cần 2 người là đạt độ "nóng" cao, 1 người sẽ hiện màu Cyan/Green đậm
                 data: normalizedData
             });
 

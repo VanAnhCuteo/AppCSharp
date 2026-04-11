@@ -11,25 +11,27 @@ namespace FoodMapApp
         public static int? PendingOpenFoodId { get; set; } = null;
         public static int? PendingRouteFoodId { get; set; } = null;
 
-        private static string BackendUrl => AppConfig.FoodApiUrl;
+        // Automatic Geofencing Session
+        private string _autoPoiId = "";
+        private string _autoSpokenText = "";
+        private string[] _autoSentences = Array.Empty<string>();
+        private int _autoSentenceIndex = 0;
+        private bool _isAutoPaused = true;
 
-        private CancellationTokenSource? _ttsCts;
-        private CancellationTokenSource? _currentSentenceCts;
-        private readonly SemaphoreSlim _ttsSemaphore = new SemaphoreSlim(1, 1);
-        private bool _isPaused = false;
-        private TaskCompletionSource<bool>? _pauseTcs;
+        // Manual Selection Session
+        private string _manualPoiId = "";
+        private string _manualSpokenText = "";
+        private string[] _manualSentences = Array.Empty<string>();
+        private int _manualSentenceIndex = 0;
+        private bool _isManualActive = false;
+        private bool _isManualPaused = false;
+
+        private string _autoLang = "vi-VN";
+        private string _manualLang = "vi-VN";
         private bool _isActuallySpeaking = false; 
-
-        private string[] _currentSentences = Array.Empty<string>();
-        private int _currentSentenceIndex = 0;
-        private string _lastSpokenText = "";
-        private string _lastPoiId = "";
-        private bool _isMapLoaded = false;
-        private string? _foodsJson = null;
-        private Stopwatch _audioStopwatch = new Stopwatch();
-        private string _reportingPoiId = "";
-        private IDispatcherTimer? _locationTimer;
-        private Queue<(string Text, string Id, string Lang)> _audioQueue = new();
+        private bool _isCleaningUp = false; 
+        private TaskCompletionSource<bool>? _pauseTcs;
+        private Queue<(string Text, string Id, string Lang, int StartIndex)> _audioQueue = new();
 
         private string NormalizeText(string text)
         {
@@ -72,38 +74,75 @@ namespace FoodMapApp
                     string id = query["id"] ?? "";
                     bool isManual = query["manual"] == "true";
 
-                    Debug.WriteLine($"DEBUG: Received speak request. ID: {id}, Manual: {isManual}");
-
                     if (!string.IsNullOrWhiteSpace(text))
                     {
                         string normalizedText = NormalizeText(text);
-                        bool poiChanged = id != _lastPoiId;
-
-                        // CHỈ cập nhật UI ngay lập tức nếu là bấm tay hoặc hệ thống đang rảnh
-                        bool isSystemIdle = !_isActuallySpeaking && _ttsSemaphore.CurrentCount > 0;
-                        if (isManual || isSystemIdle)
-                        {
-                            _ = ShowMiniPlayer(id);
-                        }
-
+                        
                         if (isManual)
                         {
-                            Debug.WriteLine($"DEBUG: MANUAL click for {id}. Interrupting.");
-                            StopSpeech(true);
-                            await Task.Delay(100);
-                            StartNewSpeech(text, id, normalizedText, lang);
-                        }
-                        else 
-                        {
-                            if (_isActuallySpeaking || _ttsSemaphore.CurrentCount == 0)
+                            _manualLang = lang; // Store manual language
+                            // 1. NGƯỢC LẠI: Mở audio thủ công thì "Tạm ẩn" audio tự động
+                            if (_isActuallySpeaking && !_isManualActive)
                             {
-                                Debug.WriteLine($"DEBUG: AUTO request for {id}. System BUSY. Enqueuing.");
-                                _audioQueue.Enqueue((text, id, lang));
+                                StopSpeech(fullReset: false, clearQueue: false); 
+                            }
+
+                            _isManualActive = true;
+                            _isManualPaused = false;
+                            
+                            _isCleaningUp = true;
+                            StopSpeech(fullReset: false, clearQueue: false); 
+                            await MainThread.InvokeOnMainThreadAsync(() => {
+                                miniPlayer.IsVisible = false; // Ẩn thanh Auto
+                            });
+
+                            await ShowMiniPlayer(id, true); // HIỆN THANH THỦ CÔNG - QUAN TRỌNG
+                            
+                            await Task.Delay(100);
+                            _isCleaningUp = false;
+
+                            StartNewManualSpeech(text, id, normalizedText, lang);
+                        }
+                        else
+                        {
+                            // 2. NGƯỢC LẠI: Mở audio tự động (GPS)
+                            if (_isManualActive)
+                            {
+                                // Nếu ID tự động đang trống, hãy nạp nó vào làm quán đang chờ sẵn
+                                if (string.IsNullOrEmpty(_autoPoiId))
+                                {
+                                    _autoPoiId = id;
+                                    _autoSentences = normalizedText.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                                                            .Select(s => s.Trim())
+                                                            .Where(s => s.Length > 0)
+                                                            .ToArray();
+                                    _autoSentenceIndex = 0;
+                                    _isAutoPaused = true;
+                                }
+                                else if (_autoPoiId != id)
+                                {
+                                    // Đưa vào hàng chờ bổ sung
+                                    _audioQueue.Enqueue((normalizedText, id, lang, 0));
+                                }
+                                return;
+                            }
+
+                            if (string.IsNullOrEmpty(_autoPoiId))
+                            {
+                                _autoPoiId = id;
+                                _autoLang = lang; // Store auto language
+                                _autoSentences = normalizedText.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                                                        .Select(s => s.Trim())
+                                                        .Where(s => s.Length > 0)
+                                                        .ToArray();
+                                _autoSentenceIndex = 0;
+                                _isAutoPaused = false;
+                                await ShowMiniPlayer(id, false); 
+                                _ = SpeakWithChunksAsync(lang, isManual: false);
                             }
                             else
                             {
-                                Debug.WriteLine($"DEBUG: AUTO request for {id}. System IDLE. Starting.");
-                                StartNewSpeech(text, id, normalizedText, lang);
+                                _audioQueue.Enqueue((normalizedText, id, lang, 0));
                             }
                         }
                     }
@@ -119,12 +158,22 @@ namespace FoodMapApp
                     {
                         StopSpeech(true);
                         miniPlayer.IsVisible = false;
+                        manualMiniPlayer.IsVisible = false;
                     }
                     else
                     {
-                        _isPaused = true;
-                        playIcon.IsVisible = true;
-                        pauseIcon.IsVisible = false;
+                        if (_isManualActive)
+                        {
+                            _isManualPaused = true;
+                            mPlayIcon.IsVisible = true;
+                            mPauseIcon.IsVisible = false;
+                        }
+                        else
+                        {
+                            _isAutoPaused = true;
+                            playIcon.IsVisible = true;
+                            pauseIcon.IsVisible = false;
+                        }
                         _currentSentenceCts?.Cancel();
                     }
                 }
@@ -135,26 +184,25 @@ namespace FoodMapApp
                     var query = HttpUtility.ParseQueryString(uri.Query);
                     string lang = query["lang"] ?? "vi";
                     
-                    StopSpeech(true);
+                    // NGỪNG NGAY LẬP TỨC AUDIO CŨ KHI CHUYỂN NGÔN NGỮ
+                    // Nếu đang nghe thủ công, ta chỉ "dừng phát" chứ không xoá hàng đợi tự động
+                    StopSpeech(fullReset: !_isManualActive, clearQueue: !_isManualActive);
+                    
+                    _autoLang = lang;
+                    _manualLang = lang;
+
                     miniPlayer.IsVisible = false;
+                    manualMiniPlayer.IsVisible = false;
+                    
+                    // Cập nhật lại tên biến loa bên JS
+                    if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+                    
                     LoadFoods(lang);
                 }
             };
 
             LoadFoods();
             StartLocationTracking();
-        }
-
-        private void StartNewSpeech(string text, string id, string normalizedText, string lang)
-        {
-            _lastPoiId = id;
-            _lastSpokenText = normalizedText;
-            _currentSentences = text.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
-                                    .Select(s => s.Trim())
-                                    .Where(s => s.Length > 0)
-                                    .ToArray();
-            _currentSentenceIndex = 0;
-            _ = SpeakWithChunksAsync(lang);
         }
 
         private void StartLocationTracking()
@@ -177,263 +225,249 @@ namespace FoodMapApp
 
                 if (location != null)
                 {
-                    var payload = new 
-                    { 
-                        user_id = userId, 
-                        latitude = location.Latitude, 
-                        longitude = location.Longitude 
-                    };
-
+                    var payload = new { user_id = userId, latitude = location.Latitude, longitude = location.Longitude };
                     using HttpClient client = new HttpClient();
                     var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
                     await client.PostAsync($"{AppConfig.AuthApiUrl}/update-location", content);
                 }
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"DEBUG: Error reporting location: {ex.Message}");
-            }
+            catch (Exception ex) { Debug.WriteLine($"DEBUG: Error reporting location: {ex.Message}"); }
         }
 
-        private async Task ShowMiniPlayer(string poiId)
+        private async Task ShowMiniPlayer(string poiId, bool isManual, bool startPaused = false)
         {
             try
             {
-                await MainThread.InvokeOnMainThreadAsync(() => {
-                    miniPlayer.IsVisible = true; 
-                    playIcon.IsVisible = false;
-                    pauseIcon.IsVisible = true;
-                });
-
+                string name = "Quán ăn";
                 if (!string.IsNullOrEmpty(_foodsJson))
                 {
                     var foods = JsonSerializer.Deserialize<List<JsonElement>>(_foodsJson);
                     var food = foods.FirstOrDefault(f => f.GetProperty("id").GetInt32().ToString() == poiId);
-                    
                     if (food.ValueKind != JsonValueKind.Undefined)
                     {
-                        string name = food.GetProperty("name").GetString() ?? "Quán ăn";
-                        await MainThread.InvokeOnMainThreadAsync(() => {
-                            detectedShopLabel.Text = name;
-                        });
-                        Debug.WriteLine($"DEBUG: UI Updated to Shop: {name}");
-                        return;
+                        name = food.GetProperty("name").GetString() ?? "Quán ăn";
                     }
                 }
-                
+
                 await MainThread.InvokeOnMainThreadAsync(() => {
-                    detectedShopLabel.Text = "Quán ăn gần bạn";
+                    if (isManual)
+                    {
+                        manualMiniPlayer.IsVisible = true;
+                        mPlayIcon.IsVisible = startPaused;
+                        mPauseIcon.IsVisible = !startPaused;
+                        manualShopLabel.Text = name;
+                    }
+                    else
+                    {
+                        miniPlayer.IsVisible = true; 
+                        playIcon.IsVisible = startPaused;
+                        pauseIcon.IsVisible = !startPaused;
+                        detectedShopLabel.Text = name;
+                    }
                 });
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"DEBUG: Error showing miniplayer: {ex.Message}");
-            }
+            catch (Exception ex) { Debug.WriteLine($"DEBUG: Error showing miniplayer: {ex.Message}"); }
         }
 
-        private async Task AnimateVisualizer()
+        private async Task AnimateVisualizer(bool isManual)
         {
             Random rnd = new Random();
-            while (!_isPaused && pauseIcon.IsVisible && miniPlayer.IsVisible)
+            bool isAnimating = true;
+            while (isAnimating)
             {
-                wave1.HeightRequest = rnd.Next(8, 20);
-                wave2.HeightRequest = rnd.Next(10, 25);
-                wave3.HeightRequest = rnd.Next(5, 15);
-                wave4.HeightRequest = rnd.Next(12, 28);
-                wave5.HeightRequest = rnd.Next(8, 22);
-                wave6.HeightRequest = rnd.Next(10, 24);
+                if (isManual)
+                    isAnimating = _isActuallySpeaking && _isManualActive && !mPlayIcon.IsVisible && manualMiniPlayer.IsVisible;
+                else
+                    isAnimating = _isActuallySpeaking && !_isManualActive && !playIcon.IsVisible && miniPlayer.IsVisible;
+
+                if (!isAnimating) break;
+
+                await MainThread.InvokeOnMainThreadAsync(() => {
+                    if (isManual) {
+                        mWave1.HeightRequest = rnd.Next(8, 20); mWave2.HeightRequest = rnd.Next(10, 25);
+                        mWave3.HeightRequest = rnd.Next(5, 15); mWave4.HeightRequest = rnd.Next(12, 28);
+                        mWave5.HeightRequest = rnd.Next(8, 22); mWave6.HeightRequest = rnd.Next(10, 24);
+                    } else {
+                        wave1.HeightRequest = rnd.Next(8, 20); wave2.HeightRequest = rnd.Next(10, 25);
+                        wave3.HeightRequest = rnd.Next(5, 15); wave4.HeightRequest = rnd.Next(12, 28);
+                        wave5.HeightRequest = rnd.Next(8, 22); wave6.HeightRequest = rnd.Next(10, 24);
+                    }
+                });
                 await Task.Delay(130);
             }
-            
-            wave1.HeightRequest = 12; wave2.HeightRequest = 18; wave3.HeightRequest = 10;
-            wave4.HeightRequest = 22; wave5.HeightRequest = 14; wave6.HeightRequest = 19;
-        }
 
-        private void OnPlayAudioClicked(object sender, EventArgs e)
-        {
-            if (_isPaused)
-            {
-                _isPaused = false;
-                playIcon.IsVisible = false;
-                pauseIcon.IsVisible = true;
-                _pauseTcs?.TrySetResult(true);
-                _ = AnimateVisualizer();
-            }
-            else if (pauseIcon.IsVisible)
-            {
-                _isPaused = true;
-                playIcon.IsVisible = true;
-                pauseIcon.IsVisible = false;
-                _currentSentenceCts?.Cancel();
-            }
-        }
-
-        private void OnReplayAudioClicked(object sender, EventArgs e)
-        {
-            StopSpeech(true);
-            _currentSentenceIndex = 0;
-            _ = SpeakWithChunksAsync("vi-VN"); 
-        }
-
-        private async void OnDetailClicked(object sender, EventArgs e)
-        {
-            if (string.IsNullOrEmpty(_lastPoiId)) return;
-            await mapView.EvaluateJavaScriptAsync($"openDetails({_lastPoiId})");
+            await MainThread.InvokeOnMainThreadAsync(() => {
+                if (isManual) {
+                    mWave1.HeightRequest = 12; mWave2.HeightRequest = 18; mWave3.HeightRequest = 10;
+                    mWave4.HeightRequest = 22; mWave5.HeightRequest = 14; mWave6.HeightRequest = 19;
+                } else {
+                    wave1.HeightRequest = 12; wave2.HeightRequest = 18; wave3.HeightRequest = 10;
+                    wave4.HeightRequest = 22; wave5.HeightRequest = 14; wave6.HeightRequest = 19;
+                }
+            });
         }
 
         private async void OnClosePlayerClicked(object sender, EventArgs e)
         {
-            StopSpeech(true);
+            // 1. Dừng ngay lập tức âm thanh hiện tại khi bấm X
+            StopSpeech(fullReset: false, clearQueue: false);
+            
+            // Cập nhật giao diện loa trong webview ngay
+            if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+
+            if (_audioQueue.Count > 0)
+            {
+                bool shouldContinue = await DisplayAlert("Thông báo", "Bạn muốn nghe quán tiếp theo hay hủy bỏ?", "Nghe", "Hủy bỏ");
+                if (shouldContinue)
+                {
+                    if (_audioQueue.TryDequeue(out var next))
+                    {
+                        // 2. Chờ một chút để luồng cũ giải phóng Semaphore hoàn toàn
+                        await Task.Delay(200);
+
+                        _autoPoiId = next.Id;
+                        _autoSentences = next.Text.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
+                        _autoSentenceIndex = 0;
+                        _isAutoPaused = false;
+                        
+                        await ShowMiniPlayer(next.Id, false);
+                        if (!_isManualActive) _ = SpeakWithChunksAsync(next.Lang, isManual: false);
+                        return;
+                    }
+                }
+            }
+
+            _autoPoiId = "";
+            _audioQueue.Clear();
+            if (!_isManualActive) StopSpeech(true);
             miniPlayer.IsVisible = false;
-            await mapView.EvaluateJavaScriptAsync("if(window.stopAudioProfessional) window.stopAudioProfessional();");
+        }
+
+        private void OnPlayAudioClicked(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(_autoPoiId)) return;
+            _isAutoPaused = !_isAutoPaused;
+            if (!_isAutoPaused)
+            {
+                playIcon.IsVisible = false;
+                pauseIcon.IsVisible = true;
+                if (_isManualActive) { _isManualActive = false; StopSpeech(false, false); manualMiniPlayer.IsVisible = false; }
+                if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_autoLang, isManual: false);
+                else _pauseTcs?.TrySetResult(true);
+            }
+            else { playIcon.IsVisible = true; pauseIcon.IsVisible = false; _pauseTcs?.TrySetResult(false); }
+        }
+
+        private void OnReplayAudioClicked(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(_autoPoiId)) return;
+            _autoSentenceIndex = 0; _isAutoPaused = false;
+            playIcon.IsVisible = false; pauseIcon.IsVisible = true;
+            if (_isManualActive) { _isManualActive = false; StopSpeech(false, false); manualMiniPlayer.IsVisible = false; }
+            if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_autoLang, isManual: false);
+            else _pauseTcs?.TrySetResult(true);
+        }
+
+        private void OnManualPlayClicked(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(_manualPoiId)) return;
+            _isManualPaused = !_isManualPaused;
+            if (!_isManualPaused)
+            {
+                mPlayIcon.IsVisible = false; mPauseIcon.IsVisible = true;
+                // Dừng auto nếu đang phát
+                if (!_isManualActive && _isActuallySpeaking) StopSpeech(false, false);
+                _isManualActive = true;
+                if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_manualLang, isManual: true);
+                else _pauseTcs?.TrySetResult(true);
+            }
+            else { mPlayIcon.IsVisible = true; mPauseIcon.IsVisible = false; _pauseTcs?.TrySetResult(false); }
+        }
+
+        private void OnManualReplayClicked(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(_manualPoiId)) return;
+            _manualSentenceIndex = 0; _isManualPaused = false;
+            mPlayIcon.IsVisible = false; mPauseIcon.IsVisible = true;
+            if (!_isManualActive && _isActuallySpeaking) StopSpeech(false, false);
+            _isManualActive = true;
+            if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_manualLang, isManual: true);
+            else _pauseTcs?.TrySetResult(true);
+        }
+
+        private async void OnManualCloseClicked(object sender, EventArgs e)
+        {
+            _isManualActive = false;
+            _isManualPaused = false;
+            StopSpeech(fullReset: false, clearQueue: false); // Chỉ dừng speech thủ công
+            
+            // Ẩn thanh thủ công ngay lập tức
+            manualMiniPlayer.IsVisible = false;
+            
+            // Dừng hình loa đập trong trang chi tiết
+            if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+            
+            // KIỂM TRA HÀNG ĐỢI HOẶC AUDIO TỰ ĐỘNG BỊ TẠM DỪNG
+            if (!string.IsNullOrEmpty(_autoPoiId) || _audioQueue.Count > 0)
+            {
+                bool shouldResume = await DisplayAlert("Thông báo", "Bạn có muốn nghe audio ở gần không?", "OK", "Hủy");
+                
+                if (shouldResume)
+                {
+                    // Nếu _autoPoiId đang trống nhưng hàng đợi có, lấy quán tiếp theo
+                    if (string.IsNullOrEmpty(_autoPoiId) && _audioQueue.Count > 0)
+                    {
+                        if (_audioQueue.TryDequeue(out var next))
+                        {
+                            _autoPoiId = next.Id;
+                            _autoLang = next.Lang;
+                            _autoSentences = next.Text.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
+                            _autoSentenceIndex = 0;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(_autoPoiId))
+                    {
+                        _isAutoPaused = true;
+                        miniPlayer.IsVisible = true;
+                        playIcon.IsVisible = true;
+                        pauseIcon.IsVisible = false;
+                        
+                        // Đảm bảo tên quán tự động vẫn đúng
+                        if (_foodsJson != null) {
+                            try {
+                                var foods = JsonSerializer.Deserialize<List<FoodItem>>(_foodsJson);
+                                var currentFood = foods?.FirstOrDefault(f => f.id.ToString() == _autoPoiId);
+                                if (currentFood != null) detectedShopLabel.Text = currentFood.name;
+                            } catch { }
+                        }
+                    }
+                }
+                else
+                {
+                    // Nếu hủy, xóa audio tự động hiện tại và hàng đợi để không làm phiền
+                    _autoPoiId = "";
+                    _audioQueue.Clear();
+                    miniPlayer.IsVisible = false;
+                }
+            }
+        }
+
+        private async void OnDetailClicked(object sender, EventArgs e)
+        {
+            if (!string.IsNullOrEmpty(_autoPoiId))
+                await mapView.EvaluateJavaScriptAsync($"openDetails({_autoPoiId})");
         }
 
         public async void StopGlobalAudio()
         {
             StopSpeech(true);
             miniPlayer.IsVisible = false;
-            if (mapView != null)
-            {
-                await mapView.EvaluateJavaScriptAsync("if(window.stopAudioProfessional) window.stopAudioProfessional();");
-            }
-        }
-
-        private IEnumerable<Locale>? _cachedLocales = null;
-
-        private void StopSpeech(bool fullReset = false)
-        {
-            _currentSentenceCts?.Cancel();
-            _audioStopwatch.Stop();
-
-            if (fullReset)
-            {
-                _audioQueue.Clear(); 
-                _ttsCts?.Cancel();
-                _isPaused = false;
-                _pauseTcs?.TrySetResult(false);
-                _currentSentenceIndex = 0;
-                _lastPoiId = "";
-                _lastSpokenText = "";
-
-                if (_audioStopwatch.Elapsed.TotalSeconds >= 1 && !string.IsNullOrEmpty(_reportingPoiId))
-                {
-                    _ = SendAudioLogAsync(_reportingPoiId, (int)_audioStopwatch.Elapsed.TotalSeconds);
-                }
-                _audioStopwatch.Reset();
-                _reportingPoiId = "";
-            }
-        }
-
-        private async Task SpeakWithChunksAsync(string lang)
-        {
-            Debug.WriteLine($"DEBUG: SpeakWithChunksAsync waiting for semaphore for {lang}");
-            if (!await _ttsSemaphore.WaitAsync(5000)) {
-                return;
-            }
-
-            _isActuallySpeaking = true;
-            try
-            {
-                _ttsCts = new CancellationTokenSource();
-                var mainToken = _ttsCts.Token;
-                _isPaused = false;
-
-                if (_cachedLocales == null)
-                {
-                    _cachedLocales = await TextToSpeech.Default.GetLocalesAsync();
-                }
-
-                string prefix = lang.Split('-')[0].ToLower();
-                var locale = _cachedLocales?.FirstOrDefault(l => l.Language.Equals(lang, StringComparison.OrdinalIgnoreCase)) ??
-                             _cachedLocales?.FirstOrDefault(l => l.Language.ToLower().StartsWith(prefix));
-
-                SpeechOptions options = new SpeechOptions { Locale = locale };
-                
-                _reportingPoiId = _lastPoiId;
-                _ = AnimateVisualizer();
-
-                while (_currentSentenceIndex < _currentSentences.Length && !mainToken.IsCancellationRequested)
-                {
-                    if (_isPaused)
-                    {
-                        _pauseTcs = new TaskCompletionSource<bool>();
-                        bool resume = await _pauseTcs.Task;
-                        if (!resume || mainToken.IsCancellationRequested) break;
-                    }
-
-                    _currentSentenceCts = CancellationTokenSource.CreateLinkedTokenSource(mainToken);
-                    string sentence = _currentSentences[_currentSentenceIndex];
-                    
-                    if (string.IsNullOrWhiteSpace(sentence)) {
-                        _currentSentenceIndex++;
-                        continue;
-                    }
-
-                    try
-                    {
-                        Debug.WriteLine($"DEBUG: Speaking chunk {_currentSentenceIndex + 1}/{_currentSentences.Length}");
-                        _audioStopwatch.Start();
-                        await TextToSpeech.Default.SpeakAsync(sentence, options, _currentSentenceCts.Token);
-                        _audioStopwatch.Stop();
-                        
-                        _currentSentenceIndex++;
-                        await mapView.EvaluateJavaScriptAsync($"if(window.onTtsProgress) window.onTtsProgress({_currentSentenceIndex}, {_currentSentences.Length});");
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        if (!_isPaused) break;
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"DEBUG: Error speaking chunk: {ex.Message}");
-                        _currentSentenceIndex++;
-                    }
-                    finally
-                    {
-                        _currentSentenceCts?.Dispose();
-                        _currentSentenceCts = null;
-                    }
-                }
-
-                if (_currentSentenceIndex >= _currentSentences.Length && !mainToken.IsCancellationRequested)
-                {
-                    if (_audioStopwatch.Elapsed.TotalSeconds >= 1 && !string.IsNullOrEmpty(_reportingPoiId))
-                    {
-                        _ = SendAudioLogAsync(_reportingPoiId, (int)_audioStopwatch.Elapsed.TotalSeconds);
-                    }
-                    _audioStopwatch.Reset();
-
-                    _currentSentenceIndex = 0;
-                    _lastPoiId = "";
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"DEBUG: Global Speak ERROR: {ex.Message}");
-            }
-            finally
-            {
-                _isActuallySpeaking = false;
-                _ttsSemaphore.Release();
-                Debug.WriteLine("DEBUG: Semaphore released.");
-            }
-
-            if (_audioQueue.Count > 0 && !(_ttsCts?.IsCancellationRequested ?? false))
-            {
-                Debug.WriteLine($"DEBUG: Queue processing. Next in line...");
-                await Task.Delay(2000);
-                if (_audioQueue.TryDequeue(out var next))
-                {
-                    // QUAN TRỌNG: Chỉ cập nhật tên quán ngay trước khi quán đó bắt đầu nói
-                    await ShowMiniPlayer(next.Id);
-                    StartNewSpeech(next.Text, next.Id, NormalizeText(next.Text), next.Lang);
-                }
-            }
-            else if (_currentSentenceIndex == 0) 
-            {
-                playIcon.IsVisible = true;
-                pauseIcon.IsVisible = false;
+            manualMiniPlayer.IsVisible = false;
+            // Dừng mọi animation và logic phía JS
+            if (mapView != null) {
                 await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+                await mapView.EvaluateJavaScriptAsync("if(window.stopAudioProfessional) window.stopAudioProfessional();");
             }
         }
 
@@ -446,70 +480,268 @@ namespace FoodMapApp
                 var payload = new { user_id = userId, duration_seconds = duration };
                 using HttpClient client = new HttpClient();
                 var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
-                await client.PostAsync($"{BackendUrl}/{poiId}/audio-log", content);
+                await client.PostAsync($"{AppConfig.FoodApiUrl}/{poiId}/audio-log", content);
             }
             catch (Exception ex) { Debug.WriteLine($"DEBUG: Log error: {ex.Message}"); }
         }
+
+        private void StopSpeech(bool fullReset = false, bool clearQueue = true)
+        {
+            _currentSentenceCts?.Cancel();
+            _ttsCts?.Cancel(); // Hủy toàn bộ chuỗi speech đang chạy
+            _pauseTcs?.TrySetResult(false);
+            _audioStopwatch.Stop();
+            
+            if (fullReset)
+            {
+                if (clearQueue) _audioQueue.Clear(); 
+                _autoPoiId = ""; _autoSentenceIndex = 0; _isAutoPaused = true;
+                _manualPoiId = ""; _manualSentenceIndex = 0; _isManualActive = false; _isManualPaused = false;
+            }
+        }
+
+        private void StartNewManualSpeech(string text, string id, string normalizedText, string lang)
+        {
+            _manualPoiId = id;
+            _manualSentences = normalizedText.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
+            _manualSentenceIndex = 0;
+            _ = SpeakWithChunksAsync(lang, isManual: true);
+        }
+
+        private async Task SpeakWithChunksAsync(string lang, bool isManual)
+        {
+            if (!await _ttsSemaphore.WaitAsync(0)) return;
+            _isActuallySpeaking = true;
+            _ttsCts = new CancellationTokenSource();
+            _audioStopwatch.Restart();
+
+            try
+            {
+                // Capture local state to prevent "zombie tasks" from using new ID/sentences
+                var currentId = isManual ? _manualPoiId : _autoPoiId;
+                var sentences = isManual ? _manualSentences : _autoSentences;
+                
+                if (sentences == null || sentences.Length == 0) return;
+
+                if (_cachedLocales == null) _cachedLocales = await TextToSpeech.Default.GetLocalesAsync();
+                var locale = _cachedLocales?.FirstOrDefault(l => l.Language.Equals(lang, StringComparison.OrdinalIgnoreCase)) ??
+                             _cachedLocales?.FirstOrDefault(l => l.Language.ToLower().StartsWith(lang.Split('-')[0].ToLower()));
+                var options = new SpeechOptions { Locale = locale };
+
+                _ = AnimateVisualizer(isManual);
+
+                while ((isManual ? _manualSentenceIndex : _autoSentenceIndex) < sentences.Length)
+                {
+                    int index = isManual ? _manualSentenceIndex : _autoSentenceIndex;
+                    
+                    // Đảm bảo vẫn đang trong cùng 1 phiên (ID không đổi)
+                    var activeId = isManual ? _manualPoiId : _autoPoiId;
+                    if (activeId != currentId || _ttsCts.Token.IsCancellationRequested) break;
+
+                    if (isManual) await mapView.EvaluateJavaScriptAsync($"if(window.onTtsProgress) window.onTtsProgress({index}, {sentences.Length});");
+
+                    if (_isActuallySpeaking && ((isManual && _isManualPaused) || (!isManual && _isAutoPaused)))
+                    {
+                        _pauseTcs = new TaskCompletionSource<bool>();
+                        bool resume = await _pauseTcs.Task;
+                        if (!resume || _ttsCts.Token.IsCancellationRequested) break;
+                    }
+
+                    if (_ttsCts.Token.IsCancellationRequested) break;
+                    
+                    _currentSentenceCts = CancellationTokenSource.CreateLinkedTokenSource(_ttsCts.Token);
+                    string sentence = sentences[index];
+                    if (!string.IsNullOrWhiteSpace(sentence)) await TextToSpeech.Default.SpeakAsync(sentence, options, _currentSentenceCts.Token);
+                    
+                    // Kiểm tra lại sau khi nói xong 1 câu
+                    if (_ttsCts.Token.IsCancellationRequested) break;
+
+                    if (isManual) _manualSentenceIndex++; else _autoSentenceIndex++;
+                }
+                if (!isManual && _autoSentenceIndex >= sentences.Length) _ = SendAudioLogAsync(_autoPoiId, (int)_audioStopwatch.Elapsed.TotalSeconds);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { Debug.WriteLine($"TTS Error: {ex.Message}"); }
+            finally 
+            { 
+                _isActuallySpeaking = false; 
+                _ttsSemaphore.Release(); 
+                // LUÔN LUÔN thông báo cho JS khi kết thúc (dù là xong hay là bị ngắt quãng)
+                MainThread.BeginInvokeOnMainThread(async () => {
+                    if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+                });
+            }
+
+            if (_isCleaningUp) return;
+            if (isManual) { 
+                if (_manualSentenceIndex >= _manualSentences.Length) { 
+                    _isManualActive = false; 
+                    await MainThread.InvokeOnMainThreadAsync(() => {
+                        manualMiniPlayer.IsVisible = false;
+                        // Hồi phục thanh tự động
+                        if (!string.IsNullOrEmpty(_autoPoiId)) {
+                            _isAutoPaused = true;
+                            miniPlayer.IsVisible = true;
+                            playIcon.IsVisible = true;
+                            pauseIcon.IsVisible = false;
+                            
+                            // Đảm bảo tên quán tự động vẫn đúng khi hiện lại
+                            if (_foodsJson != null) {
+                                try {
+                                    var foods = JsonSerializer.Deserialize<List<FoodItem>>(_foodsJson);
+                                    var currentFood = foods?.FirstOrDefault(f => f.id.ToString() == _autoPoiId);
+                                    if (currentFood != null) detectedShopLabel.Text = currentFood.name;
+                                } catch { }
+                            }
+                        }
+                    });
+                    await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();"); 
+                } 
+            }
+            else {
+                if (_autoSentenceIndex >= _autoSentences.Length) {
+                    if (_audioQueue.Count > 0) {
+                        if (_audioQueue.TryDequeue(out var next)) {
+                            _autoPoiId = next.Id;
+                            _autoSentences = next.Text.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
+                            _autoSentenceIndex = 0; _isAutoPaused = false; await ShowMiniPlayer(next.Id, false);
+                            _ = SpeakWithChunksAsync(next.Lang, isManual: false);
+                        }
+                    }
+                    else { playIcon.IsVisible = true; pauseIcon.IsVisible = false; }
+                }
+            }
+        }
+        public void HandleSystemInterruption()
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (_isActuallySpeaking)
+                {
+                    StopSpeech(fullReset: false, clearQueue: false);
+                    if (_isManualActive)
+                    {
+                        _isManualPaused = true;
+                        mPlayIcon.IsVisible = true;
+                        mPauseIcon.IsVisible = false;
+                    }
+                    else
+                    {
+                        _isAutoPaused = true;
+                        playIcon.IsVisible = true;
+                        pauseIcon.IsVisible = false;
+                    }
+                }
+            });
+        }
+
+
+        private IEnumerable<Locale>? _cachedLocales = null;
+        private CancellationTokenSource? _ttsCts;
+        private CancellationTokenSource? _currentSentenceCts;
+        private readonly SemaphoreSlim _ttsSemaphore = new SemaphoreSlim(1, 1);
+        private bool _isMapLoaded = false;
+        private string? _foodsJson = null;
+        private Stopwatch _audioStopwatch = new Stopwatch();
+        private IDispatcherTimer? _locationTimer;
 
         protected override async void OnAppearing()
         {
             base.OnAppearing();
             await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-            if (_isMapLoaded)
+            
+            if (_isMapLoaded) 
+            { 
+                string currentLang = _autoLang?.Split('-')[0] ?? "vi";
+                _ = LoadFoods(currentLang); 
+                await TryOpenPendingDetail(); 
+            }
+
+            // KHÔI PHỤC GIAO DIỆN AUDIO (NẾU ĐANG CÓ SESSSION)
+            if (_isManualActive && !string.IsNullOrEmpty(_manualPoiId))
             {
-                LoadFoods(); 
-                await TryOpenPendingDetail();
+                _isManualPaused = true; // Luôn để ở trạng thái tạm dừng khi quay lại
+                await ShowMiniPlayer(_manualPoiId, true, startPaused: true);
+            }
+            else if (!string.IsNullOrEmpty(_autoPoiId))
+            {
+                _isAutoPaused = true; // Luôn để ở trạng thái tạm dừng khi quay lại
+                await ShowMiniPlayer(_autoPoiId, false, startPaused: true);
+            }
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            
+            // Khi rời trang bản đồ, nếu đang phát audio (tự động hoặc thủ công)
+            // ta tạm dừng đọc nhưng KHÔNG reset session để khi quay lại có thể nghe tiếp.
+            if (_isActuallySpeaking)
+            {
+                StopSpeech(fullReset: false, clearQueue: false);
+                
+                if (_isManualActive)
+                {
+                    _isManualPaused = true;
+                }
+                else
+                {
+                    _isAutoPaused = true;
+                }
+                
+                // Cập nhật icon ngay để tránh giật lag khi quay lại
+                MainThread.BeginInvokeOnMainThread(() => {
+                    mPlayIcon.IsVisible = true;
+                    mPauseIcon.IsVisible = false;
+                    playIcon.IsVisible = true;
+                    pauseIcon.IsVisible = false;
+                });
             }
         }
 
         public async Task TryOpenPendingDetail()
         {
-            if (PendingOpenFoodId.HasValue && _isMapLoaded)
-            {
-                int id = PendingOpenFoodId.Value;
-                PendingOpenFoodId = null;
-                for (int i = 0; i < 20; i++)
-                {
+            if (PendingOpenFoodId.HasValue && _isMapLoaded) {
+                int id = PendingOpenFoodId.Value; PendingOpenFoodId = null;
+                for (int i = 0; i < 20; i++) {
                     await Task.Delay(200);
-                    try
-                    {
+                    try {
                         string typeofRes = await mapView.EvaluateJavaScriptAsync("typeof openDetails");
-                        if (typeofRes != null && typeofRes.Contains("function"))
-                        {
+                        if (typeofRes != null && typeofRes.Contains("function")) {
                             await mapView.EvaluateJavaScriptAsync($"openDetails({id})");
                             return;
                         }
-                    }
-                    catch { }
+                    } catch { }
                 }
             }
         }
 
         public async Task TryStartPendingRoute()
         {
-            if (PendingRouteFoodId.HasValue && _isMapLoaded)
-            {
-                int id = PendingRouteFoodId.Value;
-                PendingRouteFoodId = null;
-                await Task.Delay(300);
-                await mapView.EvaluateJavaScriptAsync($"window.routeToPoi({id})");
+            if (PendingRouteFoodId.HasValue && _isMapLoaded) {
+                int id = PendingRouteFoodId.Value; PendingRouteFoodId = null;
+                await Task.Delay(300); await mapView.EvaluateJavaScriptAsync($"window.routeToPoi({id})");
             }
         }
 
-        async void LoadFoods(string lang = "vi")
+        async Task LoadFoods(string lang = "vi")
         {
             HttpClient client = new HttpClient();
-            try
-            {
-                _foodsJson = await client.GetStringAsync($"{BackendUrl}?lang={lang}");
-                if (_isMapLoaded)
-                {
+            try {
+                _foodsJson = await client.GetStringAsync($"{AppConfig.FoodApiUrl}?lang={lang}");
+                if (_isMapLoaded) {
                     int userId = Preferences.Default.Get("user_id", 0);
                     await mapView.EvaluateJavaScriptAsync($"loadFoods({_foodsJson}, {userId});");
                     await TryOpenPendingDetail();
                 }
-            }
-            catch (Exception ex) { Console.WriteLine(ex); }
+            } catch (Exception ex) { Console.WriteLine(ex); }
         }
+
+    }
+
+    public class FoodItem
+    {
+        public int id { get; set; }
+        public string? name { get; set; }
     }
 }

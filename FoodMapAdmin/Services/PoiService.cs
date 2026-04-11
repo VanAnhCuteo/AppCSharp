@@ -49,6 +49,7 @@ namespace FoodMapAdmin.Services
                 .AsNoTracking()
                 .Include(p => p.Category)
                 .Include(p => p.Owner)
+                .Include(p => p.Images)
                 .Include(p => p.QrCode)
                 .ToListAsync();
         }

@@ -1,5 +1,7 @@
 using Android.App;
+using Android.Content;
 using Android.Content.PM;
+using Android.Media;
 using Android.OS;
 
 namespace FoodMapApp
@@ -9,7 +11,23 @@ namespace FoodMapApp
                   Categories = new[] { Android.Content.Intent.CategoryDefault, Android.Content.Intent.CategoryBrowsable },
                   DataScheme = "foodmap",
                   DataHost = "poi")]
-    public class MainActivity : MauiAppCompatActivity
+    public class MainActivity : MauiAppCompatActivity, AudioManager.IOnAudioFocusChangeListener
     {
+        private AudioManager? _audioManager;
+
+        protected override void OnCreate(Bundle? savedInstanceState)
+        {
+            base.OnCreate(savedInstanceState);
+            _audioManager = (AudioManager?)GetSystemService(Context.AudioService);
+            _audioManager?.RequestAudioFocus(this, Android.Media.Stream.Music, AudioFocus.Gain);
+        }
+
+        public void OnAudioFocusChange(AudioFocus focusChange)
+        {
+            if (focusChange == AudioFocus.Loss || focusChange == AudioFocus.LossTransient || focusChange == AudioFocus.LossTransientCanDuck)
+            {
+                MainPage.Instance?.HandleSystemInterruption();
+            }
+        }
     }
 }
