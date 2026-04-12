@@ -4,153 +4,192 @@
              x:Class="FoodMapApp.Views.LoginPage"
              NavigationPage.HasNavigationBar="False"
              Shell.NavBarIsVisible="False"
-             BackgroundColor="#FFF5F7">
+             BackgroundColor="#FFF7F8">
 
     <ScrollView VerticalOptions="FillAndExpand">
         <Grid RowDefinitions="Auto,*,Auto" MinimumHeightRequest="700" Padding="0">
 
-            <!-- Top Gradient Banner -->
-            <Grid Grid.Row="0" MinimumHeightRequest="280" Padding="0,0,0,60">
+            <!-- ── Top Gradient Banner ── -->
+            <Grid Grid.Row="0" MinimumHeightRequest="300" Padding="0,0,0,65">
                 <Grid.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#FF6A88" Offset="0.0"/>
-                        <GradientStop Color="#FF8C69" Offset="0.6"/>
-                        <GradientStop Color="#FFAD9F" Offset="1.0"/>
+                        <GradientStop Color="#FF6B81" Offset="0.0"/>
+                        <GradientStop Color="#FF9A76" Offset="0.5"/>
+                        <GradientStop Color="#FFB8A6" Offset="1.0"/>
                     </LinearGradientBrush>
                 </Grid.Background>
 
                 <!-- Decorative glow circles -->
-                <Ellipse WidthRequest="220" HeightRequest="220"
+                <Ellipse WidthRequest="260" HeightRequest="260"
                          HorizontalOptions="End" VerticalOptions="Start"
-                         Margin="0,-60,-60,0" Opacity="0.12">
-                    <Ellipse.Fill>
-                        <SolidColorBrush Color="White"/>
-                    </Ellipse.Fill>
+                         Margin="0,-80,-70,0" Opacity="0.10">
+                    <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
                 </Ellipse>
-                <Ellipse WidthRequest="120" HeightRequest="120"
+                <Ellipse WidthRequest="140" HeightRequest="140"
                          HorizontalOptions="Start" VerticalOptions="End"
-                         Margin="-30,0,0,30" Opacity="0.08">
-                    <Ellipse.Fill>
-                        <SolidColorBrush Color="White"/>
-                    </Ellipse.Fill>
+                         Margin="-40,0,0,20" Opacity="0.07">
+                    <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
+                </Ellipse>
+                <Ellipse WidthRequest="80" HeightRequest="80"
+                         HorizontalOptions="Center" VerticalOptions="Start"
+                         Margin="60,20,0,0" Opacity="0.06">
+                    <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
                 </Ellipse>
 
                 <!-- Logo + App name -->
                 <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center"
-                                     Spacing="12" Margin="0,30,0,0">
+                                     Spacing="14" Margin="0,25,0,0">
                     <!-- Logo Circle with Vector Icon -->
                     <Grid HorizontalOptions="Center">
-                        <Ellipse WidthRequest="94" HeightRequest="94"
-                                 HorizontalOptions="Center" Opacity="0.25">
-                            <Ellipse.Fill>
-                                <SolidColorBrush Color="White"/>
-                            </Ellipse.Fill>
+                        <!-- Outer glow ring -->
+                        <Ellipse WidthRequest="110" HeightRequest="110"
+                                 HorizontalOptions="Center" Opacity="0.15">
+                            <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
                         </Ellipse>
-                        <Frame WidthRequest="74" HeightRequest="74" CornerRadius="37"
-                               Padding="0" HasShadow="False"
-                               BackgroundColor="White"
-                               HorizontalOptions="Center" VerticalOptions="Center">
+                        <!-- Middle glow ring -->
+                        <Ellipse WidthRequest="96" HeightRequest="96"
+                                 HorizontalOptions="Center" Opacity="0.20">
+                            <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
+                        </Ellipse>
+                        <Border WidthRequest="78" HeightRequest="78" 
+                                Padding="0" StrokeThickness="0"
+                                BackgroundColor="White"
+                                HorizontalOptions="Center" VerticalOptions="Center">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="39"/></Border.StrokeShape>
+                            <Border.Shadow>
+                                <Shadow Brush="#FF6B81" Offset="0,4" Opacity="0.25" Radius="12"/>
+                            </Border.Shadow>
                                <Path Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 M11,19.92 C6.08,19.43 2.57,15.68 3.12,10.91 L8.52,16.31 L11,16.31 L11,19.92 M18.4,15.82 L16.36,13.78 L14.94,15.19 L16.98,17.23 A8.053,8.053 0 0 1 13,19.9 L13,17 L10,14 L10,12.78 L20.47,2.31 C21.14,3.22 21.65,4.28 21.92,5.41 L14.1,13.23 L15.51,14.64 L21.71,8.44 A8.026,8.026 0 0 1 18.4,15.82 Z"
-                                     Fill="#FF6A88" 
+                                     Fill="#FF6B81" 
                                      Aspect="Uniform"
                                      HorizontalOptions="Center" VerticalOptions="Center"
-                                     WidthRequest="32" HeightRequest="32"/>
-                        </Frame>
+                                     WidthRequest="34" HeightRequest="34"/>
+                        </Border>
                     </Grid>
-                    <Label x:Name="AppTitleLabel" Text="FoodMap" FontSize="30" FontAttributes="Bold"
-                           TextColor="White" HorizontalOptions="Center"/>
+                    <Label x:Name="AppTitleLabel" Text="FoodMap" FontSize="32" FontAttributes="Bold"
+                           TextColor="White" HorizontalOptions="Center" CharacterSpacing="1"/>
                     <Label x:Name="WelcomeLabel" Text="Khám phá ẩm thực quanh bạn" FontSize="14" TextColor="White"
-                           Opacity="0.9" HorizontalOptions="Center"
+                           Opacity="0.92" HorizontalOptions="Center"
                            HorizontalTextAlignment="Center"/>
                 </VerticalStackLayout>
             </Grid>
 
-            <!-- Form Card (overlaps banner) -->
-            <Grid Grid.Row="1" Margin="24,-45,24,0">
-                <Frame BackgroundColor="White" CornerRadius="32" Padding="28,36"
-                       HasShadow="False">
-                    <Frame.Shadow>
-                        <Shadow Brush="#FF6A88" Offset="0,12" Opacity="0.1" Radius="28"/>
-                    </Frame.Shadow>
-                    <VerticalStackLayout Spacing="24">
+            <!-- ── Form Card (overlaps banner) ── -->
+            <Grid Grid.Row="1" Margin="22,-50,22,0">
+                <Border BackgroundColor="White" Padding="28,36"
+                        StrokeThickness="0">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="32"/></Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#FF6B81" Offset="0,16" Opacity="0.12" Radius="32"/>
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="22">
 
                         <!-- Identifier field -->
                         <VerticalStackLayout Spacing="8">
                             <Label x:Name="IdentifierLabel" Text="Email hoặc Số điện thoại" FontSize="13" FontAttributes="Bold"
-                                   TextColor="#323242" Margin="6,0"/>
-                            <Frame BackgroundColor="#FFF5F7" CornerRadius="16" Padding="0"
-                                   HasShadow="False" HeightRequest="58" BorderColor="Transparent">
-                                <Grid ColumnDefinitions="4,Auto,*">
-                                    <BoxView Grid.Column="0" BackgroundColor="#FF6A88"
-                                             CornerRadius="4"/>
+                                   TextColor="#1A1A2E" Margin="4,0"/>
+                            <Border BackgroundColor="#FFF7F8" Padding="0"
+                                    StrokeThickness="0" HeightRequest="60">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="18"/></Border.StrokeShape>
+                                <Grid ColumnDefinitions="Auto,*">
                                     <!-- Email Vector -->
-                                    <Path Grid.Column="1" Data="M20,4 L4,4 C2.9,4 2.01,4.9 2.01,6 L2,18 C2,19.1 2.9,20 4,20 L20,20 C21.1,20 22,19.1 22,18 L22,6 C22,4.9 21.1,4 20,4 M20,8 L12,13 L4,8 L4,6 L12,11 L20,6 L20,8 Z"
-                                          Fill="#FF6A88" Aspect="Uniform" WidthRequest="20" HeightRequest="20"
-                                          VerticalOptions="Center" Margin="14,0,10,0"/>
-                                    <Entry Grid.Column="2" x:Name="IdentifierEntry"
-                                           TextColor="#2D2D2D" BackgroundColor="Transparent"
-                                           PlaceholderColor="#C7B2BD" Margin="0,0,14,0"
+                                    <Border Grid.Column="0" WidthRequest="48" HeightRequest="48"
+                                            BackgroundColor="#FFECEF" StrokeThickness="0"
+                                            VerticalOptions="Center" Margin="8,0,0,0">
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
+                                        <Path Data="M20,4 L4,4 C2.9,4 2.01,4.9 2.01,6 L2,18 C2,19.1 2.9,20 4,20 L20,20 C21.1,20 22,19.1 22,18 L22,6 C22,4.9 21.1,4 20,4 M20,8 L12,13 L4,8 L4,6 L12,11 L20,6 L20,8 Z"
+                                              Fill="#FF6B81" Aspect="Uniform" WidthRequest="20" HeightRequest="20"
+                                              HorizontalOptions="Center" VerticalOptions="Center"/>
+                                    </Border>
+                                    <Entry Grid.Column="1" x:Name="IdentifierEntry"
+                                           TextColor="#1A1A2E" BackgroundColor="Transparent"
+                                           PlaceholderColor="#B0A3AB" Margin="12,0,16,0"
                                            Keyboard="Email"
                                            Placeholder="yourname@email.com"
                                            IsTextPredictionEnabled="False"
                                            IsSpellCheckEnabled="False"
                                            VerticalOptions="Center"/>
                                 </Grid>
-                            </Frame>
+                            </Border>
                         </VerticalStackLayout>
 
                         <!-- Password field -->
                         <VerticalStackLayout Spacing="8">
                             <Label x:Name="PasswordLabel" Text="Mật khẩu" FontSize="13" FontAttributes="Bold"
-                                   TextColor="#323242" Margin="6,0"/>
-                            <Frame BackgroundColor="#FFF5F7" CornerRadius="16" Padding="0"
-                                   HasShadow="False" HeightRequest="58" BorderColor="Transparent">
-                                <Grid ColumnDefinitions="4,Auto,*">
-                                    <BoxView Grid.Column="0" BackgroundColor="#FFAD9F"
-                                             CornerRadius="4"/>
+                                   TextColor="#1A1A2E" Margin="4,0"/>
+                            <Border BackgroundColor="#FFF7F8" Padding="0"
+                                    StrokeThickness="0" HeightRequest="60">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="18"/></Border.StrokeShape>
+                                <Grid ColumnDefinitions="Auto,*">
                                     <!-- Lock Vector -->
-                                    <Path Grid.Column="1" Data="M18,8 L17,8 L17,6 C17,3.24 14.76,1 12,1 C9.24,1 7,3.24 7,6 L7,8 L6,8 C4.9,8 4,8.9 4,10 L4,20 C4,21.1 4.9,22 6,22 L18,22 C19.1,22 20,21.1 20,20 L20,10 C20,8.9 19.1,8 18,8 M9,6 C9,4.34 10.34,3 12,3 C13.66,3 15,4.34 15,6 L15,8 L9,8 L9,6 M12,17 C10.9,17 10,16.1 10,15 C10,13.9 10.9,13 12,17 Z"
-                                          Fill="#FFAD9F" Aspect="Uniform" WidthRequest="20" HeightRequest="20"
-                                          VerticalOptions="Center" Margin="14,0,10,0"/>
-                                    <Entry Grid.Column="2" x:Name="PasswordEntry"
+                                    <Border Grid.Column="0" WidthRequest="48" HeightRequest="48"
+                                            BackgroundColor="#FFF0E8" StrokeThickness="0"
+                                            VerticalOptions="Center" Margin="8,0,0,0">
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
+                                        <Path Data="M18,8 L17,8 L17,6 C17,3.24 14.76,1 12,1 C9.24,1 7,3.24 7,6 L7,8 L6,8 C4.9,8 4,8.9 4,10 L4,20 C4,21.1 4.9,22 6,22 L18,22 C19.1,22 20,21.1 20,20 L20,10 C20,8.9 19.1,8 18,8 M9,6 C9,4.34 10.34,3 12,3 C13.66,3 15,4.34 15,6 L15,8 L9,8 L9,6 M12,17 C10.9,17 10,16.1 10,15 C10,13.9 10.9,13 12,17 Z"
+                                              Fill="#FF9A76" Aspect="Uniform" WidthRequest="20" HeightRequest="20"
+                                              HorizontalOptions="Center" VerticalOptions="Center"/>
+                                    </Border>
+                                    <Entry Grid.Column="1" x:Name="PasswordEntry"
                                            Placeholder="••••••••" IsPassword="True"
-                                           TextColor="#2D2D2D" BackgroundColor="Transparent"
-                                           PlaceholderColor="#C7B2BD" Margin="0,0,14,0"
+                                           TextColor="#1A1A2E" BackgroundColor="Transparent"
+                                           PlaceholderColor="#B0A3AB" Margin="12,0,16,0"
                                            IsTextPredictionEnabled="False"
                                            IsSpellCheckEnabled="False"
                                            VerticalOptions="Center"/>
                                 </Grid>
-                            </Frame>
+                            </Border>
                         </VerticalStackLayout>
 
                         <!-- Login Button -->
                         <Button x:Name="LoginButton" Text="Đăng nhập" Clicked="OnLoginClicked"
                                 TextColor="White" FontAttributes="Bold" FontSize="16"
-                                CornerRadius="18" HeightRequest="60"
-                                Margin="0,12,0,0" BorderWidth="0">
+                                CornerRadius="22" HeightRequest="64"
+                                Margin="0,10,0,0" BorderWidth="0"
+                                CharacterSpacing="0.5">
                             <Button.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                    <GradientStop Color="#FF6A88" Offset="0.0"/>
-                                    <GradientStop Color="#FF526B" Offset="1.0"/>
+                                    <GradientStop Color="#FF6B81" Offset="0.0"/>
+                                    <GradientStop Color="#FF8A70" Offset="0.7"/>
+                                    <GradientStop Color="#FF9A76" Offset="1.0"/>
                                 </LinearGradientBrush>
                             </Button.Background>
                             <Button.Shadow>
-                                <Shadow Brush="#FF6A88" Offset="0,8" Opacity="0.3" Radius="16"/>
+                                <Shadow Brush="#FF6B81" Offset="0,10" Opacity="0.35" Radius="20"/>
                             </Button.Shadow>
                         </Button>
 
                         <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False"
-                                           Color="#FF6A88" HorizontalOptions="Center"/>
+                                           Color="#FF6B81" HorizontalOptions="Center"/>
+
+                        <!-- OR Separator -->
+                        <Grid ColumnDefinitions="*,Auto,*" Margin="0,4,0,4">
+                            <BoxView Grid.Column="0" HeightRequest="1" Color="#F0E8EC" VerticalOptions="Center"/>
+                            <Label x:Name="OrLabel" Grid.Column="1" Text="HOẶC" FontSize="11" TextColor="#B0A3AB" Margin="14,0"
+                                   VerticalOptions="Center" CharacterSpacing="1.5"/>
+                            <BoxView Grid.Column="2" HeightRequest="1" Color="#F0E8EC" VerticalOptions="Center"/>
+                        </Grid>
+
+                        <!-- Offline Button -->
+                        <Button x:Name="OfflineButton" Text="ĐĂNG NHẬP OFFLINE" Clicked="OnOfflineClicked"
+                                TextColor="#FF6B81" FontAttributes="Bold" FontSize="14"
+                                CornerRadius="22" HeightRequest="60"
+                                BackgroundColor="#FFF0F3" BorderColor="Transparent"
+                                BorderWidth="0" CharacterSpacing="0.8">
+                            <Button.Shadow>
+                                <Shadow Brush="#FF6B81" Offset="0,4" Opacity="0.08" Radius="12"/>
+                            </Button.Shadow>
+                        </Button>
 
                     </VerticalStackLayout>
-                </Frame>
+                </Border>
             </Grid>
 
             <!-- Register link -->
             <HorizontalStackLayout Grid.Row="2" HorizontalOptions="Center"
-                                   Spacing="6" Margin="0,32,0,40">
-                <Label x:Name="NoAccountLabel" Text="Bạn chưa có tài khoản?" TextColor="#A1A1B5" FontSize="14"/>
-                <Label x:Name="RegisterNowLabel" Text="Đăng ký ngay" TextColor="#FF6A88"
+                                   Spacing="6" Margin="0,30,0,44">
+                <Label x:Name="NoAccountLabel" Text="Bạn chưa có tài khoản?" TextColor="#6C6C80" FontSize="14"/>
+                <Label x:Name="RegisterNowLabel" Text="Đăng ký ngay" TextColor="#FF6B81"
                        FontAttributes="Bold" FontSize="14">
                     <Label.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnRegisterTapped"/>

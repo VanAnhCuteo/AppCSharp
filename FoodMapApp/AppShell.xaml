@@ -12,13 +12,13 @@
     <Shell.Resources>
         <ResourceDictionary>
             <Style x:Key="BaseStyle" TargetType="Element">
-                <Setter Property="Shell.BackgroundColor" Value="#FF6A88"/>
+                <Setter Property="Shell.BackgroundColor" Value="#FF6B81"/>
                 <Setter Property="Shell.ForegroundColor" Value="White"/>
                 <Setter Property="Shell.TitleColor" Value="White"/>
                 <Setter Property="Shell.UnselectedColor" Value="#FFD0DC"/>
-                <Setter Property="Shell.TabBarBackgroundColor" Value="White"/>
-                <Setter Property="Shell.TabBarTitleColor" Value="#FF6A88"/>
-                <Setter Property="Shell.TabBarUnselectedColor" Value="#999"/>
+                <Setter Property="Shell.TabBarBackgroundColor" Value="#FFFFFF"/>
+                <Setter Property="Shell.TabBarTitleColor" Value="#FF6B81"/>
+                <Setter Property="Shell.TabBarUnselectedColor" Value="#B0A3AB"/>
             </Style>
         </ResourceDictionary>
     </Shell.Resources>
@@ -35,7 +35,7 @@
     <TabBar Route="MainTabs" Shell.TabBarIsVisible="True">
         <Tab Title="Trang Chủ">
             <Tab.Icon>
-                <FontImageSource Glyph="&#x2302;" FontFamily="OpenSansRegular" Color="#FF6A88" Size="22"/>
+                <FontImageSource Glyph="&#x2302;" FontFamily="OpenSansRegular" Color="#FF6B81" Size="24"/>
             </Tab.Icon>
             <ShellContent
                 ContentTemplate="{DataTemplate views:HomePage}"
@@ -43,7 +43,7 @@
         </Tab>
         <Tab Title="Bản Đồ">
             <Tab.Icon>
-                <FontImageSource Glyph="&#x1F5FA;" FontFamily="OpenSansRegular" Color="#FF6A88" Size="22"/>
+                <FontImageSource Glyph="&#x1F5FA;" FontFamily="OpenSansRegular" Color="#FF6B81" Size="24"/>
             </Tab.Icon>
             <ShellContent
                 ContentTemplate="{DataTemplate local:MainPage}"
@@ -51,7 +51,7 @@
         </Tab>
         <Tab Title="Các Tour">
             <Tab.Icon>
-                <FontImageSource Glyph="&#x1F6A9;" FontFamily="OpenSansRegular" Color="#FF6A88" Size="22"/>
+                <FontImageSource Glyph="&#x1F6A9;" FontFamily="OpenSansRegular" Color="#FF6B81" Size="24"/>
             </Tab.Icon>
             <ShellContent
                 ContentTemplate="{DataTemplate local:FoodTourPage}"
@@ -59,7 +59,7 @@
         </Tab>
         <Tab Title="Thông Tin">
             <Tab.Icon>
-                <FontImageSource Glyph="&#x1F464;" FontFamily="OpenSansRegular" Color="#FF6A88" Size="22"/>
+                <FontImageSource Glyph="&#x1F464;" FontFamily="OpenSansRegular" Color="#FF6B81" Size="24"/>
             </Tab.Icon>
             <ShellContent
                 ContentTemplate="{DataTemplate views:ProfilePage}"

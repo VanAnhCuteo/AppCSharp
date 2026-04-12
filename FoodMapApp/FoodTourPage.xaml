@@ -2,8 +2,9 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="FoodMapApp.FoodTourPage"
-             BackgroundColor="#FDFCFD"
-             Title="Khám Phá Tour">
+             BackgroundColor="#FFF7F8"
+             Title="Khám Phá Tour"
+             Shell.NavBarIsVisible="False">
 
     <Grid RowDefinitions="Auto, *">
         
@@ -11,54 +12,163 @@
         <Grid Grid.Row="1" RowDefinitions="Auto, *">
             
             <!-- Header & Search Section -->
-            <VerticalStackLayout Grid.Row="0" Padding="20,10,20,15" Spacing="15">
-                <VerticalStackLayout Spacing="5">
-                    <Label Text="Khám Phá Tour" FontSize="28" FontAttributes="Bold" TextColor="#333" />
-                    <Label Text="Chọn hành trình ẩm thực dành cho riêng bạn" FontSize="14" TextColor="#777" />
-                </VerticalStackLayout>
+            <VerticalStackLayout Grid.Row="0" Spacing="16">
+                <!-- Gradient Header Banner -->
+                <Grid Padding="24,50,24,24">
+                    <Grid.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#FF6B81" Offset="0.0"/>
+                            <GradientStop Color="#FF9A76" Offset="0.55"/>
+                            <GradientStop Color="#FFB8A6" Offset="1.0"/>
+                        </LinearGradientBrush>
+                    </Grid.Background>
+                    <!-- Decorative -->
+                    <Ellipse WidthRequest="180" HeightRequest="180"
+                             HorizontalOptions="End" VerticalOptions="Start"
+                             Margin="0,-60,-40,0" Opacity="0.08">
+                        <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
+                    </Ellipse>
 
-                <!-- Search Bar Container -->
-                <Border StrokeShape="RoundRectangle 25" StrokeThickness="0" BackgroundColor="White" Padding="5,2" HeightRequest="50">
-                    <Border.Shadow>
-                        <Shadow Brush="Black" Offset="0,4" Radius="10" Opacity="0.08" />
-                    </Border.Shadow>
-                    <Grid ColumnDefinitions="Auto, *, Auto">
-                        <Label Grid.Column="0" Text="🔍" VerticalOptions="Center" Margin="15,0,10,0" FontSize="16" />
-                        <Entry Grid.Column="1" x:Name="searchEntry" Placeholder="Tìm tên tour, thời gian, giá..." 
-                               PlaceholderColor="#BBB" TextColor="#333" VerticalOptions="Center"
-                               Focused="OnSearchFocused" Unfocused="OnSearchUnfocused" TextChanged="OnSearchTextChanged" />
-                        <Button Grid.Column="2" x:Name="clearBtn" Text="✕" BackgroundColor="Transparent" TextColor="#999" 
-                                IsVisible="False" Clicked="OnClearSearchClicked" WidthRequest="40" />
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Khám Phá Tour" FontSize="28" FontAttributes="Bold" TextColor="White" CharacterSpacing="0.5"/>
+                        <Label Text="Chọn hành trình ẩm thực dành cho riêng bạn" FontSize="14" TextColor="White" Opacity="0.9"/>
+                    </VerticalStackLayout>
+                </Grid>
+
+                <VerticalStackLayout Padding="20,0,20,10" Spacing="16">
+                    <!-- Search Bar Container -->
+                    <Border StrokeThickness="0" BackgroundColor="White" Padding="5,2" HeightRequest="54">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="27"/></Border.StrokeShape>
+                        <Border.Shadow>
+                            <Shadow Brush="#FF6B81" Offset="0,5" Radius="14" Opacity="0.10" />
+                        </Border.Shadow>
+                        <Grid ColumnDefinitions="Auto, *, Auto">
+                            <Path Grid.Column="0" 
+                                  Data="M15.5,14 L14.71,14 L14.43,13.73 C15.41,12.59 16,11.11 16,9.5 C16,5.91 13.09,3 9.5,3 C5.91,3 3,5.91 3,9.5 C3,13.09 5.91,16 9.5,16 C11.11,16 12.59,15.41 13.73,14.43 L14,14.71 L14,15.5 L19,20.49 L20.49,19 L15.5,14 Z M9.5,14 C7.01,14 5,11.99 5,9.5 C5,7.01 7.01,5 9.5,5 C11.99,5 14,7.01 14,9.5 C14,11.99 11.99,14 9.5,14 Z"
+                                  Fill="#FFB8A6" Aspect="Uniform" WidthRequest="18" HeightRequest="18"
+                                  VerticalOptions="Center" Margin="15,0,10,0"/>
+                            <Entry Grid.Column="1" x:Name="searchEntry" Placeholder="Tìm tên tour, thời gian, giá..." 
+                                   PlaceholderColor="#B0A3AB" TextColor="#1A1A2E" VerticalOptions="Center"
+                                   TextChanged="OnSearchTextChanged" />
+                            <Button Grid.Column="2" x:Name="clearBtn" Text="✕" BackgroundColor="Transparent" TextColor="#B0A3AB" 
+                                    IsVisible="False" Clicked="OnClearSearchClicked" WidthRequest="40" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Vertical Filters Section -->
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="14">
+                        <!-- Time Filters -->
+                        <VerticalStackLayout Grid.Column="0" Spacing="8">
+                            <Label Text="Theo thời gian" FontAttributes="Bold" FontSize="13" TextColor="#1A1A2E" />
+                            
+                            <Border StrokeThickness="0" Padding="14,10" BackgroundColor="#FFF7F8">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
+                                <Border.Shadow>
+                                    <Shadow Brush="Black" Offset="0,2" Radius="6" Opacity="0.04" />
+                                </Border.Shadow>
+                                <Label Text="≤ 1 giờ" TextColor="#6C6C80" FontSize="13" HorizontalOptions="Center" />
+                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnQuickFilterTapped" CommandParameter="TIME_60" /></Border.GestureRecognizers>
+                            </Border>
+                            
+                            <Border StrokeThickness="0" Padding="14,10" BackgroundColor="#FFF7F8">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
+                                <Border.Shadow>
+                                    <Shadow Brush="Black" Offset="0,2" Radius="6" Opacity="0.04" />
+                                </Border.Shadow>
+                                <Label Text="1 - 2 giờ" TextColor="#6C6C80" FontSize="13" HorizontalOptions="Center" />
+                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnQuickFilterTapped" CommandParameter="TIME_120" /></Border.GestureRecognizers>
+                            </Border>
+
+                            <Border StrokeThickness="0" Padding="14,10" BackgroundColor="#FFF7F8">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
+                                <Border.Shadow>
+                                    <Shadow Brush="Black" Offset="0,2" Radius="6" Opacity="0.04" />
+                                </Border.Shadow>
+                                <Label Text="Trên 3 giờ" TextColor="#6C6C80" FontSize="13" HorizontalOptions="Center" />
+                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnQuickFilterTapped" CommandParameter="TIME_999" /></Border.GestureRecognizers>
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <!-- Price Filters -->
+                        <VerticalStackLayout Grid.Column="1" Spacing="8">
+                            <Label Text="Theo giá cả" FontAttributes="Bold" FontSize="13" TextColor="#1A1A2E" />
+
+                            <Border StrokeThickness="0" Padding="14,10" BackgroundColor="#FFECEF">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
+                                <Border.Shadow>
+                                    <Shadow Brush="#FF6B81" Offset="0,2" Radius="6" Opacity="0.06" />
+                                </Border.Shadow>
+                                <Label Text="Tiết kiệm" TextColor="#FF6B81" FontSize="13" FontAttributes="Bold" HorizontalOptions="Center" />
+                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnQuickFilterTapped" CommandParameter="PRICE_100000" /></Border.GestureRecognizers>
+                            </Border>
+
+                            <Border StrokeThickness="0" Padding="14,10" BackgroundColor="#EDF8FF">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
+                                <Border.Shadow>
+                                    <Shadow Brush="#4895EF" Offset="0,2" Radius="6" Opacity="0.06" />
+                                </Border.Shadow>
+                                <Label Text="Trung bình" TextColor="#4895EF" FontSize="13" FontAttributes="Bold" HorizontalOptions="Center" />
+                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnQuickFilterTapped" CommandParameter="PRICE_300000" /></Border.GestureRecognizers>
+                            </Border>
+
+                            <Border StrokeThickness="0" Padding="14,10" BackgroundColor="#FFF7E6">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
+                                <Border.Shadow>
+                                    <Shadow Brush="#FAAD14" Offset="0,2" Radius="6" Opacity="0.06" />
+                                </Border.Shadow>
+                                <Label Text="Cao cấp" TextColor="#E89B00" FontSize="13" FontAttributes="Bold" HorizontalOptions="Center" />
+                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnQuickFilterTapped" CommandParameter="PRICE_999999" /></Border.GestureRecognizers>
+                            </Border>
+                        </VerticalStackLayout>
                     </Grid>
-                </Border>
+                </VerticalStackLayout>
             </VerticalStackLayout>
 
             <!-- Tours List -->
-            <RefreshView Grid.Row="1" x:Name="refreshView" Refreshing="OnRefresh" RefreshColor="#FF6A88">
-                <CollectionView x:Name="tourList" SelectionMode="None" Margin="10,0">
+            <RefreshView Grid.Row="1" x:Name="refreshView" Refreshing="OnRefresh" RefreshColor="#FF6B81">
+                <CollectionView x:Name="tourList" SelectionMode="None" Margin="12,0">
                     <CollectionView.ItemsLayout>
-                        <LinearItemsLayout Orientation="Vertical" ItemSpacing="15" />
+                        <LinearItemsLayout Orientation="Vertical" ItemSpacing="14" />
                     </CollectionView.ItemsLayout>
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
-                            <Border StrokeShape="RoundRectangle 20" StrokeThickness="0" BackgroundColor="White" Padding="16">
+                            <Border StrokeThickness="0" BackgroundColor="White" Padding="0">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="22"/></Border.StrokeShape>
                                 <Border.Shadow>
-                                    <Shadow Brush="Black" Offset="0,4" Radius="10" Opacity="0.1" />
+                                    <Shadow Brush="#FF6B81" Offset="0,5" Radius="14" Opacity="0.10" />
                                 </Border.Shadow>
-                                <VerticalStackLayout Spacing="8">
-                                    <Label Text="{Binding name}" TextColor="#222" FontSize="18" FontAttributes="Bold" />
-                                    <Label Text="{Binding description}" TextColor="#777" FontSize="13" MaxLines="2" LineBreakMode="TailTruncation" />
-                                    <HorizontalStackLayout Spacing="15" Margin="0,4,0,0">
-                                        <HorizontalStackLayout Spacing="5">
-                                            <Label Text="🕒" FontSize="12" />
-                                            <Label Text="{Binding DurationDisplay}" TextColor="#555" FontSize="12" />
+                                <Grid ColumnDefinitions="5,*">
+                                    <!-- Accent bar -->
+                                    <Border Grid.Column="0" WidthRequest="5" Margin="0,14" StrokeThickness="0">
+                                        <Border.StrokeShape><RoundRectangle CornerRadius="3"/></Border.StrokeShape>
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                <GradientStop Color="#FF6B81" Offset="0.0"/>
+                                                <GradientStop Color="#FF9A76" Offset="1.0"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                    </Border>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="8" Padding="16,18">
+                                        <Label Text="{Binding name}" TextColor="#1A1A2E" FontSize="18" FontAttributes="Bold" />
+                                        <Label Text="{Binding description}" TextColor="#6C6C80" FontSize="13" MaxLines="2" LineBreakMode="TailTruncation" />
+                                        <HorizontalStackLayout Spacing="18" Margin="0,4,0,0">
+                                            <HorizontalStackLayout Spacing="6">
+                                                <Border BackgroundColor="#FFECEF" WidthRequest="26" HeightRequest="26" StrokeThickness="0" Padding="0">
+                                                    <Border.StrokeShape><RoundRectangle CornerRadius="13"/></Border.StrokeShape>
+                                                    <Label Text="🕒" FontSize="12" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                                </Border>
+                                                <Label Text="{Binding DurationDisplay}" TextColor="#6C6C80" FontSize="12" VerticalOptions="Center"/>
+                                            </HorizontalStackLayout>
+                                            <HorizontalStackLayout Spacing="6">
+                                                <Border BackgroundColor="#FFF0E8" WidthRequest="26" HeightRequest="26" StrokeThickness="0" Padding="0">
+                                                    <Border.StrokeShape><RoundRectangle CornerRadius="13"/></Border.StrokeShape>
+                                                    <Label Text="💰" FontSize="12" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                                </Border>
+                                                <Label Text="{Binding PriceDisplay}" TextColor="#6C6C80" FontSize="12" VerticalOptions="Center"/>
+                                            </HorizontalStackLayout>
                                         </HorizontalStackLayout>
-                                        <HorizontalStackLayout Spacing="5">
-                                            <Label Text="💰" FontSize="12" />
-                                            <Label Text="{Binding PriceDisplay}" TextColor="#555" FontSize="12" />
-                                        </HorizontalStackLayout>
-                                    </HorizontalStackLayout>
-                                </VerticalStackLayout>
+                                    </VerticalStackLayout>
+                                </Grid>
 
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer Tapped="OnTourSelected" CommandParameter="{Binding .}" />
@@ -68,68 +178,13 @@
                     </CollectionView.ItemTemplate>
                     
                     <CollectionView.EmptyView>
-                        <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="10" Padding="50">
-                            <Label Text="🍱" FontSize="50" HorizontalOptions="Center" />
-                            <Label Text="Chưa có tour nào phù hợp" TextColor="#999" HorizontalOptions="Center" />
+                        <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="12" Padding="50">
+                            <Label Text="🍱" FontSize="56" HorizontalOptions="Center" />
+                            <Label Text="Chưa có tour nào phù hợp" TextColor="#6C6C80" FontSize="15" HorizontalOptions="Center" />
                         </VerticalStackLayout>
                     </CollectionView.EmptyView>
                 </CollectionView>
             </RefreshView>
         </Grid>
-
-        <!-- Suggestions Overlay (Initially Hidden) -->
-        <Grid Grid.Row="1" x:Name="suggestionOverlay" IsVisible="False" InputTransparent="False" BackgroundColor="#40000000">
-            <Grid.GestureRecognizers>
-                <TapGestureRecognizer Tapped="OnOverlayTapped" />
-            </Grid.GestureRecognizers>
-            
-            <Border VerticalOptions="Start" Margin="20,10" Padding="20" StrokeShape="RoundRectangle 20" 
-                    BackgroundColor="White" StrokeThickness="0" TranslationY="-20" x:Name="suggestionPanel">
-                <VerticalStackLayout Spacing="15">
-                    <Label Text="Gợi ý tìm kiếm" FontAttributes="Bold" FontSize="14" TextColor="#555" />
-                    
-                    <!-- Time Suggestions -->
-                    <VerticalStackLayout Spacing="10">
-                        <Label Text="Thời gian" FontSize="12" TextColor="#999" />
-                        <FlexLayout Wrap="Wrap" Direction="Row" JustifyContent="Start">
-                            <Border StrokeShape="RoundRectangle 15" Padding="12,6" Margin="0,0,8,8" BackgroundColor="#F5F5FA" StrokeThickness="0">
-                                <Label Text="≤ 1 giờ" TextColor="#666" FontSize="13" />
-                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnSuggestionTapped" CommandParameter="TIME_60" /></Border.GestureRecognizers>
-                            </Border>
-                            <Border StrokeShape="RoundRectangle 15" Padding="12,6" Margin="0,0,8,8" BackgroundColor="#F5F5FA" StrokeThickness="0">
-                                <Label Text="1-2 giờ" TextColor="#666" FontSize="13" />
-                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnSuggestionTapped" CommandParameter="TIME_120" /></Border.GestureRecognizers>
-                            </Border>
-                            <Border StrokeShape="RoundRectangle 15" Padding="12,6" Margin="0,0,8,8" BackgroundColor="#F5F5FA" StrokeThickness="0">
-                                <Label Text="> 3 giờ" TextColor="#666" FontSize="13" />
-                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnSuggestionTapped" CommandParameter="TIME_999" /></Border.GestureRecognizers>
-                            </Border>
-                        </FlexLayout>
-                    </VerticalStackLayout>
-
-                    <!-- Price Suggestions -->
-                    <VerticalStackLayout Spacing="10">
-                        <Label Text="Ngân sách" FontSize="12" TextColor="#999" />
-                        <FlexLayout Wrap="Wrap" Direction="Row" JustifyContent="Start">
-                            <Border StrokeShape="RoundRectangle 15" Padding="12,6" Margin="0,0,8,8" BackgroundColor="#FFF0F3" StrokeThickness="0">
-                                <Label Text="Tiết kiệm" TextColor="#FF6A88" FontSize="13" />
-                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnSuggestionTapped" CommandParameter="PRICE_100000" /></Border.GestureRecognizers>
-                            </Border>
-                            <Border StrokeShape="RoundRectangle 15" Padding="12,6" Margin="0,0,8,8" BackgroundColor="#EDF8FF" StrokeThickness="0">
-                                <Label Text="Trung bình" TextColor="#4895EF" FontSize="13" />
-                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnSuggestionTapped" CommandParameter="PRICE_300000" /></Border.GestureRecognizers>
-                            </Border>
-                            <Border StrokeShape="RoundRectangle 15" Padding="12,6" Margin="0,0,8,8" BackgroundColor="#FFF7E6" StrokeThickness="0">
-                                <Label Text="Cao cấp" TextColor="#FAAD14" FontSize="13" />
-                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnSuggestionTapped" CommandParameter="PRICE_999999" /></Border.GestureRecognizers>
-                            </Border>
-                        </FlexLayout>
-                    </VerticalStackLayout>
-                </VerticalStackLayout>
-            </Border>
-        </Grid>
-
-    </Grid>
-
     </Grid>
 </ContentPage>

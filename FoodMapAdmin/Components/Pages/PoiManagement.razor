@@ -10,35 +10,37 @@
 
 <PageTitle>Quản lý Quán ăn - FoodMap Admin</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+<!-- Page Header -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
     <div>
-        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Quán ăn & Địa điểm</h2>
-        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý danh sách các điểm đến trên hệ thống FoodMap</p>
+        <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Quán ăn & Địa điểm</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Quản lý danh sách các điểm đến trên hệ thống FoodMap</p>
     </div>
-    <button class="glass-btn pulse-animation" style="padding: 1rem 2.2rem; font-size: 1.05rem; border-radius: 20px; box-shadow: 0 15px 35px var(--primary-glow);" @onclick="AddNew">
-        <i class="bi bi-plus-lg me-2"></i> Thêm quán mới
+    <button class="glass-btn" @onclick="AddNew">
+        <i class="bi bi-plus-lg"></i> Thêm quán mới
     </button>
 </div>
 
-<div class="card shadow-glass border-0" style="border-radius: 30px; overflow: hidden; background: var(--surface);">
+<!-- Table Card -->
+<div class="card" style="padding: 0; overflow: hidden;">
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
-                <tr style="background: rgba(255, 45, 133, 0.03);">
-                    <th style="padding: 1.5rem 1rem 1.5rem 2rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Mã số</th>
-                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Tên quán ăn</th>
-                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Danh mục</th>
-                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Địa chỉ</th>
-                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Chủ sở hữu</th>
-                    <th style="padding: 1.5rem 2rem 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Thao tác</th>
+                <tr>
+                    <th style="padding-left: 1.75rem; width: 70px;">Mã</th>
+                    <th>Tên quán ăn</th>
+                    <th>Danh mục</th>
+                    <th>Địa chỉ</th>
+                    <th>Chủ sở hữu</th>
+                    <th style="text-align: center; width: 120px;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
                 @if (pois == null)
                 {
                     <tr>
-                        <td colspan="6" class="text-center py-5">
-                            <div class="spinner-border text-primary" role="status">
+                        <td colspan="6" style="text-align: center; padding: 3rem 0;">
+                            <div class="spinner-border" role="status">
                                 <span class="visually-hidden">Đang tải...</span>
                             </div>
                         </td>
@@ -47,11 +49,9 @@
                 else if (!pois.Any())
                 {
                     <tr>
-                        <td colspan="6" class="text-center py-5">
-                            <div class="empty-state">
-                                <i class="bi bi-shop-window text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
-                                <p class="text-muted mt-3">Chưa có dữ liệu quán ăn nào.</p>
-                            </div>
+                        <td colspan="6" style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
+                            <i class="bi bi-shop-window" style="font-size: 2.5rem; opacity: 0.2; display: block; margin-bottom: 0.5rem;"></i>
+                            Chưa có dữ liệu quán ăn nào
                         </td>
                     </tr>
                 }
@@ -59,54 +59,48 @@
                 {
                     @foreach (var poi in pois)
                     {
-                        <tr class="align-middle transition-all">
-                            <td style="padding-left: 2rem; color: var(--text-muted); font-weight: 600;">#@poi.PoiId</td>
+                        <tr>
+                            <td style="padding-left: 1.75rem; color: var(--text-muted); font-weight: 600; font-size: 0.85rem;">#@poi.PoiId</td>
                             <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="poi-avatar me-3">
-                                        @(poi.Name.Substring(0, 1).ToUpper())
-                                    </div>
+                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <div class="poi-avatar">@(poi.Name.Substring(0, 1).ToUpper())</div>
                                     <div>
-                                        <div style="font-weight: 800; color: var(--text-main); font-size: 1.05rem;">
-                                            @poi.Name 
+                                        <div style="font-weight: 700; color: var(--text-main); font-size: 0.92rem;">
+                                            @poi.Name
                                             @if (pendingChangesList.Any(pc => pc.PoiId == poi.PoiId))
                                             {
                                                 var change = pendingChangesList.FirstOrDefault(pc => pc.PoiId == poi.PoiId);
-                                                string badgeText = change?.ChangeType == "delete" ? "CHỜ DUYỆT XÓA" : "CHỜ DUYỆT SỬA";
-                                                string badgeClass = change?.ChangeType == "delete" ? "bg-danger text-white" : "bg-warning text-dark";
-                                                <span class="badge rounded-pill @badgeClass ms-2" style="font-size: 0.65rem; font-weight: 700; padding: 0.3rem 0.6rem; vertical-align: middle;">
-                                                    <i class="bi bi-clock-history"></i> @badgeText
+                                                string badgeText = change?.ChangeType == "delete" ? "CHỜ XÓA" : "CHỜ SỬA";
+                                                string badgeColor = change?.ChangeType == "delete" ? "background: rgba(255,71,87,0.08); color: #FF4757;" : "background: rgba(255,159,67,0.08); color: #FF9F43;";
+                                                <span style="@badgeColor padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.62rem; font-weight: 700; margin-left: 0.4rem; letter-spacing: 0.3px;">
+                                                    @badgeText
                                                 </span>
                                             }
                                         </div>
-                                        <div class="text-muted" style="font-size: 0.8rem;">@poi.OpenTime</div>
+                                        <div style="color: var(--text-muted); font-size: 0.78rem;">@poi.OpenTime</div>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <span class="badge-custom @(poi.Category?.CategoryName == "Hải sản" ? "badge-blue" : "badge-pink")">
-                                    @(poi.Category?.CategoryName ?? "Chưa phân loại")
+                                <span class="cat-badge">@(poi.Category?.CategoryName ?? "Chưa phân loại")</span>
+                            </td>
+                            <td>
+                                <div style="color: var(--text-secondary); font-size: 0.85rem; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@poi.Address">
+                                    @poi.Address
+                                </div>
+                            </td>
+                            <td>
+                                <span class="owner-pill">
+                                    <i class="bi bi-person-circle"></i> @(poi.Owner?.Username ?? "Hệ thống")
                                 </span>
                             </td>
-                            <td>
-                                <div class="text-muted text-truncate" style="max-width: 250px; font-size: 0.9rem;" title="@poi.Address">
-                                    <i class="bi bi-geo-alt-fill me-1" style="color: var(--primary); opacity: 0.6;"></i> @poi.Address
-                                </div>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="owner-pill">
-                                        <i class="bi bi-person-circle me-1"></i> @(poi.Owner?.Username ?? "Hệ thống")
-                                    </span>
-                                </div>
-                            </td>
-                            <td style="text-align: center; padding-right: 2rem; white-space: nowrap;">
-                                <div style="display: flex !important; flex-direction: row !important; justify-content: center; align-items: center; gap: 0.75rem;">
-                                    <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick="() => Edit(poi.PoiId)">
+                            <td style="text-align: center;">
+                                <div style="display: flex; justify-content: center; gap: 0.5rem;">
+                                    <button class="act-btn act-edit" title="Chỉnh sửa" @onclick="() => Edit(poi.PoiId)">
                                         <i class="bi bi-pencil-square"></i>
                                     </button>
-                                    <button class="action-btn btn-delete" title="Xóa" @onclick="() => Delete(poi.PoiId)">
-                                        <i class="bi bi-trash-fill"></i>
+                                    <button class="act-btn act-del" title="Xóa" @onclick="() => Delete(poi.PoiId)">
+                                        <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
                             </td>
@@ -119,101 +113,77 @@
 </div>
 
 <style>
-    .shadow-glass {
-        box-shadow: 0 20px 60px rgba(0,0,0,0.03) !important;
-        border: 1px solid var(--glass-border) !important;
-    }
-
     .poi-avatar {
-        width: 42px;
-        height: 42px;
+        width: 38px;
+        height: 38px;
         background: linear-gradient(135deg, var(--primary), var(--primary-dark));
         color: white;
-        border-radius: 14px;
+        border-radius: var(--radius-md);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 800;
-        font-size: 1.2rem;
-        box-shadow: 0 8px 20px var(--primary-glow);
+        font-weight: 700;
+        font-size: 1rem;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px var(--primary-glow);
     }
 
-    .badge-custom {
-        padding: 0.5rem 1.1rem;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 800;
+    .cat-badge {
+        padding: 0.3rem 0.75rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.72rem;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .badge-pink {
-        background: rgba(255, 45, 133, 0.08);
+        letter-spacing: 0.3px;
+        background: var(--primary-subtle);
         color: var(--primary);
-        border: 1px solid rgba(255, 45, 133, 0.1);
-    }
-
-    .badge-blue {
-        background: rgba(0, 184, 212, 0.08);
-        color: #00acc1;
-        border: 1px solid rgba(0, 184, 212, 0.1);
     }
 
     .owner-pill {
-        background: #f8f8f8;
-        padding: 0.4rem 0.8rem;
-        border-radius: 10px;
-        font-size: 0.85rem;
+        background: var(--bg);
+        padding: 0.3rem 0.65rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.8rem;
         color: var(--text-muted);
-        font-weight: 600;
-        border: 1px solid rgba(0,0,0,0.03);
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
     }
 
-    .action-btn {
-        width: 38px;
-        height: 38px;
-        border-radius: 12px;
+    .act-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: var(--radius-sm);
         border: none;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s ease;
-        font-size: 1.1rem;
+        transition: all 0.2s var(--ease-out);
+        font-size: 0.95rem;
+        cursor: pointer;
     }
 
-    .btn-edit {
-        background: rgba(255, 45, 133, 0.05);
+    .act-edit {
+        background: var(--primary-subtle);
         color: var(--primary);
     }
 
-    .btn-edit:hover {
+    .act-edit:hover {
         background: var(--primary);
         color: white;
-        transform: translateY(-2px);
+        transform: translateY(-1px);
     }
 
-    .btn-delete {
-        background: rgba(255, 0, 0, 0.05);
-        color: #ff4d4f;
+    .act-del {
+        background: rgba(255, 71, 87, 0.06);
+        color: #FF4757;
     }
 
-    .btn-delete:hover {
-        background: #ff4d4f;
+    .act-del:hover {
+        background: #FF4757;
         color: white;
-        transform: translateY(-2px);
-    }
-
-    .transition-all {
-        transition: all 0.3s ease;
-    }
-
-    tr:hover {
-        background: rgba(255, 45, 133, 0.01) !important;
-        transform: scale(1.002);
-    }
-
-    .pulse-animation:active {
-        transform: scale(0.95);
+        transform: translateY(-1px);
     }
 </style>
 

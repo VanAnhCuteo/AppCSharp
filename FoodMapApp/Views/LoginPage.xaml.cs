@@ -22,6 +22,8 @@ namespace FoodMapApp.Views
             IdentifierEntry.Placeholder = "Nhập tên đăng nhập";
             PasswordLabel.Text = "Mật khẩu";
             LoginButton.Text = "ĐĂNG NHẬP";
+            OrLabel.Text = "HOẶC";
+            OfflineButton.Text = "ĐĂNG NHẬP OFFLIVE";
             NoAccountLabel.Text = "Chưa có tài khoản?";
             RegisterNowLabel.Text = "Đăng ký ngay";
         }
@@ -49,6 +51,12 @@ namespace FoodMapApp.Views
             {
                 await DisplayAlert("Đăng nhập thất bại", result.message, "OK");
             }
+        }
+
+        private async void OnOfflineClicked(object sender, EventArgs e)
+        {
+            _authService.LoginOffline();
+            await Shell.Current.GoToAsync("//HomePage");
         }
 
         private async void OnRegisterTapped(object sender, EventArgs e)

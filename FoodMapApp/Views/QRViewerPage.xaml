@@ -2,7 +2,8 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="FoodMapApp.Views.QRViewerPage"
-             Title="Mã QR của quán">
+             Title="Mã QR của quán"
+             BackgroundColor="#FFF7F8">
 
     <AbsoluteLayout>
         <!-- Nội dung chính -->
@@ -11,68 +12,93 @@
                    Text="Tên quán" 
                    FontSize="24" FontAttributes="Bold" 
                    HorizontalTextAlignment="Center" 
-                   TextColor="#FF2D85"
-                   Margin="0,0,0,20" />
+                   TextColor="#FF6B81"
+                   Margin="0,0,0,20" CharacterSpacing="0.3"/>
 
-            <Frame x:Name="qrImageFrame" Padding="10" CornerRadius="20" HasShadow="True" BorderColor="#EEE" BackgroundColor="White">
+            <Border Padding="12" StrokeThickness="0" BackgroundColor="White"
+                    HorizontalOptions="Center">
+                <Border.StrokeShape><RoundRectangle CornerRadius="24"/></Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#FF6B81" Offset="0,8" Opacity="0.12" Radius="20"/>
+                </Border.Shadow>
                 <Image x:Name="qrImage"
                        Aspect="AspectFit"
                        HeightRequest="250" WidthRequest="250" />
-            </Frame>
+            </Border>
 
             <Label Text="Kéo kính quét bên dưới đè lên ảnh QR để xem" 
                    FontSize="14" HorizontalTextAlignment="Center" 
-                   TextColor="Gray"
+                   TextColor="#6C6C80"
                    Margin="0,30,0,0" />
             
             <Button x:Name="scanButton" 
                     Text="Bật Kính Quét" 
-                    BackgroundColor="#FF2D85" 
                     TextColor="White" 
-                    CornerRadius="15" 
-                    HeightRequest="50" 
+                    CornerRadius="22" 
+                    HeightRequest="56" 
+                    FontAttributes="Bold"
+                    FontSize="15"
                     Margin="40,20,40,0"
-                    Clicked="OnScanButtonClicked" />
+                    Clicked="OnScanButtonClicked">
+                <Button.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#FF6B81" Offset="0.0"/>
+                        <GradientStop Color="#FF9A76" Offset="1.0"/>
+                    </LinearGradientBrush>
+                </Button.Background>
+                <Button.Shadow>
+                    <Shadow Brush="#FF6B81" Offset="0,8" Opacity="0.25" Radius="16"/>
+                </Button.Shadow>
+            </Button>
         </VerticalStackLayout>
 
         <!-- Kính quét di động (Magic Lens) -->
-        <Frame x:Name="magicLens"
-               Background="Transparent"
-               BorderColor="#FF2D85"
+        <Border x:Name="magicLens"
                Padding="0"
-               CornerRadius="20"
-               HasShadow="False"
+               StrokeThickness="2"
+               Stroke="#FF6B81"
                IsVisible="False"
                WidthRequest="300"
                HeightRequest="300"
+               BackgroundColor="Transparent"
                AbsoluteLayout.LayoutBounds="0.5, 0.8, AutoSize, AutoSize"
                AbsoluteLayout.LayoutFlags="PositionProportional">
-            <Frame.GestureRecognizers>
+            <Border.StrokeShape><RoundRectangle CornerRadius="20"/></Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="#FF6B81" Offset="0,4" Opacity="0.15" Radius="12"/>
+            </Border.Shadow>
+            <Border.GestureRecognizers>
                 <PanGestureRecognizer PanUpdated="OnPanUpdated" />
-            </Frame.GestureRecognizers>
+            </Border.GestureRecognizers>
             <Grid>
-                <BoxView Color="#FF2D85" HeightRequest="3" VerticalOptions="Start" HorizontalOptions="Fill" Margin="20,0" />
-                <BoxView Color="#FF2D85" HeightRequest="3" VerticalOptions="End" HorizontalOptions="Fill" Margin="20,0" />
-                <BoxView Color="#FF2D85" WidthRequest="3" VerticalOptions="Fill" HorizontalOptions="Start" Margin="0,20" />
-                <BoxView Color="#FF2D85" WidthRequest="3" VerticalOptions="Fill" HorizontalOptions="End" Margin="0,20" />
-                <BoxView x:Name="laserLine" Color="#FF2D85" HeightRequest="2" VerticalOptions="Center" Opacity="0.6" IsVisible="True" />
+                <BoxView Color="#FF6B81" HeightRequest="3" VerticalOptions="Start" HorizontalOptions="Fill" Margin="20,0" />
+                <BoxView Color="#FF6B81" HeightRequest="3" VerticalOptions="End" HorizontalOptions="Fill" Margin="20,0" />
+                <BoxView Color="#FF6B81" WidthRequest="3" VerticalOptions="Fill" HorizontalOptions="Start" Margin="0,20" />
+                <BoxView Color="#FF6B81" WidthRequest="3" VerticalOptions="Fill" HorizontalOptions="End" Margin="0,20" />
+                <BoxView x:Name="laserLine" Color="#FF6B81" HeightRequest="2" VerticalOptions="Center" Opacity="0.6" IsVisible="True" />
             </Grid>
-        </Frame>
+        </Border>
 
-        <!-- Thanh Mini-player (Màu hồng đậm, tỉ lệ vàng 95px) -->
+        <!-- Thanh Mini-player -->
         <Border x:Name="miniPlayer"
                 IsVisible="False"
-                BackgroundColor="#FF2D85"
                 Padding="12,10"
                 Margin="12,0,12,30"
                 StrokeThickness="0"
                 AbsoluteLayout.LayoutBounds="0.5, 1, 1, 95"
                 AbsoluteLayout.LayoutFlags="PositionProportional, WidthProportional">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#FF3D78" Offset="0.0"/>
+                    <GradientStop Color="#FF6B81" Offset="0.5"/>
+                    <GradientStop Color="#FF9A76" Offset="1.0"/>
+                </LinearGradientBrush>
+            </Border.Background>
             <Border.StrokeShape>
                 <RoundRectangle CornerRadius="47.5" />
             </Border.StrokeShape>
             <Border.Shadow>
-                <Shadow Brush="Black" Offset="0,5" Radius="15" Opacity="0.2" />
+                <Shadow Brush="#FF3D78" Offset="0,6" Radius="18" Opacity="0.30" />
             </Border.Shadow>
             <Grid ColumnDefinitions="*, Auto">
                 <!-- Vùng 1: Thông tin + Sóng âm (Đã tối ưu Grid để không chồng lấn) -->
@@ -99,9 +125,9 @@
                 
                 <!-- Vùng 2: Nhóm nút bấm điều khiển (Spacing chuẩn) -->
                 <HorizontalStackLayout Grid.Column="1" Spacing="12" VerticalOptions="Center" Margin="0,0,10,0">
-                    <!-- Nút Play/Pause (Căn tâm tuyệt đối) -->
+                    <!-- Nút Play/Pause -->
                     <Grid WidthRequest="46" HeightRequest="46">
-                        <Border Padding="0" BackgroundColor="Transparent" Stroke="White" StrokeThickness="1.5">
+                        <Border Padding="0" BackgroundColor="#22FFFFFF" Stroke="White" StrokeThickness="1.5">
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="23" />
                             </Border.StrokeShape>
@@ -121,9 +147,9 @@
                         </Grid.GestureRecognizers>
                     </Grid>
 
-                    <!-- Nút Replay - Đã sửa lại Vector chuẩn mượt mà -->
+                    <!-- Nút Replay -->
                     <Grid WidthRequest="46" HeightRequest="46">
-                        <Border Padding="0" BackgroundColor="Transparent" Stroke="White" StrokeThickness="1.5">
+                        <Border Padding="0" BackgroundColor="#22FFFFFF" Stroke="White" StrokeThickness="1.5">
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="23" />
                             </Border.StrokeShape>
@@ -139,9 +165,9 @@
                         </Grid.GestureRecognizers>
                     </Grid>
 
-                    <!-- Nút Chi tiết - Dùng Path để căn giữa tuyệt đối -->
+                    <!-- Nút Chi tiết -->
                     <Grid WidthRequest="46" HeightRequest="46">
-                        <Border Padding="0" BackgroundColor="Transparent" Stroke="White" StrokeThickness="1.5">
+                        <Border Padding="0" BackgroundColor="#22FFFFFF" Stroke="White" StrokeThickness="1.5">
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="23" />
                             </Border.StrokeShape>
@@ -160,8 +186,11 @@
                     </Grid>
 
                     <!-- Nút Đóng (X) -->
-                    <Grid WidthRequest="32" HeightRequest="32">
-                        <Label Text="✕" TextColor="White" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" Opacity="0.8" />
+                    <Grid WidthRequest="34" HeightRequest="34">
+                        <Border Padding="0" BackgroundColor="#22FFFFFF" StrokeThickness="0">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="17" /></Border.StrokeShape>
+                            <Label Text="✕" TextColor="White" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
                         <Grid.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnClosePlayerClicked" />
                         </Grid.GestureRecognizers>

@@ -62,6 +62,15 @@ namespace FoodMapApp.Services
             Preferences.Default.Set("is_logged_in", true);
         }
 
+        public void LoginOffline()
+        {
+            Preferences.Default.Set("user_id", -1);
+            Preferences.Default.Set("username", "Khách");
+            Preferences.Default.Set("email", "offline@foodmap.com"); // Email giả định
+            Preferences.Default.Set("role", "offline");
+            Preferences.Default.Set("is_logged_in", true);
+        }
+
         public async Task<bool> UpdateProfileAsync(int userId, string username, string email, string? password = null)
         {
             try
@@ -91,6 +100,7 @@ namespace FoodMapApp.Services
         }
 
         public bool IsLoggedIn => Preferences.Default.Get("is_logged_in", false);
+        public bool IsOffline => Preferences.Default.Get("role", string.Empty) == "offline";
         public int UserId => Preferences.Default.Get("user_id", 0);
         public string Username => Preferences.Default.Get("username", string.Empty);
         public string Email => Preferences.Default.Get("email", string.Empty);

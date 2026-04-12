@@ -124,12 +124,28 @@ using (var scope = app.Services.CreateScope())
         
         // Schema Fix for Image Moderation
         try {
-            db.Database.ExecuteSqlRaw("ALTER TABLE poi_image_pending_changes MODIFY poi_id INT NULL;");
-        } catch { /* Already fixed or exists */ }
+            // Chỉ chạy lệnh MODIFY nếu cột poi_id chưa cho phép NULL (tránh log lỗi vô ích)
+            var columnInfo = db.Database.SqlQueryRaw<string>(
+                "SELECT IS_NULLABLE FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'poi_image_pending_changes' AND column_name = 'poi_id'"
+            ).ToList();
+
+            if (columnInfo.Any() && columnInfo[0].ToUpper() == "NO")
+            {
+                db.Database.ExecuteSqlRaw("ALTER TABLE poi_image_pending_changes MODIFY poi_id INT NULL;");
+            }
+        } catch { /* Suppress noisy logs */ }
 
         try {
-            db.Database.ExecuteSqlRaw("ALTER TABLE tours DROP COLUMN image_url;");
-        } catch { /* Already dropped or doesn't exist */ }
+            // Chỉ chạy lệnh DROP nếu cột vẫn còn tồn tại
+            var checkColumn = db.Database.SqlQueryRaw<int>(
+                "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'tours' AND column_name = 'image_url'"
+            ).ToList();
+
+            if (checkColumn.Any() && checkColumn[0] > 0)
+            {
+                db.Database.ExecuteSqlRaw("ALTER TABLE tours DROP COLUMN image_url;");
+            }
+        } catch { /* Suppress noisy logs */ }
 
         var user = db.Users.FirstOrDefault(u => u.Username == "vananh");
         if (user != null && user.Role != "admin")

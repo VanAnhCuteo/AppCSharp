@@ -8,85 +8,98 @@
 
 @if (stats == null)
 {
-    <div class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
+    <div style="display: flex; justify-content: center; padding: 4rem 0;">
+        <div class="spinner-border" role="status">
             <span class="visually-hidden">Đang tải...</span>
         </div>
     </div>
 }
 else
 {
-    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
-        <div class="card shadow-glass stats-card" style="border-left: 5px solid var(--primary); background: #fff;">
-            <div class="stats-icon" style="background: rgba(255, 45, 133, 0.1); color: var(--primary);"><i class="bi bi-shop"></i></div>
-            <div class="stats-data">
-                <p class="stats-label">Tổng số quán ăn</p>
-                <h2 class="stats-value">@stats.TotalPois</h2>
+    <!-- Page Header -->
+    <div style="margin-bottom: 2rem;">
+        <h2 style="font-size: 1.65rem; font-weight: 800; margin-bottom: 0.25rem; color: var(--text-main);">Tổng quan hệ thống</h2>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin: 0;">Theo dõi hoạt động và dữ liệu FoodMap</p>
+    </div>
+
+    <!-- Stats Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(248, 43, 96, 0.1); color: var(--primary);"><i class="bi bi-shop"></i></div>
+            <div class="stat-info">
+                <span class="stat-label">Tổng số quán ăn</span>
+                <span class="stat-value">@stats.TotalPois</span>
             </div>
         </div>
 
-        <div class="card shadow-glass stats-card" style="border-left: 5px solid #6c5ce7; background: #fff;">
-            <div class="stats-icon" style="background: rgba(108, 92, 231, 0.1); color: #6c5ce7;"><i class="bi bi-shield-lock"></i></div>
-            <div class="stats-data">
-                <p class="stats-label">Quản trị viên</p>
-                <h2 class="stats-value">@stats.TotalAdmins</h2>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(108, 92, 231, 0.1); color: #6c5ce7;"><i class="bi bi-shield-lock"></i></div>
+            <div class="stat-info">
+                <span class="stat-label">Quản trị viên</span>
+                <span class="stat-value">@stats.TotalAdmins</span>
             </div>
         </div>
 
-        <div class="card shadow-glass stats-card" style="border-left: 5px solid #00b8d4; background: #fff;">
-            <div class="stats-icon" style="background: rgba(0, 184, 212, 0.1); color: #00b8d4;"><i class="bi bi-person-badge"></i></div>
-            <div class="stats-data">
-                <p class="stats-label">Chủ nhà hàng</p>
-                <h2 class="stats-value">@stats.TotalOwners</h2>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(69, 170, 242, 0.1); color: #45AAF2;"><i class="bi bi-person-badge"></i></div>
+            <div class="stat-info">
+                <span class="stat-label">Chủ nhà hàng</span>
+                <span class="stat-value">@stats.TotalOwners</span>
             </div>
         </div>
 
-        <div class="card shadow-glass stats-card" style="border-left: 5px solid #ff7675; background: #fff;">
-            <div class="stats-icon" style="background: rgba(255, 118, 117, 0.1); color: #ff7675;"><i class="bi bi-people"></i></div>
-            <div class="stats-data">
-                <p class="stats-label">Khách hàng</p>
-                <h2 class="stats-value">@stats.TotalCustomers</h2>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(46, 213, 115, 0.1); color: #2ED573;"><i class="bi bi-people"></i></div>
+            <div class="stat-info">
+                <span class="stat-label">Khách hàng</span>
+                <span class="stat-value">@stats.TotalCustomers</span>
             </div>
         </div>
     </div>
 
-    <div class="card shadow" style="background: #fff;">
-        <h3 class="mb-4" style="color: var(--text-main);">Hoạt động gần đây</h3>
+    <!-- Activity Table -->
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <div style="padding: 1.5rem 1.75rem 1rem;">
+            <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-main);">Hoạt động gần đây</h3>
+        </div>
         <div class="table-responsive">
             <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%;">
                 <thead>
-                    <tr style="background: rgba(255, 45, 133, 0.02); text-align: center;">
-                        <th style="width: 22%; padding: 1.2rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Hành động</th>
-                        <th style="width: 23%; padding: 1.2rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Người thực hiện</th>
-                        <th style="width: 35%; padding: 1.2rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Đối tượng</th>
-                        <th style="width: 20%; padding: 1.2rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Thời gian</th>
+                    <tr>
+                        <th style="width: 22%; padding-left: 1.75rem;">Hành động</th>
+                        <th style="width: 23%;">Người thực hiện</th>
+                        <th style="width: 35%;">Đối tượng</th>
+                        <th style="width: 20%;">Thời gian</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (stats.RecentActivities == null || !stats.RecentActivities.Any())
                     {
                         <tr>
-                            <td colspan="4" class="text-center py-4 text-muted">Chưa có hoạt động nào gần đây</td>
+                            <td colspan="4" style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
+                                <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.5rem;"></i>
+                                Chưa có hoạt động nào gần đây
+                            </td>
                         </tr>
                     }
                     else
                     {
                         @foreach (var activity in stats.RecentActivities)
                         {
-                            <tr class="align-middle" style="text-align: center;">
-                                <td style="padding: 1.2rem 1rem;">
-                                    <span class="badge-activity @(activity.ActionType switch { 
-                                        "Đăng ký mới" => "activity-pink",
-                                        "Thêm quán ăn mới" => "activity-pink",
-                                        "Cập nhật thông tin" => "activity-cyan",
-                                        "Thêm danh mục" => "activity-pink",
-                                        "Xóa quán ăn" => "activity-red",
-                                        _ => "activity-gray"
+                            <tr>
+                                <td style="padding-left: 1.75rem;">
+                                    <span class="activity-badge @(activity.ActionType switch { 
+                                        "Đăng ký mới" => "ab-pink",
+                                        "Thêm quán ăn mới" => "ab-pink",
+                                        "Cập nhật thông tin" => "ab-blue",
+                                        "Thêm danh mục" => "ab-pink",
+                                        "Xóa quán ăn" => "ab-red",
+                                        _ => "ab-gray"
                                     })">@activity.ActionType</span>
                                 </td>
-                                <td style="padding: 1.2rem 1rem;"><span style="font-weight: 600; color: var(--text-main);">@activity.UserName</span></td>
-                                <td style="padding: 1.2rem 1rem;"><span class="text-truncate d-block" style="max-width: 100%; font-weight: 500;" title="@activity.TargetName">@activity.TargetName</span></td>
-                                <td style="padding: 1.2rem 1rem;" class="text-muted small">@activity.RelativeTime</td>
+                                <td><span style="font-weight: 600; color: var(--text-main); font-size: 0.88rem;">@activity.UserName</span></td>
+                                <td><span class="text-truncate d-block" style="max-width: 100%; font-size: 0.88rem; color: var(--text-secondary);" title="@activity.TargetName">@activity.TargetName</span></td>
+                                <td style="color: var(--text-muted); font-size: 0.82rem;">@activity.RelativeTime</td>
                             </tr>
                         }
                     }
@@ -96,73 +109,64 @@ else
     </div>
 
     <style>
-        .badge-activity {
-            padding: 0.4rem 0.8rem;
-            border-radius: 8px;
-            font-size: 0.7rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: inline-block;
-        }
-        .activity-pink { background: rgba(255, 45, 133, 0.08); color: var(--primary); border: 1px solid rgba(255, 45, 133, 0.1); }
-        .activity-cyan { background: rgba(0, 184, 212, 0.08); color: #00acc1; border: 1px solid rgba(0, 184, 212, 0.1); }
-        .activity-red { background: rgba(255, 77, 79, 0.08); color: #ff4d4f; border: 1px solid rgba(255, 77, 79, 0.1); }
-        .activity-gray { background: rgba(0, 0, 0, 0.05); color: #888; border: 1px solid rgba(0, 0, 0, 0.05); }
-        
-        .table-hover tbody tr:hover {
-            background-color: rgba(255, 45, 133, 0.01) !important;
-        }
-
-        /* Stats Cards Styling */
-        .stats-card {
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 1.35rem 1.5rem;
             display: flex;
-            flex-direction: row;
             align-items: center;
-            padding: 1.5rem;
-            border-radius: 24px;
-            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
-            border: 1px solid rgba(0,0,0,0.03);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+            gap: 1rem;
+            transition: all 0.25s var(--ease-out);
+            box-shadow: var(--shadow-sm);
         }
-        .stats-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: rgba(248, 43, 96, 0.12);
         }
-        .stats-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 16px;
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.4rem;
-            margin-right: 1.2rem;
+            font-size: 1.3rem;
             flex-shrink: 0;
         }
-        .stats-data {
+        .stat-info {
             display: flex;
             flex-direction: column;
+            gap: 2px;
         }
-        .stats-label {
+        .stat-label {
             color: var(--text-muted);
-            margin-bottom: 2px;
-            font-weight: 700;
+            font-size: 0.72rem;
+            font-weight: 600;
             text-transform: uppercase;
-            font-size: 0.65rem;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
         }
-        .stats-value {
-            font-size: 1.8rem;
-            font-weight: 900;
-            margin: 0;
+        .stat-value {
+            font-size: 1.6rem;
+            font-weight: 800;
             color: var(--text-main);
             line-height: 1;
         }
-        .shadow-glass {
-            box-shadow: 0 15px 35px rgba(0,0,0,0.03) !important;
-            border: 1px solid rgba(255, 45, 133, 0.05) !important;
+
+        .activity-badge {
+            padding: 0.3rem 0.65rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            display: inline-block;
         }
+        .ab-pink { background: rgba(248, 43, 96, 0.08); color: var(--primary); }
+        .ab-blue { background: rgba(69, 170, 242, 0.08); color: #2D98DA; }
+        .ab-red { background: rgba(255, 71, 87, 0.08); color: #FF4757; }
+        .ab-gray { background: rgba(0, 0, 0, 0.04); color: var(--text-muted); }
     </style>
 }
 

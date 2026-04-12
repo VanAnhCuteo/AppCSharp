@@ -32,9 +32,14 @@ namespace FoodMapApp.Views
             string role = Preferences.Default.Get("role", "user");
             string email = Preferences.Default.Get("email", "");
 
+            bool isOffline = role == "offline";
+
             ProfileUsernameLabel.Text = username;
             ProfileEmailLabel.Text = email;
-            ProfileRoleLabel.Text = role == "CNH" ? "Chủ Nhà Hàng" : role;
+            ProfileRoleLabel.Text = role == "CNH" ? "Chủ Nhà Hàng" : (isOffline ? "Chế độ Khách" : role);
+            
+            // Hide edit button in offline mode
+            EditProfileButton.IsVisible = !isOffline;
 
             EditUsernameEntry.Text = username;
             EditEmailEntry.Text = email;

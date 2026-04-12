@@ -9,10 +9,10 @@
 
 <PageTitle>Quản lý Người dùng - FoodMap Admin</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
     <div>
-        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Người dùng</h2>
-        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý tài khoản quản trị viên và chủ nhà hàng</p>
+        <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Người dùng</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Quản lý tài khoản quản trị viên và chủ nhà hàng</p>
     </div>
     <div class="filter-wrapper">
         <div class="filter-group">
@@ -24,7 +24,7 @@
     </div>
 </div>
 
-<div class="card shadow-glass border-0" style="border-radius: 30px; overflow: hidden; background: var(--surface);">
+<div class="card" style="padding: 0; overflow: hidden;">
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
@@ -109,25 +109,22 @@
 
 <style>
     .action-btn {
-        width: 38px;
-        height: 38px;
-        border-radius: 12px;
+        width: 34px;
+        height: 34px;
+        border-radius: var(--radius-sm);
         border: none;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s ease;
-        font-size: 1.1rem;
+        transition: all 0.2s var(--ease-out);
+        font-size: 0.95rem;
+        cursor: pointer;
     }
 
-    .btn-edit { background: rgba(255, 45, 133, 0.05); color: var(--primary); }
-    .btn-edit:hover { background: var(--primary); color: white; transform: translateY(-2px); }
-    .btn-delete { background: rgba(255, 0, 0, 0.05); color: #ff4d4f; }
-    .btn-delete:hover { background: #ff4d4f; color: white; transform: translateY(-2px); }
-    .shadow-glass {
-        box-shadow: 0 20px 60px rgba(0,0,0,0.03) !important;
-        border: 1px solid var(--glass-border) !important;
-    }
+    .btn-edit { background: var(--primary-subtle); color: var(--primary); }
+    .btn-edit:hover { background: var(--primary); color: white; transform: translateY(-1px); }
+    .btn-delete { background: rgba(255, 71, 87, 0.06); color: #FF4757; }
+    .btn-delete:hover { background: #FF4757; color: white; transform: translateY(-1px); }
 
     .user-avatar {
         width: 38px;
@@ -173,26 +170,27 @@
     }
     .filter-group {
         display: flex;
-        gap: 0.5rem;
-        background: rgba(0,0,0,0.03);
-        padding: 0.4rem;
-        border-radius: 16px;
+        gap: 4px;
+        background: var(--bg);
+        padding: 4px;
+        border-radius: var(--radius-md);
         width: fit-content;
     }
     .filter-btn {
-        padding: 0.5rem 1.2rem;
-        border-radius: 12px;
+        padding: 0.45rem 1rem;
+        border-radius: var(--radius-sm);
         border: none;
         background: transparent;
         color: var(--text-muted);
-        font-weight: 700;
-        font-size: 0.85rem;
-        transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        font-weight: 600;
+        font-size: 0.82rem;
+        transition: all 0.25s var(--ease-out);
+        cursor: pointer;
     }
     .filter-btn.active {
-        background: white;
+        background: var(--surface);
         color: var(--primary);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        box-shadow: var(--shadow-sm);
     }
     .filter-btn:hover:not(.active) {
         color: var(--text-main);

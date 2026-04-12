@@ -10,13 +10,13 @@
 
 <PageTitle>Quản lý Hình ảnh - FoodMap Admin</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
     <div>
-        <h2 class="mb-1" style="font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Thư viện Hình ảnh</h2>
-        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý ảnh cho các quán ăn và địa điểm</p>
+        <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Thư viện Hình ảnh</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Quản lý ảnh cho các quán ăn và địa điểm</p>
     </div>
-    <button class="glass-btn pulse-animation" style="padding: 1rem 2.2rem; font-size: 1.05rem; border-radius: 20px; box-shadow: 0 15px 35px var(--primary-glow);" @onclick="AddNew">
-        <i class="bi bi-plus-lg me-2"></i> Thêm ảnh mới
+    <button class="glass-btn" @onclick="AddNew">
+        <i class="bi bi-plus-lg"></i> Thêm ảnh mới
     </button>
 </div>
 
@@ -46,7 +46,7 @@
     </div>
 }
 
-<div class="card shadow-glass border-0" style="border-radius: 30px; overflow: hidden; background: var(--surface);">
+<div class="card" style="padding: 0; overflow: hidden;">
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>

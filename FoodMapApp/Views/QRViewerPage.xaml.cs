@@ -151,7 +151,7 @@ public partial class QRViewerPage : ContentPage
         _hasDetected = true;
         HapticFeedback.Default.Perform(HapticFeedbackType.LongPress);
 
-        magicLens.BorderColor = Colors.Green;
+        magicLens.Stroke = new SolidColorBrush(Colors.Green);
         await magicLens.ScaleTo(1.2, 200);
         await magicLens.ScaleTo(1.0, 200);
         
@@ -282,7 +282,7 @@ public partial class QRViewerPage : ContentPage
         _isScanning = false;
         _hasDetected = false;
         _currentChunkIndex = 0;
-        magicLens.BorderColor = Color.FromArgb("#FF2D85");
+        magicLens.Stroke = new SolidColorBrush(Color.FromArgb("#FF6B81"));
     }
 
     private void OnDetailClicked(object sender, EventArgs e)

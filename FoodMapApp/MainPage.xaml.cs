@@ -12,26 +12,26 @@ namespace FoodMapApp
         public static int? PendingRouteFoodId { get; set; } = null;
 
         // Automatic Geofencing Session
-        private string _autoPoiId = "";
-        private string _autoSpokenText = "";
-        private string[] _autoSentences = Array.Empty<string>();
-        private int _autoSentenceIndex = 0;
-        private bool _isAutoPaused = true;
+        private static string _autoPoiId = "";
+        private static string _autoSpokenText = "";
+        private static string[] _autoSentences = Array.Empty<string>();
+        private static int _autoSentenceIndex = 0;
+        private static bool _isAutoPaused = true;
 
         // Manual Selection Session
-        private string _manualPoiId = "";
-        private string _manualSpokenText = "";
-        private string[] _manualSentences = Array.Empty<string>();
-        private int _manualSentenceIndex = 0;
-        private bool _isManualActive = false;
-        private bool _isManualPaused = false;
+        private static string _manualPoiId = "";
+        private static string _manualSpokenText = "";
+        private static string[] _manualSentences = Array.Empty<string>();
+        private static int _manualSentenceIndex = 0;
+        private static bool _isManualActive = false;
+        private static bool _isManualPaused = false;
 
-        private string _autoLang = "vi-VN";
-        private string _manualLang = "vi-VN";
-        private bool _isActuallySpeaking = false; 
-        private bool _isCleaningUp = false; 
-        private TaskCompletionSource<bool>? _pauseTcs;
-        private Queue<(string Text, string Id, string Lang, int StartIndex)> _audioQueue = new();
+        private static string _autoLang = "vi-VN";
+        private static string _manualLang = "vi-VN";
+        private static bool _isActuallySpeaking = false; 
+        private static bool _isCleaningUp = false; 
+        private static TaskCompletionSource<bool>? _pauseTcs;
+        private static Queue<(string Text, string Id, string Lang, int StartIndex)> _audioQueue = new();
 
         private string NormalizeText(string text)
         {
@@ -636,19 +636,44 @@ namespace FoodMapApp
         }
 
 
-        private IEnumerable<Locale>? _cachedLocales = null;
-        private CancellationTokenSource? _ttsCts;
-        private CancellationTokenSource? _currentSentenceCts;
+        private static IEnumerable<Locale>? _cachedLocales = null;
+        private static CancellationTokenSource? _ttsCts;
+        private static CancellationTokenSource? _currentSentenceCts;
         private readonly SemaphoreSlim _ttsSemaphore = new SemaphoreSlim(1, 1);
         private bool _isMapLoaded = false;
-        private string? _foodsJson = null;
-        private Stopwatch _audioStopwatch = new Stopwatch();
+        private static string? _foodsJson = null;
+        private static Stopwatch _audioStopwatch = new Stopwatch();
         private IDispatcherTimer? _locationTimer;
 
         protected override async void OnAppearing()
         {
             base.OnAppearing();
-            await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+
+            // 1. KHÔI PHỤC GIAO DIỆN AUDIO NGAY LẬP TỨC (TRƯỚC KHI LÀM VIỆC KHÁC)
+            // Ưu tiên session Thủ công nếu đang active
+            if (_isManualActive && !string.IsNullOrEmpty(_manualPoiId))
+            {
+                _isManualPaused = true;
+                _ = ShowMiniPlayer(_manualPoiId, true, startPaused: true);
+            }
+            // Nếu không thì khôi phục session Tự động (GPS)
+            else if (!string.IsNullOrEmpty(_autoPoiId))
+            {
+                _isAutoPaused = true;
+                _ = ShowMiniPlayer(_autoPoiId, false, startPaused: true);
+            }
+            // Trường hợp hàng đợi có quán tiếp theo
+            else if (_audioQueue.Count > 0)
+            {
+                if (_audioQueue.TryPeek(out var next))
+                {
+                    _isAutoPaused = true;
+                    _ = ShowMiniPlayer(next.Id, false, startPaused: true);
+                }
+            }
+
+            // 2. CÁC TÁC VỤ KHÁC (CÓ THỂ GÂY TRỄ)
+            _ = Permissions.RequestAsync<Permissions.LocationWhenInUse>(); // Không await để không chặn UI
             
             if (_isMapLoaded) 
             { 
@@ -656,47 +681,29 @@ namespace FoodMapApp
                 _ = LoadFoods(currentLang); 
                 await TryOpenPendingDetail(); 
             }
-
-            // KHÔI PHỤC GIAO DIỆN AUDIO (NẾU ĐANG CÓ SESSSION)
-            if (_isManualActive && !string.IsNullOrEmpty(_manualPoiId))
-            {
-                _isManualPaused = true; // Luôn để ở trạng thái tạm dừng khi quay lại
-                await ShowMiniPlayer(_manualPoiId, true, startPaused: true);
-            }
-            else if (!string.IsNullOrEmpty(_autoPoiId))
-            {
-                _isAutoPaused = true; // Luôn để ở trạng thái tạm dừng khi quay lại
-                await ShowMiniPlayer(_autoPoiId, false, startPaused: true);
-            }
         }
 
         protected override void OnDisappearing()
         {
             base.OnDisappearing();
             
-            // Khi rời trang bản đồ, nếu đang phát audio (tự động hoặc thủ công)
-            // ta tạm dừng đọc nhưng KHÔNG reset session để khi quay lại có thể nghe tiếp.
+            // Khi rời trang bản đồ, tạm dừng đọc để tiết kiệm pin/tài nguyên
+            // nhưng TUYỆT ĐỐI KHÔNG reset session (_autoPoiId, _manualPoiId, _audioQueue)
             if (_isActuallySpeaking)
             {
                 StopSpeech(fullReset: false, clearQueue: false);
                 
-                if (_isManualActive)
-                {
-                    _isManualPaused = true;
-                }
-                else
-                {
-                    _isAutoPaused = true;
-                }
-                
-                // Cập nhật icon ngay để tránh giật lag khi quay lại
-                MainThread.BeginInvokeOnMainThread(() => {
-                    mPlayIcon.IsVisible = true;
-                    mPauseIcon.IsVisible = false;
-                    playIcon.IsVisible = true;
-                    pauseIcon.IsVisible = false;
-                });
+                if (_isManualActive) _isManualPaused = true;
+                else _isAutoPaused = true;
             }
+
+            // Đảm bảo icon hiển thị đúng trạng thái "Pause" (Sẵn sàng Play) kể cả khi vừa tắt/đang đợi
+            MainThread.BeginInvokeOnMainThread(() => {
+                mPlayIcon.IsVisible = true;
+                mPauseIcon.IsVisible = false;
+                playIcon.IsVisible = true;
+                pauseIcon.IsVisible = false;
+            });
         }
 
         public async Task TryOpenPendingDetail()

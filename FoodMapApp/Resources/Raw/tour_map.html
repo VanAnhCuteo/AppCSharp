@@ -4,13 +4,38 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Tour Map</title>
+    
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    
+    <!-- Shared CSS -->
+    <link rel="stylesheet" href="base.css" />
+    <link rel="stylesheet" href="markers.css" />
+    <link rel="stylesheet" href="sheet.css" />
+    
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+        body { margin: 0; padding: 0; font-family: 'Outfit', sans-serif; overflow: hidden; background: #fdfcfd; }
         #map { height: 100vh; width: 100vw; background: #f8f9fa; }
         
-        /* Custom Numbered Markers */
+        /* User Location Marker override */
+        .user-marker {
+            background: #4285F4;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 0 5px rgba(66, 133, 244, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0px rgba(66, 133, 244, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(66, 133, 244, 0); }
+            100% { box-shadow: 0 0 0 0px rgba(66, 133, 244, 0); }
+        }
+
+        /* Numbered markers override */
         .tour-marker {
             background: #333;
             color: white;
@@ -24,16 +49,58 @@
             border: 2px solid white;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
             font-size: 14px;
+            transition: all 0.3s;
         }
         .tour-marker.active {
-            background: #FF6A88;
+            background: #F82B60;
             transform: scale(1.2);
             z-index: 1000 !important;
+            box-shadow: 0 4px 15px rgba(248, 43, 96, 0.4);
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
+
+    <!-- Bottom Sheet (Copied from map.html) -->
+    <div id="bottom-sheet" class="bottom-sheet">
+        <div class="sheet-drag-handle" id="drag-handle" onclick="closeDetails()">
+            <div class="drag-bar"></div>
+        </div>
+        <div class="sheet-content">
+            <div id="sheet-header">
+                <div style="flex: 1;">
+                    <h2 id="sheet-title">Tên quán</h2>
+                    <div class="lang-selector">
+                        <div class="lang-btn active"><img src="images/vn_flag.png" alt="VI"></div>
+                        <div class="lang-btn"><img src="images/uk_flag.png" alt="EN"></div>
+                    </div>
+                </div>
+                <button class="speaker-btn">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.03,19.86 21,16.28 21,12C21,7.72 18.03,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16.02C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="sheet-images" id="sheet-images">
+                <!-- Dynamic images -->
+            </div>
+
+            <div class="sheet-info">
+                <div class="info-row">
+                    <svg class="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
+                    <span id="sheet-address">Đang tải...</span>
+                </div>
+                <div class="info-row">
+                    <svg class="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span id="sheet-time">08:00 - 22:00</span>
+                </div>
+                <button class="resto-btn" style="background: #F82B60; width: 100%; margin-top: 15px; border-radius: 14px; height: 50px; color: white; border: none; font-weight: bold;" onclick="closeDetails()">Đóng chi tiết</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
         const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([10.7672, 106.6931], 15);
@@ -42,59 +109,138 @@
         let tourPois = [];
         let markers = [];
         let routeLayer = null;
+        let previewLayer = null;
+        let currentPoiIdOpen = null;
+        let lastUserLat = null;
+        let lastUserLng = null;
 
-        window.loadTourRoute = async function(json) {
-            console.log("Loading tour route...");
+        // --- Helper: Distance ---
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // metres
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180;
+            const Δλ = (lon2-lon1) * Math.PI/180;
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // in metres
+        }
+
+        window.loadTourRoute = async function(json, userLat, userLng, currentStopIndex, isJourneyStarted) {
+            console.log("Tour update:", userLat, userLng, "Stop:", currentStopIndex, "Started:", isJourneyStarted);
             tourPois = typeof json === 'string' ? JSON.parse(json) : json;
-            
-            // Clear existing
+            lastUserLat = userLat;
+            lastUserLng = userLng;
+
+            // Clear existing layers
             markers.forEach(m => map.removeLayer(m));
             markers = [];
             if (routeLayer) map.removeLayer(routeLayer);
+            if (previewLayer) map.removeLayer(previewLayer);
 
-            if (tourPois.length === 0) return;
+            // 1. User Location
+            if (userLat !== null && userLng !== null) {
+                const userMarker = L.marker([userLat, userLng], {
+                    icon: L.divIcon({ className: 'user-marker', iconSize: [16, 16], iconAnchor: [8, 8] })
+                }).addTo(map);
+                markers.push(userMarker);
 
-            const coords = [];
+                // Proximity check for auto-opening details
+                if (isJourneyStarted && currentStopIndex < tourPois.length) {
+                    const target = tourPois[currentStopIndex];
+                    const distance = calculateDistance(userLat, userLng, target.latitude, target.longitude);
+                    if (distance < 50 && currentPoiIdOpen !== target.poi_id) {
+                        openDetails(target);
+                    }
+                }
+            }
+
+            // 2. Markers Styling Logic
             tourPois.forEach((poi, index) => {
+                let markerClass = 'tour-marker';
+                if (isJourneyStarted) {
+                    if (index === currentStopIndex) markerClass += ' active';
+                }
+
                 const marker = L.marker([poi.latitude, poi.longitude], {
                     icon: L.divIcon({
-                        className: 'tour-marker',
+                        className: markerClass,
                         html: `<span>${index + 1}</span>`,
                         iconSize: [30, 30],
                         iconAnchor: [15, 15]
                     })
                 }).addTo(map);
+                
+                marker.on('click', () => openDetails(poi));
                 markers.push(marker);
-                coords.push(`${poi.longitude},${poi.latitude}`);
             });
 
-            // Fetch OSRM Route
-            const url = `https://router.project-osrm.org/route/v1/driving/${coords.join(';')}?overview=full&geometries=geojson`;
-            try {
-                const res = await fetch(url);
-                const data = await res.json();
-                if (data.code === 'Ok') {
-                    routeLayer = L.geoJSON(data.routes[0].geometry, {
-                        style: { color: '#333', weight: 5, opacity: 0.7, lineJoin: 'round' }
-                    }).addTo(map);
-                    map.fitBounds(routeLayer.getBounds(), { padding: [80, 80] });
+            // 3. Routing Logic
+            if (isJourneyStarted) {
+                // NAVIGATION MODE: User -> Target
+                if (userLat === null) return;
+                const target = tourPois[currentStopIndex];
+                const waypoints = [`${userLng},${userLat}`, `${target.longitude},${target.latitude}`];
+                
+                const url = `https://router.project-osrm.org/route/v1/walking/${waypoints.join(';')}?overview=full&geometries=geojson`;
+                try {
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    if (data.code === 'Ok') {
+                        routeLayer = L.geoJSON(data.routes[0].geometry, {
+                            style: { color: '#F82B60', weight: 6, opacity: 0.8, lineJoin: 'round' }
+                        }).addTo(map);
+                        map.fitBounds(routeLayer.getBounds(), { padding: [100, 100] });
+                    }
+                } catch (e) {
+                    console.error("OSRM Error:", e);
+                    routeLayer = L.polyline([[userLat, userLng], [target.latitude, target.longitude]], 
+                        { color: '#F82B60', weight: 4, dashArray: '5, 10' }).addTo(map);
+                    map.fitBounds(routeLayer.getBounds(), { padding: [100, 100] });
                 }
-            } catch (e) {
-                console.error("OSRM Error:", e);
-                // Fallback to simple line
-                routeLayer = L.polyline(tourPois.map(p => [p.latitude, p.longitude]), { color: '#333', dashArray: '5, 10' }).addTo(map);
+            } else {
+                // PREVIEW MODE: Polyline connecting all points
+                const pathCoords = tourPois.map(p => [p.latitude, p.longitude]);
+                previewLayer = L.polyline(pathCoords, {
+                    color: '#999',
+                    weight: 3,
+                    dashArray: '8, 12',
+                    opacity: 0.5
+                }).addTo(map);
+                
+                if (pathCoords.length > 0) {
+                    map.fitBounds(previewLayer.getBounds(), { padding: [80, 80] });
+                }
             }
         };
 
+        window.openDetails = function(poi) {
+            currentPoiIdOpen = poi.poi_id;
+            document.getElementById('sheet-title').innerText = poi.name;
+            document.getElementById('sheet-address').innerText = poi.address || "Đang cập nhật...";
+            
+            const imgContainer = document.getElementById('sheet-images');
+            imgContainer.innerHTML = '';
+            const img = document.createElement('img');
+            img.className = 'sheet-image';
+            img.src = poi.image_url || 'https://via.placeholder.com/200x140?text=No+Image';
+            imgContainer.appendChild(img);
+
+            document.getElementById('bottom-sheet').classList.add('open');
+        };
+
+        window.closeDetails = function() {
+            document.getElementById('bottom-sheet').classList.remove('open');
+            currentPoiIdOpen = null;
+        };
+
         window.focusStop = function(index) {
-            markers.forEach((m, i) => {
-                if (i === index) {
-                    m.getElement().classList.add('active');
-                    map.flyTo(m.getLatLng(), 17, { animate: true, duration: 1 });
-                } else {
-                    m.getElement().classList.remove('active');
-                }
-            });
+            const m = markers.find(mark => mark.options.icon.options.html && mark.options.icon.options.html.includes(`>${index + 1}<`));
+            if (m) {
+                map.flyTo(m.getLatLng(), 17, { animate: true, duration: 1.5 });
+            }
         };
     </script>
 </body>

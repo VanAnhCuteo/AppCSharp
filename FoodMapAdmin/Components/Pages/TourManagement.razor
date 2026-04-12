@@ -9,14 +9,14 @@
 
 <PageTitle>Quản lý Tour - FoodMap Admin</PageTitle>
 
-<div class="header-container animate-fade-in mb-4">
-    <div class="d-flex justify-content-between align-items-end">
-            <h1 class="display-5 fw-900 mb-1 text-gradient">Quản lý Tour</h1>
-            <p class="text-muted mb-0">Hệ thống tối ưu hóa và quản lý lộ trình ẩm thực</p>
-        <button class="glass-btn pulse-animation" style="padding: 1rem 2.2rem; font-size: 1.05rem; border-radius: 20px; box-shadow: 0 15px 35px var(--primary-glow);" @onclick='(() => Navigation.NavigateTo("/tours/create"))'>
-            <i class="bi bi-plus-lg me-2"></i> Tạo Tour mới
-        </button>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
+    <div>
+        <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Quản lý Tour</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Hệ thống tối ưu hóa và quản lý lộ trình ẩm thực</p>
     </div>
+    <button class="glass-btn" @onclick='(() => Navigation.NavigateTo("/tours/create"))'>
+        <i class="bi bi-plus-lg"></i> Tạo Tour mới
+    </button>
 </div>
 
 @* ── Stats Overview ── *@

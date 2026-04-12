@@ -45,21 +45,33 @@ namespace FoodMapAPI.Controllers
                 {
                     await conn.OpenAsync();
 
-                    string query = "SELECT * FROM tours";
+                    string query = @"
+                        SELECT DISTINCT t.* 
+                        FROM tours t
+                        LEFT JOIN tour_pois tp ON t.tour_id = tp.tour_id
+                        LEFT JOIN pois p ON tp.poi_id = p.poi_id";
+
                     List<string> filters = new List<string>();
                     
-                    if (!string.IsNullOrEmpty(search)) filters.Add("name LIKE @search");
-                    if (min_duration.HasValue) filters.Add("duration_minutes >= @min_dur");
-                    if (max_duration.HasValue) filters.Add("duration_minutes <= @max_dur");
-                    if (min_price.HasValue) filters.Add("price >= @min_price");
-                    if (max_price.HasValue) filters.Add("price <= @max_price");
+                    if (!string.IsNullOrEmpty(search)) 
+                    {
+                        filters.Add(@"(t.name LIKE @search 
+                                   OR t.description LIKE @search 
+                                   OR p.name LIKE @search 
+                                   OR CAST(t.price AS CHAR) LIKE @search 
+                                   OR CAST(t.duration_minutes AS CHAR) LIKE @search)");
+                    }
+                    if (min_duration.HasValue) filters.Add("t.duration_minutes >= @min_dur");
+                    if (max_duration.HasValue) filters.Add("t.duration_minutes <= @max_dur");
+                    if (min_price.HasValue) filters.Add("t.price >= @min_price");
+                    if (max_price.HasValue) filters.Add("t.price <= @max_price");
 
                     if (filters.Count > 0)
                     {
                         query += " WHERE " + string.Join(" AND ", filters);
                     }
 
-                    query += " ORDER BY created_at DESC";
+                    query += " ORDER BY t.created_at DESC";
 
                     MySqlCommand cmd = new MySqlCommand(query, conn);
                     if (!string.IsNullOrEmpty(search)) cmd.Parameters.AddWithValue("@search", $"%{search}%");

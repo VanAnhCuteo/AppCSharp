@@ -9,6 +9,9 @@ namespace FoodMapApp.Views
         private int _tourId;
         private TourModel? _tour;
         private int _currentStopIndex = 0;
+        private Location? _userLocation;
+        private bool _isJourneyStarted = false;
+        private int _visitedCount = 0;
 
         public TourMapPage(int tourId)
         {
@@ -35,14 +38,28 @@ namespace FoodMapApp.Views
         {
             try
             {
+                // Try to get current location
+                try
+                {
+                    var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+                    if (status != PermissionStatus.Granted)
+                        status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+
+                    if (status == PermissionStatus.Granted)
+                    {
+                        var request = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10));
+                        _userLocation = await Geolocation.Default.GetLocationAsync(request);
+                    }
+                }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Location Error: {ex.Message}"); }
+
                 using HttpClient client = new HttpClient();
                 _tour = await client.GetFromJsonAsync<TourModel>($"{AppConfig.TourApiUrl}/{_tourId}");
                 if (_tour != null)
                 {
-                    tourTitleLabel.Text = _tour.name;
-                    tourSubtitleLabel.Text = $"{_tour.DurationDisplay} • {_tour.PriceDisplay}";
+                    currentStopNameLabel.Text = _tour.name;
+                    stopCountLabel.Text = $"{_tour.pois?.Count ?? 0} quán";
                     UpdateStopInfo();
-                    await SendTourToMap();
                 }
             }
             catch (Exception ex)
@@ -55,28 +72,36 @@ namespace FoodMapApp.Views
         {
             if (_tour?.pois == null || _tour.pois.Count == 0) return;
 
-            if (_currentStopIndex >= _tour.pois.Count)
+            if (!_isJourneyStarted)
             {
-                await DisplayAlert("Hoàn thành", "Bạn đã hoàn thành tour này!", "Tuyệt vời");
-                await Navigation.PopAsync();
-                return;
+                statusTitleLabel.Text = "BẢN ĐỒ TOUR";
+                currentStopNameLabel.Text = _tour.name;
+                actionButton.Text = "Bắt đầu hành trình";
+            }
+            else
+            {
+                var currentPoi = _tour.pois[_currentStopIndex];
+                statusTitleLabel.Text = $"ĐỊA ĐIỂM {_visitedCount}";
+                currentStopNameLabel.Text = currentPoi.name;
+                actionButton.Text = _visitedCount < _tour.pois.Count ? "Đến địa điểm tiếp theo" : "Hoàn thành hành trình";
+                
+                await tourMapView.EvaluateJavaScriptAsync($"focusStop({_currentStopIndex})");
             }
 
-            var poi = _tour.pois[_currentStopIndex];
-            stopNumberLabel.Text = (_currentStopIndex + 1).ToString();
-            stopNameLabel.Text = poi.name;
-            stopDurationLabel.Text = $"{poi.stay_duration} phút";
-            stopPriceLabel.Text = $"{poi.average_price:N0} VNĐ";
-
-            // Tell the map to focus on this stop
-            await tourMapView.EvaluateJavaScriptAsync($"focusStop({_currentStopIndex})");
+            await SendTourToMap();
         }
 
         private async Task SendTourToMap()
         {
             if (_tour?.pois == null) return;
             var json = System.Text.Json.JsonSerializer.Serialize(_tour.pois);
-            await tourMapView.EvaluateJavaScriptAsync($"loadTourRoute({json})");
+            string userLocParams = _userLocation != null 
+                ? $"{_userLocation.Latitude}, {_userLocation.Longitude}" 
+                : "null, null";
+            
+            // Pass the state: isJourneyStarted (0/1)
+            int journeyState = _isJourneyStarted ? 1 : 0;
+            await tourMapView.EvaluateJavaScriptAsync($"loadTourRoute({json}, {userLocParams}, {_currentStopIndex}, {journeyState})");
         }
 
         private async void OnBackClicked(object sender, EventArgs e)
@@ -86,8 +111,54 @@ namespace FoodMapApp.Views
 
         private void OnNextStopClicked(object sender, EventArgs e)
         {
-            _currentStopIndex++;
-            UpdateStopInfo();
+            if (_tour?.pois == null || _tour.pois.Count == 0) return;
+
+            if (!_isJourneyStarted)
+            {
+                _currentStopIndex = FindNearestPoiIndex();
+                _isJourneyStarted = true;
+                _visitedCount = 1;
+                UpdateStopInfo();
+            }
+            else
+            {
+                if (_visitedCount >= _tour.pois.Count)
+                {
+                    FinishTour();
+                    return;
+                }
+
+                // Chuyển chặng theo vòng tròn (Phương án A)
+                _currentStopIndex = (_currentStopIndex + 1) % _tour.pois.Count;
+                _visitedCount++;
+                UpdateStopInfo();
+            }
+        }
+
+        private int FindNearestPoiIndex()
+        {
+            if (_tour?.pois == null || _userLocation == null) return 0;
+            
+            double minDistance = double.MaxValue;
+            int nearestIndex = 0;
+
+            for (int i = 0; i < _tour.pois.Count; i++)
+            {
+                var poi = _tour.pois[i];
+                double dist = Location.CalculateDistance(_userLocation.Latitude, _userLocation.Longitude, poi.latitude, poi.longitude, DistanceUnits.Kilometers);
+                if (dist < minDistance)
+                {
+                    minDistance = dist;
+                    nearestIndex = i;
+                }
+            }
+            return nearestIndex;
+        }
+
+        private async void FinishTour()
+        {
+            await DisplayAlert("Chúc mừng!", "Bạn đã hoàn thành toàn bộ hành trình tour.", "Tuyệt vời");
+            await Navigation.PopAsync();
         }
     }
 }

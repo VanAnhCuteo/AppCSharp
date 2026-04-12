@@ -3,81 +3,112 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="FoodMapApp.Views.ProfilePage"
              NavigationPage.HasNavigationBar="False"
-             BackgroundColor="#FFF5F7">
+             BackgroundColor="#FFF7F8">
 
     <ScrollView VerticalScrollBarVisibility="Never">
         <VerticalStackLayout>
             <!-- Header (Part of scroll) -->
-            <Grid Padding="20,52,20,30">
+            <Grid Padding="20,54,20,34">
                 <Grid.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#FF6A88" Offset="0.0" />
-                        <GradientStop Color="#FFAD9F" Offset="1.0" />
+                        <GradientStop Color="#FF6B81" Offset="0.0" />
+                        <GradientStop Color="#FF9A76" Offset="0.6" />
+                        <GradientStop Color="#FFB8A6" Offset="1.0" />
                     </LinearGradientBrush>
                 </Grid.Background>
 
-                <!-- Decorative glow -->
-                <Ellipse WidthRequest="200" HeightRequest="200"
+                <!-- Decorative glows -->
+                <Ellipse WidthRequest="240" HeightRequest="240"
                          HorizontalOptions="Start" VerticalOptions="Start"
-                         Margin="-50,-50,0,0" Opacity="0.12">
+                         Margin="-60,-60,0,0" Opacity="0.10">
+                    <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
+                </Ellipse>
+                <Ellipse WidthRequest="100" HeightRequest="100"
+                         HorizontalOptions="End" VerticalOptions="End"
+                         Margin="0,0,-30,-20" Opacity="0.06">
                     <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
                 </Ellipse>
 
                 <VerticalStackLayout HorizontalOptions="Center" Spacing="12">
                     <Grid HorizontalOptions="Center" Margin="0,0,0,4">
-                        <Ellipse WidthRequest="112" HeightRequest="112" HorizontalOptions="Center" Opacity="0.2">
+                        <!-- Triple ring glow -->
+                        <Ellipse WidthRequest="130" HeightRequest="130" HorizontalOptions="Center" Opacity="0.10">
                             <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
                         </Ellipse>
-                        <Frame WidthRequest="90" HeightRequest="90" CornerRadius="45" Padding="0"
-                               BackgroundColor="White" HasShadow="False"
-                               HorizontalOptions="Center" VerticalOptions="Center">
+                        <Ellipse WidthRequest="115" HeightRequest="115" HorizontalOptions="Center" Opacity="0.18">
+                            <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
+                        </Ellipse>
+                        <Border WidthRequest="94" HeightRequest="94" Padding="0"
+                                BackgroundColor="White" StrokeThickness="0"
+                                HorizontalOptions="Center" VerticalOptions="Center">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="47"/></Border.StrokeShape>
+                            <Border.Shadow>
+                                <Shadow Brush="#FF6B81" Offset="0,4" Opacity="0.2" Radius="12"/>
+                            </Border.Shadow>
                             <Path Data="M12,12 C14.21,12 16,10.21 16,8 C16,5.79 14.21,4 12,4 C9.79,4 8,5.79 8,8 C8,10.21 9.79,12 12,12 M12,14 C9.33,14 4,15.34 4,18 L4,20 L20,20 L20,18 C20,15.34 14.67,14 12,14 Z"
-                                  Fill="#FF6A88" Aspect="Uniform" WidthRequest="40" HeightRequest="40"
+                                  Fill="#FF6B81" Aspect="Uniform" WidthRequest="42" HeightRequest="42"
                                   HorizontalOptions="Center" VerticalOptions="Center"/>
-                        </Frame>
+                        </Border>
                     </Grid>
 
-                    <VerticalStackLayout x:Name="DisplayModeLayout" Spacing="4" HorizontalOptions="Center">
-                        <Label x:Name="ProfileUsernameLabel" TextColor="White" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center"/>
-                        <Label x:Name="ProfileEmailLabel" TextColor="White" FontSize="13" Opacity="0.85" HorizontalOptions="Center"/>
-                        <Button x:Name="EditProfileButton" Text="Chỉnh sửa hồ sơ" Clicked="OnEditClicked" BackgroundColor="#22FFFFFF" TextColor="White" FontSize="12" CornerRadius="16" FontAttributes="Bold" HeightRequest="32" Padding="16,0" Margin="0,8,0,0"/>
+                    <VerticalStackLayout x:Name="DisplayModeLayout" Spacing="5" HorizontalOptions="Center">
+                        <Label x:Name="ProfileUsernameLabel" TextColor="White" FontSize="24" FontAttributes="Bold" HorizontalOptions="Center" CharacterSpacing="0.5"/>
+                        <Label x:Name="ProfileEmailLabel" TextColor="White" FontSize="13" Opacity="0.88" HorizontalOptions="Center"/>
+                        <Button x:Name="EditProfileButton" Text="Chỉnh sửa hồ sơ" Clicked="OnEditClicked" BackgroundColor="#28FFFFFF" TextColor="White" FontSize="12" CornerRadius="16" FontAttributes="Bold" HeightRequest="34" Padding="18,0" Margin="0,8,0,0"/>
                     </VerticalStackLayout>
 
                     <VerticalStackLayout x:Name="EditModeLayout" Spacing="10" HorizontalOptions="Center" IsVisible="False" WidthRequest="280">
-                        <Frame BackgroundColor="#33FFFFFF" CornerRadius="16" Padding="0" HasShadow="False" HeightRequest="48" BorderColor="Transparent">
+                        <Border BackgroundColor="#28FFFFFF" Padding="0" StrokeThickness="0" HeightRequest="48">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
                             <Entry x:Name="EditUsernameEntry" Placeholder="Tên người dùng" TextColor="White" PlaceholderColor="#EEFFFFFF" BackgroundColor="Transparent" HorizontalTextAlignment="Center" IsTextPredictionEnabled="False" IsSpellCheckEnabled="False"/>
-                        </Frame>
-                        <Frame BackgroundColor="#33FFFFFF" CornerRadius="16" Padding="0" HasShadow="False" HeightRequest="48" BorderColor="Transparent">
+                        </Border>
+                        <Border BackgroundColor="#28FFFFFF" Padding="0" StrokeThickness="0" HeightRequest="48">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
                             <Entry x:Name="EditEmailEntry" Placeholder="Email" Keyboard="Email" TextColor="White" PlaceholderColor="#EEFFFFFF" BackgroundColor="Transparent" HorizontalTextAlignment="Center" IsTextPredictionEnabled="False" IsSpellCheckEnabled="False"/>
-                        </Frame>
-                        <Frame BackgroundColor="#33FFFFFF" CornerRadius="16" Padding="0" HasShadow="False" HeightRequest="48" BorderColor="Transparent">
+                        </Border>
+                        <Border BackgroundColor="#28FFFFFF" Padding="0" StrokeThickness="0" HeightRequest="48">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="16"/></Border.StrokeShape>
                             <Entry x:Name="EditPasswordEntry" Placeholder="Mật khẩu mới (tùy chọn)" IsPassword="True" TextColor="White" PlaceholderColor="#EEFFFFFF" BackgroundColor="Transparent" HorizontalTextAlignment="Center" IsTextPredictionEnabled="False" IsSpellCheckEnabled="False"/>
-                        </Frame>
+                        </Border>
                         <HorizontalStackLayout Spacing="12" HorizontalOptions="Center" Margin="0,8,0,0">
-                            <Button Text="Hủy" Clicked="OnCancelClicked" BackgroundColor="#22FFFFFF" TextColor="White" CornerRadius="14" HeightRequest="44" WidthRequest="110" FontAttributes="Bold"/>
-                            <Button Text="Lưu" Clicked="OnSaveClicked" BackgroundColor="White" TextColor="#FF6A88" CornerRadius="14" HeightRequest="44" FontAttributes="Bold" WidthRequest="110"/>
+                            <Button Text="Hủy" Clicked="OnCancelClicked" BackgroundColor="#22FFFFFF" TextColor="White" CornerRadius="16" HeightRequest="46" WidthRequest="110" FontAttributes="Bold"/>
+                            <Button Text="Lưu" Clicked="OnSaveClicked" BackgroundColor="White" TextColor="#FF6B81" CornerRadius="16" HeightRequest="46" FontAttributes="Bold" WidthRequest="110">
+                                <Button.Shadow>
+                                    <Shadow Brush="#FF6B81" Offset="0,4" Opacity="0.2" Radius="10"/>
+                                </Button.Shadow>
+                            </Button>
                         </HorizontalStackLayout>
                     </VerticalStackLayout>
 
-                    <Border BackgroundColor="#22FFFFFF" StrokeThickness="0" Padding="14,6" HorizontalOptions="Center" Margin="0,4,0,0">
+                    <Border BackgroundColor="#22FFFFFF" StrokeThickness="0" Padding="16,7" HorizontalOptions="Center" Margin="0,4,0,0">
                         <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
-                        <Label x:Name="ProfileRoleLabel" TextColor="White" FontSize="11" FontAttributes="Bold"/>
+                        <Label x:Name="ProfileRoleLabel" TextColor="White" FontSize="11" FontAttributes="Bold" CharacterSpacing="0.5"/>
                     </Border>
                 </VerticalStackLayout>
             </Grid>
 
             <!-- Body (Scrolls with header) -->
             <VerticalStackLayout Spacing="24" Padding="24,24,24,40">
-                <Frame BackgroundColor="White" CornerRadius="24" Padding="16,20" HasShadow="False">
-                    <Frame.Shadow>
-                        <Shadow Brush="#FF6A88" Offset="0,8" Opacity="0.1" Radius="16"/>
-                    </Frame.Shadow>
+                <Border BackgroundColor="White" Padding="16,20" StrokeThickness="0">
+                    <Border.StrokeShape><RoundRectangle CornerRadius="24"/></Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#FF6B81" Offset="0,8" Opacity="0.10" Radius="18"/>
+                    </Border.Shadow>
 
-                </Frame>
+                </Border>
 
 
 
-                <Button x:Name="LogoutButton" Clicked="OnLogoutClicked" BackgroundColor="Transparent" TextColor="#FF6A88" BorderColor="#FF6A88" BorderWidth="1.5" CornerRadius="18" FontAttributes="Bold" FontSize="16" HeightRequest="60" Margin="0,16,0,0"/>
+                <Button x:Name="LogoutButton" Clicked="OnLogoutClicked" 
+                        BackgroundColor="#FFF0F3" TextColor="#FF6B81" 
+                        BorderColor="Transparent" BorderWidth="0" 
+                        CornerRadius="22" FontAttributes="Bold" FontSize="16" 
+                        HeightRequest="62" Margin="0,16,0,0"
+                        CharacterSpacing="0.3">
+                    <Button.Shadow>
+                        <Shadow Brush="#FF6B81" Offset="0,4" Opacity="0.08" Radius="12"/>
+                    </Button.Shadow>
+                </Button>
             </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
