@@ -2,6 +2,7 @@
 @using FoodMapAdmin.Services
 @inject IJSRuntime JSRuntime
 @inject ITranslationService TranslationService
+@inject ILanguageService LanguageService
 
 <EditForm Model="Guide" OnValidSubmit="HandleValidSubmit" class="af-container">
     <DataAnnotationsValidator />
@@ -46,35 +47,69 @@
             <div class="af-field">
                 <label>NỘI DUNG THUYẾT MINH (TIẾNG VIỆT)</label>
                 <InputTextArea @bind-Value="Guide.Description"
-                              @oninput="OnContentInput"
-                              class="af-textarea"
-                              placeholder="Ghi lại câu chuyện của quán ăn bằng Tiếng Việt... Hệ thống sẽ tự động đồng bộ sang các ngôn ngữ khác sau khi lưu." />
+                               @oninput="OnContentInput"
+                               class="af-textarea"
+                               placeholder="Ghi lại câu chuyện của quán ăn bằng Tiếng Việt... Hệ thống sẽ tự động đồng bộ sang các ngôn ngữ khác sau khi lưu." />
                 <div class="af-footer-info">
                     <p class="af-hint"><i class="bi bi-magic me-1"></i> Hệ thống sẽ tự động dịch sang các ngôn ngữ được chọn bên dưới sau khi lưu.</p>
                 </div>
             </div>
 
-            @if (IsAddMode)
-            {
+            @if (IsAddMode) {
                 <div class="af-field mt-2">
-                    <label>CHỌN NGÔN NGỮ MUỐN TỰ ĐỘNG DỊCH</label>
-                    <div class="lang-selector-grid">
-                        <label class="lang-check">
-                            <input type="checkbox" checked="@SelectedLanguages.Contains("en")" @onchange="@((e) => ToggleLang("en", e.Value))" />
-                            <span>Tiếng Anh (EN)</span>
-                        </label>
-                        <label class="lang-check">
-                            <input type="checkbox" checked="@SelectedLanguages.Contains("zh")" @onchange="@((e) => ToggleLang("zh", e.Value))" />
-                            <span>Tiếng Trung (ZH)</span>
-                        </label>
-                        <label class="lang-check">
-                            <input type="checkbox" checked="@SelectedLanguages.Contains("ko")" @onchange="@((e) => ToggleLang("ko", e.Value))" />
-                            <span>Tiếng Hàn (KO)</span>
-                        </label>
-                        <label class="lang-check">
-                            <input type="checkbox" checked="@SelectedLanguages.Contains("ja")" @onchange="@((e) => ToggleLang("ja", e.Value))" />
-                            <span>Tiếng Nhật (JA)</span>
-                        </label>
+                    <label>NGÔN NGỮ SẼ ĐƯỢC TỰ ĐỘNG DỊCH</label>
+                    <div class="lang-preview-list">
+                        @if (allLanguages != null && allLanguages.Any(l => l.LanguageCode != "vi"))
+                        {
+                            @foreach (var lang in allLanguages.Where(l => l.LanguageCode != "vi"))
+                            {
+                                <div class="lang-badge-preview">
+                                    <i class="bi bi-translate me-1"></i>
+                                    <span>@lang.Name (@lang.LanguageCode.ToUpper())</span>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="lang-empty-inline">
+                                <i class="bi bi-info-circle me-1"></i>
+                                <span>Tất cả ngôn ngữ hệ thống hỗ trợ sẽ được áp dụng.</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Section for Edit Mode: Managing specific translations -->
+                <div class="af-field mt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label>TRẠNG THÁI BẢN DỊCH HỆ THỐNG</label>
+                    </div>
+                    <div class="lang-management-list">
+                        @if (allLanguages != null)
+                        {
+                            @foreach (var lang in allLanguages.Where(l => l.LanguageCode != "vi"))
+                            {
+                                var guideForLang = ExistingGuides?.FirstOrDefault(g => g.Language == lang.LanguageCode);
+                                <div class="lang-row">
+                                    <div class="d-flex align-items-center flex-grow-1">
+                                        <div class="lang-status-dot @(guideForLang != null ? "active" : "")"></div>
+                                        <span class="lang-name">@lang.Name</span>
+                                    </div>
+                                    @if(guideForLang != null)
+                                    {
+                                        <span class="badge-status-ok">Đã dịch</span>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn-translate-mini" @onclick="() => OnTranslateRequested.InvokeAsync(lang.LanguageCode)">
+                                            <i class="bi bi-magic me-1"></i> Dịch ngay
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        }
                     </div>
                 </div>
             }
@@ -197,31 +232,77 @@
         padding-left: 0.5rem;
     }
 
-    .lang-selector-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+    .lang-preview-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
         background: #F8F9FC;
-        padding: 15px;
+        padding: 12px;
         border-radius: 12px;
+        border: 1px dashed rgba(255, 45, 133, 0.2);
     }
-    .lang-check {
+    .lang-badge-preview {
+        background: white;
+        color: #FF2D85;
+        font-size: 0.75rem;
+        font-weight: 800;
+        padding: 5px 12px;
+        border-radius: 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
         display: flex;
         align-items: center;
-        gap: 10px;
-        font-size: 0.85rem;
-        font-weight: 700;
-        cursor: pointer;
-        padding: 5px;
     }
-    .lang-check input {
-        width: 18px;
-        height: 18px;
-        accent-color: #FF2D85;
+    .lang-empty-inline {
+        font-size: 0.8rem;
+        color: #888;
+        font-weight: 600;
     }
 
+    /* Translation management styles */
+    .lang-management-list {
+        background: #F8F9FC;
+        border-radius: 12px;
+        padding: 5px;
+    }
+    .lang-row {
+        display: flex;
+        align-items: center;
+        padding: 10px 15px;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+    }
+    .lang-row:last-child { border-bottom: none; }
+    .lang-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 12px;
+        background: #D1D5DB;
+    }
+    .lang-status-dot.active { background: #10B981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+    .lang-name { font-size: 0.9rem; font-weight: 700; color: #4B5563; }
+    .badge-status-ok {
+        font-size: 0.7rem;
+        font-weight: 800;
+        background: rgba(16, 185, 129, 0.1);
+        color: #059669;
+        padding: 4px 10px;
+        border-radius: 20px;
+    }
+    .btn-translate-mini {
+        border: none;
+        background: white;
+        color: var(--primary);
+        font-size: 0.75rem;
+        font-weight: 800;
+        padding: 6px 12px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        transition: all 0.2s;
+    }
+    .btn-translate-mini:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--primary-glow); }
+
     .animate-fade-in { animation: fadeIn 0.8s cubic-bezier(0.19, 1, 0.22, 1); }
-    @@keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    @("@")keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 
 @code {
@@ -230,8 +311,34 @@
     [Parameter] public bool IsAddMode { get; set; } = true;
     [Parameter] public string Title { get; set; } = "Thông tin Audio Guide";
     [Parameter] public List<string> SelectedLanguages { get; set; } = new();
+    [Parameter] public List<PoiGuide> ExistingGuides { get; set; } = new(); 
+    [Parameter] public EventCallback<string> OnTranslateRequested { get; set; }
     [Parameter] public EventCallback OnSubmit { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
+
+    private List<Language>? allLanguages;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try 
+        {
+            allLanguages = await LanguageService.GetAllLanguagesAsync();
+            
+            // Auto-sync selected languages with available languages (Add Mode)
+            if (IsAddMode && allLanguages != null)
+            {
+                SelectedLanguages.Clear();
+                foreach(var lang in allLanguages.Where(l => l.LanguageCode != "vi"))
+                {
+                    SelectedLanguages.Add(lang.LanguageCode);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading languages: {ex.Message}");
+        }
+    }
 
     private int WordCount => string.IsNullOrEmpty(Guide.Description)
         ? 0 : Guide.Description.Split(new[] { ' ', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;

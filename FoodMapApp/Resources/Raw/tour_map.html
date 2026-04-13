@@ -18,6 +18,66 @@
         body { margin: 0; padding: 0; font-family: 'Outfit', sans-serif; overflow: hidden; background: #fdfcfd; }
         #map { height: 100vh; width: 100vw; background: #f8f9fa; }
         
+        /* --- Leaflet Control Overrides --- */
+        .leaflet-control-zoom a {
+            color: white !important;
+            background-color: #F82B60 !important;
+            border: none !important;
+            border-radius: 8px !important;
+            margin-bottom: 8px !important;
+            box-shadow: 0 4px 12px rgba(248, 43, 96, 0.2) !important;
+            width: 36px !important;
+            height: 36px !important;
+            line-height: 36px !important;
+            font-weight: 600 !important;
+            transition: all 0.2s ease;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background-color: #ff608c !important;
+            transform: scale(1.05);
+        }
+
+        .leaflet-control-zoom {
+            border: none !important;
+            margin-right: 15px !important;
+            margin-bottom: 25px !important;
+        }
+
+        /* Locate Button */
+        #locate-btn {
+            position: absolute;
+            bottom: 125px;
+            right: 15px;
+            width: 44px;
+            height: 44px;
+            background: #FFFFFF;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            cursor: pointer;
+            color: #F82B60;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #locate-btn:hover {
+            background: #fdfdfd;
+            transform: scale(1.1);
+        }
+
+        #locate-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
         /* User Location Marker override */
         .user-marker {
             background: #4285F4;
@@ -62,43 +122,67 @@
 <body>
     <div id="map"></div>
 
-    <!-- Bottom Sheet (Copied from map.html) -->
+    <!-- Center Button -->
+    <button id="locate-btn" onclick="centerOnUser()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+        </svg>
+    </button>
+
+    <!-- Bottom Sheet Details -->
     <div id="bottom-sheet" class="bottom-sheet">
-        <div class="sheet-drag-handle" id="drag-handle" onclick="closeDetails()">
+        <div class="sheet-drag-handle" id="drag-handle">
             <div class="drag-bar"></div>
         </div>
         <div class="sheet-content">
             <div id="sheet-header">
-                <div style="flex: 1;">
+                <div style="flex: 1; min-width: 0;">
                     <h2 id="sheet-title">Tên quán</h2>
-                    <div class="lang-selector">
-                        <div class="lang-btn active"><img src="images/vn_flag.png" alt="VI"></div>
-                        <div class="lang-btn"><img src="images/uk_flag.png" alt="EN"></div>
+                    <div class="lang-selector-modern" onclick="openLanguagePicker()">
+                        <div class="current-lang-btn">
+                            <span id="current-lang-name">Tiếng Việt</span>
+                            <svg class="chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
                     </div>
                 </div>
-                <button class="speaker-btn">
+                <button id="sheet-speaker-btn" class="speaker-btn" onclick="playCurrentTourPoiAudio()">
                     <svg viewBox="0 0 24 24" fill="currentColor">
                         <path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.03,19.86 21,16.28 21,12C21,7.72 18.03,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16.02C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/>
                     </svg>
                 </button>
             </div>
 
-            <div class="sheet-images" id="sheet-images">
-                <!-- Dynamic images -->
-            </div>
+            <!-- Image Gallery -->
+            <div class="sheet-images" id="sheet-images"></div>
 
+            <!-- Info Section -->
             <div class="sheet-info">
                 <div class="info-row">
                     <svg class="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
-                    <span id="sheet-address">Đang tải...</span>
+                    <span id="sheet-address"></span>
                 </div>
                 <div class="info-row">
                     <svg class="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span id="sheet-time">08:00 - 22:00</span>
+                    <span id="sheet-time"></span>
                 </div>
-                <button class="resto-btn" style="background: #F82B60; width: 100%; margin-top: 15px; border-radius: 14px; height: 50px; color: white; border: none; font-weight: bold;" onclick="closeDetails()">Đóng chi tiết</button>
             </div>
         </div>
+    </div>
+
+    <!-- Language Picker Overlay -->
+    <div id="lang-picker-overlay" class="lang-picker-overlay hidden">
+        <div class="lang-picker-container">
+            <div class="lang-picker-header">
+                <h3>Chọn ngôn ngữ</h3>
+                <button onclick="closeLanguagePicker()">Xong</button>
+            </div>
+            <div id="lang-picker-list" class="lang-picker-list">
+                <!-- Dynamic Content -->
+            </div>
+        </div>
+    </div>
     </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -106,13 +190,54 @@
         const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([10.7672, 106.6931], 15);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
 
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
         let tourPois = [];
         let markers = [];
+        let userMarker = null; // Store user marker reference
         let routeLayer = null;
         let previewLayer = null;
-        let currentPoiIdOpen = null;
         let lastUserLat = null;
         let lastUserLng = null;
+        let selectedLanguage = 'vi';
+        let currentPoiDescription = null;
+        let currentBasePoiId = null;
+        const platformApiBase = "https://foodmapappapi.azurewebsites.net/api/Pois";
+
+        // Bottom Sheet Logic
+        const sheet = document.getElementById('bottom-sheet');
+        const dragHandle = document.getElementById('drag-handle');
+        let startY = 0;
+        let isDragging = false;
+
+        if (dragHandle) {
+            dragHandle.addEventListener('touchstart', (e) => {
+                startY = e.touches[0].clientY;
+                isDragging = true;
+                sheet.style.transition = 'none';
+            }, { passive: true });
+
+            document.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                const deltaY = e.touches[0].clientY - startY;
+                if (deltaY > 0) {
+                    sheet.style.transform = `translateY(calc(-80vh + ${deltaY}px))`;
+                }
+            }, { passive: true });
+
+            document.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                sheet.style.transition = 'transform 0.3s ease-out';
+                const deltaY = e.changedTouches[0].clientY - startY;
+
+                if (deltaY > 100) {
+                    closeDetails();
+                } else {
+                    sheet.style.transform = 'translateY(-80vh)';
+                }
+            });
+        }
 
         // --- Helper: Distance ---
         function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -142,7 +267,7 @@
 
             // 1. User Location
             if (userLat !== null && userLng !== null) {
-                const userMarker = L.marker([userLat, userLng], {
+                userMarker = L.marker([userLat, userLng], {
                     icon: L.divIcon({ className: 'user-marker', iconSize: [16, 16], iconAnchor: [8, 8] })
                 }).addTo(map);
                 markers.push(userMarker);
@@ -189,9 +314,25 @@
                     const res = await fetch(url);
                     const data = await res.json();
                     if (data.code === 'Ok') {
-                        routeLayer = L.geoJSON(data.routes[0].geometry, {
+                        const route = data.routes[0];
+                        const mainRouteLayer = L.geoJSON(route.geometry, {
                             style: { color: '#F82B60', weight: 6, opacity: 0.8, lineJoin: 'round' }
-                        }).addTo(map);
+                        });
+
+                        // Dashed "off-road" line
+                        const coords = route.geometry.coordinates;
+                        const lastPoint = coords[coords.length - 1];
+                        const walkingLine = L.polyline([
+                            [lastPoint[1], lastPoint[0]],
+                            [target.latitude, target.longitude]
+                        ], {
+                            color: '#F82B60',
+                            weight: 4,
+                            opacity: 0.6,
+                            dashArray: '5, 10'
+                        });
+
+                        routeLayer = L.featureGroup([mainRouteLayer, walkingLine]).addTo(map);
                         map.fitBounds(routeLayer.getBounds(), { padding: [100, 100] });
                     }
                 } catch (e) {
@@ -216,10 +357,13 @@
             }
         };
 
-        window.openDetails = function(poi) {
+        window.openDetails = async function(poi) {
             currentPoiIdOpen = poi.poi_id;
+            currentBasePoiId = poi.poi_id; // For language picker
+            currentPoiDescription = poi.description || "";
             document.getElementById('sheet-title').innerText = poi.name;
             document.getElementById('sheet-address').innerText = poi.address || "Đang cập nhật...";
+            document.getElementById('sheet-time').innerText = poi.opening_hours || "08:00 - 22:00";
             
             const imgContainer = document.getElementById('sheet-images');
             imgContainer.innerHTML = '';
@@ -228,18 +372,94 @@
             img.src = poi.image_url || 'https://via.placeholder.com/200x140?text=No+Image';
             imgContainer.appendChild(img);
 
-            document.getElementById('bottom-sheet').classList.add('open');
+            // Audio logic: fetch languages to update UI
+            try {
+                const res = await fetch(`${platformApiBase}/${currentBasePoiId}/available-languages`);
+                if (res.ok) {
+                    const languages = await res.json();
+                    const current = languages.find(l => l.language_code === selectedLanguage) || languages.find(l => l.language_code === 'vi') || languages[0];
+                    if (current) {
+                        document.getElementById('current-lang-name').innerText = current.name;
+                        selectedLanguage = current.language_code;
+                    }
+                }
+            } catch (e) { console.error("Error fetching languages", e); }
+
+            sheet.classList.add('open');
+            sheet.style.transform = 'translateY(-80vh)';
         };
 
         window.closeDetails = function() {
-            document.getElementById('bottom-sheet').classList.remove('open');
+            sheet.classList.remove('open');
+            sheet.style.transform = '';
             currentPoiIdOpen = null;
+            currentBasePoiId = null;
+        };
+
+        window.playCurrentTourPoiAudio = function() {
+            if (!currentPoiIdOpen) return;
+            const title = document.getElementById('sheet-title').innerText;
+            const text = `${title}. ${currentPoiDescription}`;
+            window.location.href = `app-tts://speak?id=${currentPoiIdOpen}&text=${encodeURIComponent(text)}&lang=${selectedLanguage}&manual=true`;
+        };
+
+        // --- Language Picker Logic (Mirrored from features.js) ---
+        window.openLanguagePicker = async function() {
+            const overlay = document.getElementById('lang-picker-overlay');
+            const list = document.getElementById('lang-picker-list');
+            if (!currentBasePoiId) return;
+
+            overlay.classList.remove('hidden');
+            list.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">Đang tải ngôn ngữ...</div>';
+
+            try {
+                const res = await fetch(`${platformApiBase}/${currentBasePoiId}/available-languages`);
+                if (res.ok) {
+                    const languages = await res.json();
+                    list.innerHTML = '';
+                    languages.forEach(lang => {
+                        const isSelected = lang.language_code === selectedLanguage;
+                        const item = document.createElement('div');
+                        item.className = `lang-item ${isSelected ? 'selected' : ''}`;
+                        item.innerHTML = `
+                            <span class="lang-item-name">${lang.name}</span>
+                            ${isSelected ? '<div class="lang-item-check"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>' : ''}
+                        `;
+                        item.onclick = () => setSelectedLang(lang.language_code, lang.name);
+                        list.appendChild(item);
+                    });
+                }
+            } catch (e) {
+                list.innerHTML = '<div style="padding: 20px; color: #ff4d4f;">Không thể tải danh sách ngôn ngữ</div>';
+            }
+        };
+
+        window.closeLanguagePicker = function() {
+            document.getElementById('lang-picker-overlay').classList.add('hidden');
+        };
+
+        window.setSelectedLang = function(lang, name) {
+            closeLanguagePicker();
+            selectedLanguage = lang;
+            if (name) document.getElementById('current-lang-name').innerText = name;
+            // For tours, we don't necessarily reload everything, just the audio for the current stop
+            if (currentPoiIdOpen) {
+                playCurrentTourPoiAudio();
+            }
         };
 
         window.focusStop = function(index) {
             const m = markers.find(mark => mark.options.icon.options.html && mark.options.icon.options.html.includes(`>${index + 1}<`));
             if (m) {
                 map.flyTo(m.getLatLng(), 17, { animate: true, duration: 1.5 });
+            }
+        };
+
+        window.centerOnUser = function() {
+            if (userMarker) {
+                map.flyTo(userMarker.getLatLng(), 17, { animate: true, duration: 1 });
+            } else {
+                alert("Đang xác định vị trí của bạn...");
             }
         };
     </script>

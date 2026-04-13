@@ -50,23 +50,59 @@ function closeDetails() {
     sheet.style.transform = '';
 }
 
-async function setSelectedLang(lang, el) {
-    console.log(`DEBUG: Language switch requested to: ${lang}`);
-    let confirmed = true;
+async function openLanguagePicker() {
+    const overlay = document.getElementById('lang-picker-overlay');
+    const list = document.getElementById('lang-picker-list');
+    
+    if (!currentBasePoiId) return;
 
-    // If audio is currently playing, ask for confirmation
-    if (isAudioSpeaking || isAudioPaused) {
-        // We don't need to send a separate stop request here 
-        // because the reload request below will trigger a full StopSpeech in C#.
-        // We just politely ask the user first.
-        confirmed = confirm("Bạn muốn chuyển ngôn ngữ?");
-        
-        if (!confirmed) {
-            console.log("DEBUG: Language switch cancelled by user.");
-            return;
+    overlay.classList.remove('hidden');
+    list.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">Đang tải ngôn ngữ...</div>';
+
+    try {
+        const res = await fetch(`${platformApiBase}/${currentBasePoiId}/available-languages`);
+        if (res.ok) {
+            const languages = await res.json();
+            list.innerHTML = '';
+            
+            languages.forEach(lang => {
+                const isSelected = lang.language_code === selectedLanguage;
+                const item = document.createElement('div');
+                item.className = `lang-item ${isSelected ? 'selected' : ''}`;
+                
+                // Prefix with server URL
+                const serverBase = platformApiBase.split('/api')[0];
+                const flagPath = `${serverBase}/images/${lang.flag_url || 'vn_flag.png'}`;
+
+                item.innerHTML = `
+                    <span class="lang-item-name">${lang.name}</span>
+                    ${isSelected ? '<div class="lang-item-check"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>' : ''}
+                `;
+                
+                item.onclick = () => setSelectedLang(lang.language_code, lang.name, lang.flag_url);
+                list.appendChild(item);
+            });
         }
+    } catch (e) {
+        list.innerHTML = '<div style="padding: 20px; color: #ff4d4f;">Không thể tải danh sách ngôn ngữ</div>';
+    }
+}
+
+function closeLanguagePicker() {
+    document.getElementById('lang-picker-overlay').classList.add('hidden');
+}
+
+async function setSelectedLang(lang, name, flag) {
+    console.log(`DEBUG: Language switch requested to: ${lang} (${name})`);
+    closeLanguagePicker();
+    
+    if (lang === selectedLanguage) return;
+
+    let confirmed = true;
+    if (isAudioSpeaking || isAudioPaused) {
+        confirmed = confirm("Bạn muốn chuyển ngôn ngữ?");
+        if (!confirmed) return;
         
-        // Reset internal state immediately to prevent UI flickering or "zombie" resume calls
         isAudioSpeaking = false;
         isAudioPaused = false;
         const speakerBtn = document.getElementById('sheet-speaker-btn');
@@ -74,20 +110,16 @@ async function setSelectedLang(lang, el) {
     }
     
     selectedLanguage = lang;
-    playedAudioPois.clear(); // Quan trọng: Xoá lịch sử đã nghe để geofencing kích hoạt lại với ngôn ngữ mới
-    document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
-    el.classList.add('active');
+    playedAudioPois.clear();
 
-    // Request C# to reload markers and STOP current speech definitive
+    // Update the button UI
+    if (name) document.getElementById('current-lang-name').innerText = name;
+
+    // Request C# to reload markers and STOP current speech
     window.location.href = `app-request-reload://markers?lang=${lang}`;
 
-    // Reload current sheet details if open
     if (currentBasePoiId) {
         await openDetails(currentBasePoiId, lang);
-        // Automatically start playing in new language if we confirmed the switch
-        if (confirmed) {
-            setTimeout(() => resumeAudioProfessional(), 800); // Increased delay slightly for C# cleanup
-        }
     }
 }
 
@@ -108,8 +140,19 @@ async function openDetails(poiId, lang = selectedLanguage) {
     sheet.classList.add('open');
     sheet.style.transform = 'translateY(-80vh)';
 
-    const audioSection = document.getElementById('sheet-audio-section');
-    if (audioSection) audioSection.classList.add('hidden');
+
+    // Update UI button to current language if we opened from a fresh state
+    try {
+        const langRes = await fetch(`${platformApiBase}/${poiId}/available-languages`);
+        if (langRes.ok) {
+            const languages = await langRes.json();
+            const current = languages.find(l => l.language_code === lang) || languages.find(l => l.language_code === 'vi') || languages[0];
+            if (current) {
+                document.getElementById('current-lang-name').innerText = current.name;
+                selectedLanguage = current.language_code;
+            }
+        }
+    } catch(e) {}
 
     try {
         console.log(`DEBUG: Fetching details from: ${platformApiBase}/${poiId}?lang=${lang}`);
@@ -125,9 +168,6 @@ async function openDetails(poiId, lang = selectedLanguage) {
             document.getElementById('sheet-time').innerText = data.open_time || '';
 
             currentPoiDescription = data.description || "";
-            if (currentPoiDescription.trim().length > 0) {
-                if (audioSection) audioSection.classList.remove('hidden');
-            }
 
             const imgContainer = document.getElementById('sheet-images');
             imgContainer.innerHTML = ''; // Clear previous images
@@ -186,8 +226,6 @@ async function openDetails(poiId, lang = selectedLanguage) {
             const speakerBtn = document.getElementById('sheet-speaker-btn');
             if (speakerBtn) {
                 speakerBtn.classList.remove('hidden');
-                if (isAudioSpeaking && !isAudioPaused) speakerBtn.classList.add('playing');
-                else speakerBtn.classList.remove('playing');
             }
         } else {
             currentAudioGuide = null;
@@ -303,10 +341,23 @@ function processLocation(position) {
 
         // Nếu người dùng đi ra khỏi phạm vi quán RIÊNG trước khi hết 5 giây -> Hủy bộ đếm
         const stillInRange = poisInRange.some(p => p.id === food.id);
-        if (!stillInRange && poiAudioTimers[food.id]) {
-            console.log(`DEBUG: User left range of ${food.name}, cancelling countdown`);
-            clearTimeout(poiAudioTimers[food.id]);
-            delete poiAudioTimers[food.id];
+        if (!stillInRange) {
+            if (poiAudioTimers[food.id]) {
+                console.log(`DEBUG: User left range of ${food.name}, cancelling countdown`);
+                clearTimeout(poiAudioTimers[food.id]);
+                delete poiAudioTimers[food.id];
+            }
+
+            // MỚI: Reset trạng thái "đã phát" khi người dùng đi xa khỏi quán (+ 30m buffer)
+            const exitBuffer = 2; // Khoảng cách đệm để tránh jitter (2m)
+            const foodDistanceData = allDistances.find(f => f.id === food.id);
+            if (foodDistanceData) {
+                const range = (food.range_meters || 50);
+                if (foodDistanceData.distance > (range + exitBuffer) && playedAudioPois.has(food.id)) {
+                    console.log(`DEBUG: User far enough from ${food.name} (${Math.round(foodDistanceData.distance)}m), resetting play status`);
+                    playedAudioPois.delete(food.id);
+                }
+            }
         }
     });
 }
@@ -335,39 +386,12 @@ let isAudioSpeaking = false;
 let isAudioPaused = false;
 
 function toggleAudioProfessional() {
-    if (isAudioSpeaking || isAudioPaused) {
-        stopAudioProfessional();
-    } else {
-        resumeAudioProfessional();
-    }
-}
-
-function resumeAudioProfessional() {
-    isAudioSpeaking = true;
-    isAudioPaused = false;
-    
-    // UI Update for the small speaker button in sheet header
-    const speakerBtn = document.getElementById('sheet-speaker-btn');
-    if (speakerBtn) speakerBtn.classList.add('playing');
-    
     playCurrentAudio(true); // MANUAL trigger
 }
 
-function stopAudioProfessional() {
-    isAudioSpeaking = false;
-    isAudioPaused = false;
-    
-    const speakerBtn = document.getElementById('sheet-speaker-btn');
-    if (speakerBtn) {
-        speakerBtn.classList.remove('playing');
-    }
-    
-    // We use reset=false here to NOT clear the auto-audio queue when simply 
-    // stopping or toggling manual audio in the sheet.
-    window.location.href = `app-tts://stop?id=${currentPoiId}&reset=false`;
-}
-
 // These are now handled by C# native player
+function resumeAudioProfessional() {}
+function stopAudioProfessional() {}
 function pauseAudioProfessional() {}
 function restartAudio() {}
 
@@ -390,9 +414,6 @@ function playAudioGuide(text, language = 'vi-VN', poiId = currentPoiId, isManual
         isAudioSpeaking = true;
         isAudioPaused = false;
         
-        const speakerBtn = document.getElementById('sheet-speaker-btn');
-        if (speakerBtn) speakerBtn.classList.add('playing');
-
         window.location.href = `app-tts://speak?id=${poiId}&text=${encodeURIComponent(text)}&lang=${language}&manual=${isManual}`;
     }
 }
@@ -406,19 +427,10 @@ window.onTtsFinished = function() {
     console.log("TTS Finished");
     isAudioSpeaking = false;
     isAudioPaused = false;
-    const speakerBtn = document.getElementById('sheet-speaker-btn');
-    if (speakerBtn) speakerBtn.classList.remove('playing');
 };
 
 function resetPlayerForNewPoi() {
-    // If NOT playing, reset everything. 
-    // If ALREADY playing, we keep the mini-player visible but the new sheet will sync in openDetails
-    if (!isAudioSpeaking && !isAudioPaused) {
-        const statusBar = document.getElementById('audio-status-bar');
-        if (statusBar) statusBar.classList.add('hidden');
-        const progressFill = document.getElementById('audio-progress-fill');
-        if (progressFill) progressFill.style.width = '0%';
-    }
+    // Mini-player state is now handled natively in C#, no HTML cleanup needed here.
 }
 
 function centerOnUser() {

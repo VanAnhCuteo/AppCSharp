@@ -48,6 +48,9 @@
                             <NavLink class="nav-link nav-link-sub nav-link-sub-sub" href="/moderation/images">
                                 <i class="bi bi-image"></i> Hình ảnh
                             </NavLink>
+                            <NavLink class="nav-link nav-link-sub nav-link-sub-sub" href="/moderation/audio">
+                                <i class="bi bi-mic-fill"></i> Audio Guide
+                            </NavLink>
                         </div>
                     </div>
                 </div>
@@ -58,6 +61,12 @@
         <AuthorizeView Roles="CNH">
             <NavLink class="nav-link" href="/pois">
                 <i class="bi bi-shop-window"></i> Q.Lý Cửa Hàng
+            </NavLink>
+            <NavLink class="nav-link" href="/audio-management">
+                <i class="bi bi-mic-fill"></i> Quản lý Audio
+            </NavLink>
+            <NavLink class="nav-link" href="/owner-requests">
+                <i class="bi bi-send-check"></i> Kế hoạch & Yêu cầu
             </NavLink>
         </AuthorizeView>
 
@@ -74,6 +83,10 @@
         <AuthorizeView Roles="admin">
             <NavLink class="nav-link" href="/audio-management">
                 <i class="bi bi-mic-fill"></i> Hướng dẫn Audio
+            </NavLink>
+
+            <NavLink class="nav-link" href="/languages">
+                <i class="bi bi-globe-americas"></i> Quản lý Ngôn ngữ
             </NavLink>
 
             <NavLink class="nav-link" href="/tours">

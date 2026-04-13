@@ -1,0 +1,448 @@
+@page "/languages"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject ILanguageService LanguageService
+@inject IJSRuntime JSRuntime
+@attribute [Authorize(Roles = "admin")]
+
+<PageTitle>Kích hoạt Ngôn ngữ - FoodMap Admin</PageTitle>
+
+<div class="header-zone mb-4 animate-fade-in">
+    <div class="d-flex justify-content-between align-items-end">
+        <div>
+            <h2 class="page-title">Kích hoạt Ngôn ngữ</h2>
+            <p class="page-subtitle">Chọn và quản lý các ngôn ngữ hỗ trợ thuyết minh trên hệ thống</p>
+        </div>
+        <div class="search-box-wrapper">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" class="search-input" placeholder="Tìm kiếm ngôn ngữ..." @bind="searchQuery" @bind:event="oninput" />
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 animate-stagger">
+    <!-- Section: Activated Languages -->
+    <div class="col-12">
+        <h3 class="section-title mb-3">Ngôn ngữ đang hoạt động</h3>
+        <div class="lang-grid-container mb-5">
+            @if (activatedLanguages == null)
+            {
+                <div class="text-center py-3"><div class="spinner-border text-primary"></div></div>
+            }
+            else
+            {
+                @foreach (var lang in activatedLanguages.OrderBy(l => l.Name))
+                {
+                    <div class="lang-item-card active animate-fade-in">
+                        <div class="lang-info">
+                            <div class="lang-main">
+                                <span class="lang-name">@lang.Name</span>
+                                <span class="lang-code">@lang.LanguageCode.ToUpper()</span>
+                            </div>
+                            <div class="status-pill">
+                                <span class="dot"></span>
+                                Đang hoạt động
+                            </div>
+                        </div>
+                        <div class="lang-actions">
+                            @if (lang.LanguageCode == "vi")
+                            {
+                                <button class="btn-lang-action disabled" disabled>
+                                    Mặc định hệ thống
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn-lang-action deactivate" @onclick="() => DeactivateLanguage(lang.LanguageCode)">
+                                    Hủy kích hoạt
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="divider-modern"></div>
+    </div>
+
+    <!-- Section: Available to Add -->
+    <div class="col-12 mt-4">
+        <h3 class="section-title mb-3">Thêm ngôn ngữ mới</h3>
+        <div class="lang-grid-container">
+            @if (FilteredLanguages == null)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-secondary"></div>
+                </div>
+            }
+            else if (!FilteredLanguages.Any())
+            {
+                <div class="empty-search-state">
+                    <i class="bi bi-search"></i>
+                    <p>Không tìm thấy ngôn ngữ nào phù hợp hoặc tất cả đã được kích hoạt.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var lang in FilteredLanguages.OrderBy(l => l.Name))
+                {
+                    <div class="lang-item-card animate-fade-in">
+                        <div class="lang-info">
+                            <div class="lang-main">
+                                <span class="lang-name">@lang.Name</span>
+                                <span class="lang-code">@lang.LanguageCode.ToUpper()</span>
+                            </div>
+                        </div>
+                        <div class="lang-actions">
+                            <button class="btn-lang-action activate" @onclick="() => ActivateLanguage(lang)" disabled="@isProcessing">
+                                <i class="bi bi-plus-lg me-1"></i> 
+                                @(isProcessing ? "Đang xử lý..." : "Kích hoạt")
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    :root {
+        --primary: #FF2D85;
+        --primary-glow: rgba(255, 45, 133, 0.15);
+        --text-main: #1A1A1A;
+        --text-muted: #888;
+        --surface: #FFFFFF;
+        --bg-subtle: #F8F9FC;
+    }
+
+    .section-title {
+        font-size: 0.75rem;
+        font-weight: 850;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 1.5px;
+        padding-left: 0.5rem;
+    }
+
+    .divider-modern {
+        height: 1px;
+        background: radial-gradient(circle, rgba(0,0,0,0.05) 0%, transparent 100%);
+        margin: 1rem 0;
+    }
+
+    .empty-search-state {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+    }
+    .empty-search-state i { font-size: 2.5rem; opacity: 0.2; display: block; margin-bottom: 1rem; }
+    .empty-search-state p { font-weight: 600; font-size: 0.9rem; }
+
+    .page-title {
+        font-size: 1.8rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -1px;
+        margin-bottom: 0.3rem;
+    }
+
+    .page-subtitle {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        margin: 0;
+    }
+
+    /* Search Box */
+    .search-box-wrapper {
+        position: relative;
+        width: 300px;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.8rem 1rem 0.8rem 3rem;
+        border-radius: 16px;
+        border: 1px solid rgba(0,0,0,0.05);
+        background: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        transition: all 0.3s;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 8px 25px var(--primary-glow);
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 1.2rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 1.1rem;
+    }
+
+    /* Grid Layout */
+    .lang-grid-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.2rem;
+        padding: 0.5rem;
+    }
+
+    /* Lang Card */
+    .lang-item-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.2rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+        border: 1px solid rgba(0,0,0,0.03);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .lang-item-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+        border-color: rgba(255, 45, 133, 0.1);
+    }
+
+    .lang-item-card.active {
+        background: linear-gradient(135deg, white 0%, #FFF5F9 100%);
+        border-color: rgba(255, 45, 133, 0.2);
+    }
+
+    .lang-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .lang-main {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .lang-name {
+        font-weight: 800;
+        color: var(--text-main);
+        font-size: 1.1rem;
+    }
+
+    .lang-code {
+        font-size: 0.75rem;
+        font-weight: 850;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+    }
+
+    .status-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10B981;
+        border-radius: 20px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-pill .dot {
+        width: 6px;
+        height: 6px;
+        background: #10B981;
+        border-radius: 50%;
+        box-shadow: 0 0 8px #10B981;
+    }
+
+    /* Actions */
+    .btn-lang-action {
+        width: 100%;
+        padding: 0.7rem;
+        border-radius: 12px;
+        border: none;
+        font-weight: 800;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+
+    .btn-lang-action.activate {
+        background: #F0F2F5;
+        color: #666;
+    }
+
+    .btn-lang-action.activate:hover {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 8px 20px var(--primary-glow);
+    }
+
+    .btn-lang-action.deactivate {
+        background: rgba(255, 0, 0, 0.05);
+        color: #FF4D4F;
+    }
+
+    .btn-lang-action.deactivate:hover {
+        background: #FF4D4F;
+        color: white;
+    }
+
+    .btn-lang-action.disabled {
+        background: transparent;
+        border: 1px dashed #DDD;
+        color: #AAA;
+        cursor: default;
+    }
+
+    /* Animations */
+    .animate-fade-in { animation: fadeIn 0.6s ease-out; }
+    .animate-stagger > * { animation: slideUp 0.6s cubic-bezier(0.19, 1, 0.22, 1) both; }
+    
+    @("@")keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @("@")keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
+
+@code {
+    private List<Language>? activatedLanguages;
+    private HashSet<string> activatedLanguageCodes = new();
+    private string searchQuery = "";
+    private bool isProcessing = false;
+
+    private static readonly List<Language> AllAvailableLanguages = new()
+    {
+        new Language { LanguageCode = "vi", Name = "Vietnamese (Tiếng Việt)" },
+        new Language { LanguageCode = "en", Name = "English" },
+        new Language { LanguageCode = "zh", Name = "Chinese (Mandarin)" },
+        new Language { LanguageCode = "hi", Name = "Hindi (Indian)" },
+        new Language { LanguageCode = "es", Name = "Spanish" },
+        new Language { LanguageCode = "fr", Name = "French" },
+        new Language { LanguageCode = "ar", Name = "Arabic" },
+        new Language { LanguageCode = "bn", Name = "Bengali" },
+        new Language { LanguageCode = "pt", Name = "Portuguese" },
+        new Language { LanguageCode = "ru", Name = "Russian" },
+        new Language { LanguageCode = "ja", Name = "Japanese" },
+        new Language { LanguageCode = "pa", Name = "Punjabi" },
+        new Language { LanguageCode = "de", Name = "German" },
+        new Language { LanguageCode = "jv", Name = "Javanese" },
+        new Language { LanguageCode = "ms", Name = "Malay" },
+        new Language { LanguageCode = "ko", Name = "Korean" },
+        new Language { LanguageCode = "tr", Name = "Turkish" },
+        new Language { LanguageCode = "th", Name = "Thai (Thailand)" },
+        new Language { LanguageCode = "it", Name = "Italian" },
+        new Language { LanguageCode = "pl", Name = "Polish" },
+        new Language { LanguageCode = "nl", Name = "Dutch" },
+        new Language { LanguageCode = "ro", Name = "Romanian" },
+        new Language { LanguageCode = "hu", Name = "Hungarian" },
+        new Language { LanguageCode = "cs", Name = "Czech" },
+        new Language { LanguageCode = "el", Name = "Greek" },
+        new Language { LanguageCode = "sv", Name = "Swedish" },
+        new Language { LanguageCode = "da", Name = "Danish" },
+        new Language { LanguageCode = "fi", Name = "Finnish" },
+        new Language { LanguageCode = "no", Name = "Norwegian" },
+        new Language { LanguageCode = "he", Name = "Hebrew" },
+        new Language { LanguageCode = "id", Name = "Indonesian" },
+        new Language { LanguageCode = "tl", Name = "Tagalog (Filipino)" },
+        new Language { LanguageCode = "my", Name = "Burmese" },
+        new Language { LanguageCode = "km", Name = "Khmer" },
+        new Language { LanguageCode = "lo", Name = "Lao" },
+        new Language { LanguageCode = "uk", Name = "Ukrainian" },
+        new Language { LanguageCode = "fa", Name = "Persian" },
+        new Language { LanguageCode = "ur", Name = "Urdu" },
+        new Language { LanguageCode = "ta", Name = "Tamil" },
+        new Language { LanguageCode = "te", Name = "Telugu" },
+        new Language { LanguageCode = "mr", Name = "Marathi" },
+        new Language { LanguageCode = "gu", Name = "Gujarati" },
+        new Language { LanguageCode = "kn", Name = "Kannada" },
+        new Language { LanguageCode = "ml", Name = "Malayalam" },
+        new Language { LanguageCode = "si", Name = "Sinhala" },
+        new Language { LanguageCode = "ne", Name = "Nepali" },
+        new Language { LanguageCode = "sk", Name = "Slovak" },
+        new Language { LanguageCode = "hr", Name = "Croatian" },
+        new Language { LanguageCode = "bg", Name = "Bulgarian" },
+        new Language { LanguageCode = "lt", Name = "Lithuanian" },
+        new Language { LanguageCode = "lv", Name = "Latvian" },
+        new Language { LanguageCode = "et", Name = "Estonian" },
+        new Language { LanguageCode = "sl", Name = "Slovenian" },
+    };
+
+    private IEnumerable<Language>? FilteredLanguages => AllAvailableLanguages
+        .Where(l => !activatedLanguageCodes.Contains(l.LanguageCode)) // Hide already activated
+        .Where(l => string.IsNullOrWhiteSpace(searchQuery) || 
+                   l.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || 
+                   l.LanguageCode.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData() 
+    {
+        try 
+        {
+            var data = await LanguageService.GetAllLanguagesAsync();
+            activatedLanguages = data ?? new List<Language>();
+            activatedLanguageCodes = new HashSet<string>(activatedLanguages.Select(l => l.LanguageCode));
+            
+            // Ensure 'vi' is always activated if it's not in DB
+            if (!activatedLanguageCodes.Contains("vi"))
+            {
+                var vi = new Language { LanguageCode = "vi", Name = "Vietnamese (Tiếng Việt)" };
+                if (await LanguageService.AddLanguageAsync(vi))
+                {
+                    activatedLanguages.Add(vi);
+                    activatedLanguageCodes.Add("vi");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Languages] LoadData Error: {ex.Message}");
+            activatedLanguages = new();
+            activatedLanguageCodes = new();
+        }
+    }
+
+    private async Task ActivateLanguage(Language lang)
+    {
+        isProcessing = true;
+        try 
+        {
+            var success = await LanguageService.AddLanguageAsync(new Language 
+            { 
+                LanguageCode = lang.LanguageCode, 
+                Name = lang.Name,
+                FlagUrl = "" // Flags are removed as per user request
+            });
+            if (success) await LoadData();
+        }
+        finally { isProcessing = false; }
+    }
+
+    private async Task DeactivateLanguage(string code)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Chắc chắn muốn gỡ bỏ ngôn ngữ {code.ToUpper()}? Hệ thống sẽ ngừng hỗ trợ dịch sang ngôn ngữ này.");
+        if (confirmed)
+        {
+            if (await LanguageService.DeleteLanguageAsync(code))
+                await LoadData();
+        }
+    }
+}

@@ -55,69 +55,57 @@
                         </Grid>
                     </Border>
 
-                    <!-- Vertical Filters Section -->
-                    <Grid ColumnDefinitions="*, *" ColumnSpacing="14">
-                        <!-- Time Filters -->
-                        <VerticalStackLayout Grid.Column="0" Spacing="8">
-                            <Label Text="Theo thời gian" FontAttributes="Bold" FontSize="13" TextColor="#1A1A2E" />
-                            
-                            <Border StrokeThickness="0" Padding="14,10" BackgroundColor="#FFF7F8">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
-                                <Border.Shadow>
-                                    <Shadow Brush="Black" Offset="0,2" Radius="6" Opacity="0.04" />
-                                </Border.Shadow>
-                                <Label Text="≤ 1 giờ" TextColor="#6C6C80" FontSize="13" HorizontalOptions="Center" />
-                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnQuickFilterTapped" CommandParameter="TIME_60" /></Border.GestureRecognizers>
-                            </Border>
-                            
-                            <Border StrokeThickness="0" Padding="14,10" BackgroundColor="#FFF7F8">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
-                                <Border.Shadow>
-                                    <Shadow Brush="Black" Offset="0,2" Radius="6" Opacity="0.04" />
-                                </Border.Shadow>
-                                <Label Text="1 - 2 giờ" TextColor="#6C6C80" FontSize="13" HorizontalOptions="Center" />
-                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnQuickFilterTapped" CommandParameter="TIME_120" /></Border.GestureRecognizers>
-                            </Border>
-
-                            <Border StrokeThickness="0" Padding="14,10" BackgroundColor="#FFF7F8">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
-                                <Border.Shadow>
-                                    <Shadow Brush="Black" Offset="0,2" Radius="6" Opacity="0.04" />
-                                </Border.Shadow>
-                                <Label Text="Trên 3 giờ" TextColor="#6C6C80" FontSize="13" HorizontalOptions="Center" />
-                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnQuickFilterTapped" CommandParameter="TIME_999" /></Border.GestureRecognizers>
+                    <!-- Dropdown Filters Section -->
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="12">
+                        <!-- Time Dropdown -->
+                        <VerticalStackLayout Grid.Column="0" Spacing="6">
+                            <Label Text="Thời gian" FontAttributes="Bold" FontSize="12" TextColor="#1A1A2E" Margin="4,0,0,0"/>
+                            <Border StrokeThickness="1.5" Stroke="#FFE4EA" BackgroundColor="White" Padding="12,0" HeightRequest="48">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <Picker x:Name="timePicker" Grid.Column="0" Title="Tất cả" FontSize="13" TextColor="#1A1A2E"
+                                            VerticalOptions="Center" TitleColor="#6C6C80"
+                                            SelectedIndexChanged="OnTimeFilterChanged">
+                                        <Picker.ItemsSource>
+                                            <x:Array Type="{x:Type x:String}">
+                                                <x:String>Tất cả</x:String>
+                                                <x:String>&lt; 1 giờ</x:String>
+                                                <x:String>1 - 2 giờ</x:String>
+                                                <x:String>2 - 3 giờ</x:String>
+                                                <x:String>Trên 3 giờ</x:String>
+                                            </x:Array>
+                                        </Picker.ItemsSource>
+                                        <Picker.SelectedIndex>0</Picker.SelectedIndex>
+                                    </Picker>
+                                    <Label Grid.Column="1" Text="▼" FontSize="10" TextColor="#FF6B81" 
+                                           VerticalOptions="Center" HorizontalOptions="End" Margin="0,0,5,0" InputTransparent="True"/>
+                                </Grid>
                             </Border>
                         </VerticalStackLayout>
 
-                        <!-- Price Filters -->
-                        <VerticalStackLayout Grid.Column="1" Spacing="8">
-                            <Label Text="Theo giá cả" FontAttributes="Bold" FontSize="13" TextColor="#1A1A2E" />
-
-                            <Border StrokeThickness="0" Padding="14,10" BackgroundColor="#FFECEF">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
-                                <Border.Shadow>
-                                    <Shadow Brush="#FF6B81" Offset="0,2" Radius="6" Opacity="0.06" />
-                                </Border.Shadow>
-                                <Label Text="Tiết kiệm" TextColor="#FF6B81" FontSize="13" FontAttributes="Bold" HorizontalOptions="Center" />
-                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnQuickFilterTapped" CommandParameter="PRICE_100000" /></Border.GestureRecognizers>
-                            </Border>
-
-                            <Border StrokeThickness="0" Padding="14,10" BackgroundColor="#EDF8FF">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
-                                <Border.Shadow>
-                                    <Shadow Brush="#4895EF" Offset="0,2" Radius="6" Opacity="0.06" />
-                                </Border.Shadow>
-                                <Label Text="Trung bình" TextColor="#4895EF" FontSize="13" FontAttributes="Bold" HorizontalOptions="Center" />
-                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnQuickFilterTapped" CommandParameter="PRICE_300000" /></Border.GestureRecognizers>
-                            </Border>
-
-                            <Border StrokeThickness="0" Padding="14,10" BackgroundColor="#FFF7E6">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
-                                <Border.Shadow>
-                                    <Shadow Brush="#FAAD14" Offset="0,2" Radius="6" Opacity="0.06" />
-                                </Border.Shadow>
-                                <Label Text="Cao cấp" TextColor="#E89B00" FontSize="13" FontAttributes="Bold" HorizontalOptions="Center" />
-                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnQuickFilterTapped" CommandParameter="PRICE_999999" /></Border.GestureRecognizers>
+                        <!-- Price Dropdown -->
+                        <VerticalStackLayout Grid.Column="1" Spacing="6">
+                            <Label Text="Giá tiền" FontAttributes="Bold" FontSize="12" TextColor="#1A1A2E" Margin="4,0,0,0" />
+                            <Border StrokeThickness="1.5" Stroke="#FFE4EA" BackgroundColor="White" Padding="12,0" HeightRequest="48">
+                                <Border.StrokeShape><RoundRectangle CornerRadius="12"/></Border.StrokeShape>
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <Picker x:Name="pricePicker" Grid.Column="0" Title="Tất cả" FontSize="13" TextColor="#1A1A2E"
+                                            VerticalOptions="Center" TitleColor="#6C6C80"
+                                            SelectedIndexChanged="OnPriceFilterChanged">
+                                        <Picker.ItemsSource>
+                                            <x:Array Type="{x:Type x:String}">
+                                                <x:String>Tất cả</x:String>
+                                                <x:String>&lt; 100.000đ</x:String>
+                                                <x:String>100k - 250k</x:String>
+                                                <x:String>250k - 500k</x:String>
+                                                <x:String>Trên 500.000đ</x:String>
+                                            </x:Array>
+                                        </Picker.ItemsSource>
+                                        <Picker.SelectedIndex>0</Picker.SelectedIndex>
+                                    </Picker>
+                                    <Label Grid.Column="1" Text="▼" FontSize="10" TextColor="#FF6B81" 
+                                           VerticalOptions="Center" HorizontalOptions="End" Margin="0,0,5,0" InputTransparent="True"/>
+                                </Grid>
                             </Border>
                         </VerticalStackLayout>
                     </Grid>
@@ -132,7 +120,7 @@
                     </CollectionView.ItemsLayout>
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
-                            <Border StrokeThickness="0" BackgroundColor="White" Padding="0">
+                            <Border StrokeThickness="0" BackgroundColor="#FFF5F2" Padding="0">
                                 <Border.StrokeShape><RoundRectangle CornerRadius="22"/></Border.StrokeShape>
                                 <Border.Shadow>
                                     <Shadow Brush="#FF6B81" Offset="0,5" Radius="14" Opacity="0.10" />

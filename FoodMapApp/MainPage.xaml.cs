@@ -11,27 +11,33 @@ namespace FoodMapApp
         public static int? PendingOpenFoodId { get; set; } = null;
         public static int? PendingRouteFoodId { get; set; } = null;
 
-        // Automatic Geofencing Session
-        private static string _autoPoiId = "";
-        private static string _autoSpokenText = "";
-        private static string[] _autoSentences = Array.Empty<string>();
-        private static int _autoSentenceIndex = 0;
-        private static bool _isAutoPaused = true;
+        // Unified Audio States
+        private static AudioSession _autoSession = new() { IsManual = false };
+        private static AudioSession _manualSession = new() { IsManual = true };
+        private static AudioSession? _activeSession = null;
 
-        // Manual Selection Session
-        private static string _manualPoiId = "";
-        private static string _manualSpokenText = "";
-        private static string[] _manualSentences = Array.Empty<string>();
-        private static int _manualSentenceIndex = 0;
-        private static bool _isManualActive = false;
-        private static bool _isManualPaused = false;
-
-        private static string _autoLang = "vi-VN";
-        private static string _manualLang = "vi-VN";
-        private static bool _isActuallySpeaking = false; 
         private static bool _isCleaningUp = false; 
+        private static bool _isActuallySpeaking = false; 
         private static TaskCompletionSource<bool>? _pauseTcs;
-        private static Queue<(string Text, string Id, string Lang, int StartIndex)> _audioQueue = new();
+        private static Queue<AudioSession> _audioQueue = new();
+
+        public class AudioSession
+        {
+            public string PoiId { get; set; } = "";
+            public string Name { get; set; } = "Quán ăn";
+            public string[] Sentences { get; set; } = Array.Empty<string>();
+            public int SentenceIndex { get; set; } = 0;
+            public string Language { get; set; } = "vi-VN";
+            public bool IsPaused { get; set; } = true;
+            public bool IsManual { get; set; } = false;
+            public bool IsActive { get; set; } = false;
+
+            public void Reset()
+            {
+                PoiId = ""; Sentences = Array.Empty<string>(); SentenceIndex = 0;
+                IsPaused = true; IsActive = false;
+            }
+        }
 
         private string NormalizeText(string text)
         {
@@ -69,85 +75,96 @@ namespace FoodMapApp
                     e.Cancel = true;
                     var uri = new Uri(e.Url);
                     var query = HttpUtility.ParseQueryString(uri.Query);
-                    string text = query["text"] ?? "";
-                    string lang = query["lang"] ?? "vi-VN";
-                    string id = query["id"] ?? "";
-                    bool isManual = query["manual"] == "true";
-
                     if (!string.IsNullOrWhiteSpace(text))
                     {
                         string normalizedText = NormalizeText(text);
-                        
+                        var sentences = normalizedText.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                                                      .Select(s => s.Trim())
+                                                      .Where(s => s.Length > 0)
+                                                      .ToArray();
+
                         if (isManual)
                         {
-                            _manualLang = lang; // Store manual language
-                            // 1. NGƯỢC LẠI: Mở audio thủ công thì "Tạm ẩn" audio tự động
-                            if (_isActuallySpeaking && !_isManualActive)
-                            {
-                                StopSpeech(fullReset: false, clearQueue: false); 
-                            }
-
-                            _isManualActive = true;
-                            _isManualPaused = false;
+                            StopSpeech(fullReset: false, clearQueue: false); // Stop current (auto or previous manual)
                             
+                            _manualSession.PoiId = id;
+                            _manualSession.Language = lang;
+                            _manualSession.Sentences = sentences;
+                            _manualSession.SentenceIndex = 0;
+                            _manualSession.IsPaused = false;
+                            _manualSession.IsActive = true;
+                            _activeSession = _manualSession;
+
                             _isCleaningUp = true;
-                            StopSpeech(fullReset: false, clearQueue: false); 
-                            await MainThread.InvokeOnMainThreadAsync(() => {
-                                miniPlayer.IsVisible = false; // Ẩn thanh Auto
-                            });
-
-                            await ShowMiniPlayer(id, true); // HIỆN THANH THỦ CÔNG - QUAN TRỌNG
-                            
+                            await MainThread.InvokeOnMainThreadAsync(() => miniPlayer.IsVisible = false);
+                            await SyncPlayerUI(_manualSession);
                             await Task.Delay(100);
                             _isCleaningUp = false;
 
-                            StartNewManualSpeech(text, id, normalizedText, lang);
+                            _ = SpeakWithChunksAsync(_manualSession);
                         }
                         else
                         {
-                            // 2. NGƯỢC LẠI: Mở audio tự động (GPS)
-                            if (_isManualActive)
+                            // Automatic GPS entry
+                            if (_manualSession.IsActive)
                             {
-                                // Nếu ID tự động đang trống, hãy nạp nó vào làm quán đang chờ sẵn
-                                if (string.IsNullOrEmpty(_autoPoiId))
+                                // If manual is playing, queue or hold the auto hit
+                                if (string.IsNullOrEmpty(_autoSession.PoiId))
                                 {
-                                    _autoPoiId = id;
-                                    _autoSentences = normalizedText.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
-                                                            .Select(s => s.Trim())
-                                                            .Where(s => s.Length > 0)
-                                                            .ToArray();
-                                    _autoSentenceIndex = 0;
-                                    _isAutoPaused = true;
+                                    _autoSession.PoiId = id;
+                                    _autoSession.Language = lang;
+                                    _autoSession.Sentences = sentences;
+                                    _autoSession.SentenceIndex = 0;
+                                    _autoSession.IsPaused = true;
+                                    _autoSession.IsActive = true;
                                 }
-                                else if (_autoPoiId != id)
+                                else if (_autoSession.PoiId != id)
                                 {
-                                    // Đưa vào hàng chờ bổ sung
-                                    _audioQueue.Enqueue((normalizedText, id, lang, 0));
+                                    _audioQueue.Enqueue(new AudioSession { PoiId = id, Language = lang, Sentences = sentences, IsManual = false });
                                 }
                                 return;
                             }
 
-                            if (string.IsNullOrEmpty(_autoPoiId))
+                            if (string.IsNullOrEmpty(_autoSession.PoiId))
                             {
-                                _autoPoiId = id;
-                                _autoLang = lang; // Store auto language
-                                _autoSentences = normalizedText.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
-                                                        .Select(s => s.Trim())
-                                                        .Where(s => s.Length > 0)
-                                                        .ToArray();
-                                _autoSentenceIndex = 0;
-                                _isAutoPaused = false;
-                                await ShowMiniPlayer(id, false); 
-                                _ = SpeakWithChunksAsync(lang, isManual: false);
+                                _autoSession.PoiId = id;
+                                _autoSession.Language = lang;
+                                _autoSession.Sentences = sentences;
+                                _autoSession.SentenceIndex = 0;
+                                _autoSession.IsPaused = false;
+                                _autoSession.IsActive = true;
+                                _activeSession = _autoSession;
+
+                                await SyncPlayerUI(_autoSession);
+                                _ = SpeakWithChunksAsync(_autoSession);
                             }
-                            else
+                            else if (_autoSession.PoiId != id)
                             {
-                                _audioQueue.Enqueue((normalizedText, id, lang, 0));
+                                // Priority interruption: pause current auto, queue it, start new one
+                                _autoSession.IsPaused = true;
+                                _audioQueue.Enqueue(new AudioSession 
+                                { 
+                                    PoiId = _autoSession.PoiId, Language = _autoSession.Language, 
+                                    Sentences = _autoSession.Sentences, SentenceIndex = _autoSession.SentenceIndex, 
+                                    IsManual = false 
+                                });
+
+                                StopSpeech(fullReset: false, clearQueue: false);
+
+                                _autoSession.PoiId = id;
+                                _autoSession.Language = lang;
+                                _autoSession.Sentences = sentences;
+                                _autoSession.SentenceIndex = 0;
+                                _autoSession.IsPaused = false;
+                                _activeSession = _autoSession;
+
+                                await SyncPlayerUI(_autoSession);
+                                _ = SpeakWithChunksAsync(_autoSession);
                             }
                         }
                     }
                 }
-                else if (e.Url.StartsWith("app-tts://stop"))
+                 else if (e.Url.StartsWith("app-tts://stop"))
                 {
                     e.Cancel = true;
                     var uri = new Uri(e.Url);
@@ -156,47 +173,29 @@ namespace FoodMapApp
                     
                     if (fullReset)
                     {
-                        StopSpeech(true);
-                        miniPlayer.IsVisible = false;
-                        manualMiniPlayer.IsVisible = false;
+                        StopGlobalAudio();
                     }
-                    else
+                    else if (_activeSession != null)
                     {
-                        if (_isManualActive)
-                        {
-                            _isManualPaused = true;
-                            mPlayIcon.IsVisible = true;
-                            mPauseIcon.IsVisible = false;
-                        }
-                        else
-                        {
-                            _isAutoPaused = true;
-                            playIcon.IsVisible = true;
-                            pauseIcon.IsVisible = false;
-                        }
+                        _activeSession.IsPaused = true;
                         _currentSentenceCts?.Cancel();
+                        await SyncPlayerUI(_activeSession);
                     }
                 }
-                else if (e.Url.StartsWith("app-request-reload://markers?"))
+                 else if (e.Url.StartsWith("app-request-reload://markers?"))
                 {
                     e.Cancel = true;
                     var uri = new Uri(e.Url);
                     var query = HttpUtility.ParseQueryString(uri.Query);
                     string lang = query["lang"] ?? "vi";
                     
-                    // NGỪNG NGAY LẬP TỨC AUDIO CŨ KHI CHUYỂN NGÔN NGỮ
-                    // Nếu đang nghe thủ công, ta chỉ "dừng phát" chứ không xoá hàng đợi tự động
-                    StopSpeech(fullReset: !_isManualActive, clearQueue: !_isManualActive);
+                    StopGlobalAudio();
                     
-                    _autoLang = lang;
-                    _manualLang = lang;
+                    _autoSession.Language = lang;
+                    _manualSession.Language = lang;
 
-                    miniPlayer.IsVisible = false;
-                    manualMiniPlayer.IsVisible = false;
-                    
-                    // Cập nhật lại tên biến loa bên JS
+                    await Task.Delay(200);
                     if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
-                    
                     LoadFoods(lang);
                 }
             };
@@ -234,56 +233,51 @@ namespace FoodMapApp
             catch (Exception ex) { Debug.WriteLine($"DEBUG: Error reporting location: {ex.Message}"); }
         }
 
-        private async Task ShowMiniPlayer(string poiId, bool isManual, bool startPaused = false)
+        private async Task SyncPlayerUI(AudioSession? session)
         {
             try
             {
-                string name = "Quán ăn";
-                if (!string.IsNullOrEmpty(_foodsJson))
-                {
-                    var foods = JsonSerializer.Deserialize<List<JsonElement>>(_foodsJson);
-                    var food = foods.FirstOrDefault(f => f.GetProperty("id").GetInt32().ToString() == poiId);
-                    if (food.ValueKind != JsonValueKind.Undefined)
-                    {
-                        name = food.GetProperty("name").GetString() ?? "Quán ăn";
-                    }
-                }
-
                 await MainThread.InvokeOnMainThreadAsync(() => {
-                    if (isManual)
+                    if (session == null || !session.IsActive)
                     {
-                        manualMiniPlayer.IsVisible = true;
-                        mPlayIcon.IsVisible = startPaused;
-                        mPauseIcon.IsVisible = !startPaused;
-                        manualShopLabel.Text = name;
+                        miniPlayer.IsVisible = false;
+                        manualMiniPlayer.IsVisible = false;
+                        return;
                     }
-                    else
-                    {
-                        miniPlayer.IsVisible = true; 
-                        playIcon.IsVisible = startPaused;
-                        pauseIcon.IsVisible = !startPaused;
+
+                    string name = "Quán ăn";
+                    if (_foodsJson != null) {
+                        try {
+                            var foods = JsonSerializer.Deserialize<List<JsonElement>>(_foodsJson);
+                            var food = foods?.FirstOrDefault(f => f.GetProperty("id").GetInt32().ToString() == session.PoiId);
+                            if (food.HasValue && food.Value.ValueKind != JsonValueKind.Undefined)
+                                name = food.Value.GetProperty("name").GetString() ?? "Quán ăn";
+                        } catch { }
+                    }
+
+                    if (session.IsManual) {
+                        manualMiniPlayer.IsVisible = true;
+                        mPlayIcon.IsVisible = session.IsPaused;
+                        mPauseIcon.IsVisible = !session.IsPaused;
+                        manualShopLabel.Text = name;
+                    } else {
+                        miniPlayer.IsVisible = true;
+                        playIcon.IsVisible = session.IsPaused;
+                        pauseIcon.IsVisible = !session.IsPaused;
                         detectedShopLabel.Text = name;
                     }
                 });
             }
-            catch (Exception ex) { Debug.WriteLine($"DEBUG: Error showing miniplayer: {ex.Message}"); }
+            catch (Exception ex) { Debug.WriteLine($"DEBUG: SyncUI error: {ex.Message}"); }
         }
 
-        private async Task AnimateVisualizer(bool isManual)
+        private async Task AnimateVisualizer(AudioSession session)
         {
             Random rnd = new Random();
-            bool isAnimating = true;
-            while (isAnimating)
+            while (_isActuallySpeaking && _activeSession == session && !session.IsPaused)
             {
-                if (isManual)
-                    isAnimating = _isActuallySpeaking && _isManualActive && !mPlayIcon.IsVisible && manualMiniPlayer.IsVisible;
-                else
-                    isAnimating = _isActuallySpeaking && !_isManualActive && !playIcon.IsVisible && miniPlayer.IsVisible;
-
-                if (!isAnimating) break;
-
                 await MainThread.InvokeOnMainThreadAsync(() => {
-                    if (isManual) {
+                    if (session.IsManual) {
                         mWave1.HeightRequest = rnd.Next(8, 20); mWave2.HeightRequest = rnd.Next(10, 25);
                         mWave3.HeightRequest = rnd.Next(5, 15); mWave4.HeightRequest = rnd.Next(12, 28);
                         mWave5.HeightRequest = rnd.Next(8, 22); mWave6.HeightRequest = rnd.Next(10, 24);
@@ -295,9 +289,8 @@ namespace FoodMapApp
                 });
                 await Task.Delay(130);
             }
-
             await MainThread.InvokeOnMainThreadAsync(() => {
-                if (isManual) {
+                if (session.IsManual) {
                     mWave1.HeightRequest = 12; mWave2.HeightRequest = 18; mWave3.HeightRequest = 10;
                     mWave4.HeightRequest = 22; mWave5.HeightRequest = 14; mWave6.HeightRequest = 19;
                 } else {
@@ -309,154 +302,134 @@ namespace FoodMapApp
 
         private async void OnClosePlayerClicked(object sender, EventArgs e)
         {
-            // 1. Dừng ngay lập tức âm thanh hiện tại khi bấm X
             StopSpeech(fullReset: false, clearQueue: false);
-            
-            // Cập nhật giao diện loa trong webview ngay
             if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
 
             if (_audioQueue.Count > 0)
             {
                 bool shouldContinue = await DisplayAlert("Thông báo", "Bạn muốn nghe quán tiếp theo hay hủy bỏ?", "Nghe", "Hủy bỏ");
-                if (shouldContinue)
+                if (shouldContinue && _audioQueue.TryDequeue(out var next))
                 {
-                    if (_audioQueue.TryDequeue(out var next))
-                    {
-                        // 2. Chờ một chút để luồng cũ giải phóng Semaphore hoàn toàn
-                        await Task.Delay(200);
-
-                        _autoPoiId = next.Id;
-                        _autoSentences = next.Text.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
-                        _autoSentenceIndex = 0;
-                        _isAutoPaused = false;
-                        
-                        await ShowMiniPlayer(next.Id, false);
-                        if (!_isManualActive) _ = SpeakWithChunksAsync(next.Lang, isManual: false);
-                        return;
-                    }
+                    await Task.Delay(200);
+                    _autoSession.PoiId = next.PoiId;
+                    _autoSession.Sentences = next.Sentences;
+                    _autoSession.SentenceIndex = 0;
+                    _autoSession.Language = next.Language;
+                    _autoSession.IsPaused = false;
+                    _autoSession.IsActive = true;
+                    _activeSession = _autoSession;
+                    
+                    await SyncPlayerUI(_autoSession);
+                    _ = SpeakWithChunksAsync(_autoSession);
+                    return;
                 }
             }
 
-            _autoPoiId = "";
+            _autoSession.Reset();
             _audioQueue.Clear();
-            if (!_isManualActive) StopSpeech(true);
-            miniPlayer.IsVisible = false;
+            if (_activeSession == _autoSession) StopSpeech(true);
+            await SyncPlayerUI(null);
         }
 
-        private void OnPlayAudioClicked(object sender, EventArgs e)
+        private async void OnPlayAudioClicked(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(_autoPoiId)) return;
-            _isAutoPaused = !_isAutoPaused;
-            if (!_isAutoPaused)
+            if (string.IsNullOrEmpty(_autoSession.PoiId)) return;
+            _autoSession.IsPaused = !_autoSession.IsPaused;
+            await SyncPlayerUI(_autoSession);
+
+            if (!_autoSession.IsPaused)
             {
-                playIcon.IsVisible = false;
-                pauseIcon.IsVisible = true;
-                if (_isManualActive) { _isManualActive = false; StopSpeech(false, false); manualMiniPlayer.IsVisible = false; }
-                if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_autoLang, isManual: false);
+                if (_manualSession.IsActive) { _manualSession.IsActive = false; StopSpeech(false, false); manualMiniPlayer.IsVisible = false; }
+                _activeSession = _autoSession;
+                if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_autoSession);
                 else _pauseTcs?.TrySetResult(true);
             }
-            else { playIcon.IsVisible = true; pauseIcon.IsVisible = false; _pauseTcs?.TrySetResult(false); }
+            else { _pauseTcs?.TrySetResult(false); }
         }
 
-        private void OnReplayAudioClicked(object sender, EventArgs e)
+        private async void OnReplayAudioClicked(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(_autoPoiId)) return;
-            _autoSentenceIndex = 0; _isAutoPaused = false;
-            playIcon.IsVisible = false; pauseIcon.IsVisible = true;
-            if (_isManualActive) { _isManualActive = false; StopSpeech(false, false); manualMiniPlayer.IsVisible = false; }
-            if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_autoLang, isManual: false);
+            if (string.IsNullOrEmpty(_autoSession.PoiId)) return;
+            _autoSession.SentenceIndex = 0; _autoSession.IsPaused = false;
+            await SyncPlayerUI(_autoSession);
+
+            if (_manualSession.IsActive) { _manualSession.IsActive = false; StopSpeech(false, false); manualMiniPlayer.IsVisible = false; }
+            _activeSession = _autoSession;
+            if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_autoSession);
             else _pauseTcs?.TrySetResult(true);
         }
 
-        private void OnManualPlayClicked(object sender, EventArgs e)
+        private async void OnManualPlayClicked(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(_manualPoiId)) return;
-            _isManualPaused = !_isManualPaused;
-            if (!_isManualPaused)
+            if (string.IsNullOrEmpty(_manualSession.PoiId)) return;
+            _manualSession.IsPaused = !_manualSession.IsPaused;
+            await SyncPlayerUI(_manualSession);
+
+            if (!_manualSession.IsPaused)
             {
-                mPlayIcon.IsVisible = false; mPauseIcon.IsVisible = true;
-                // Dừng auto nếu đang phát
-                if (!_isManualActive && _isActuallySpeaking) StopSpeech(false, false);
-                _isManualActive = true;
-                if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_manualLang, isManual: true);
+                if (!_manualSession.IsActive && _isActuallySpeaking) StopSpeech(false, false);
+                _manualSession.IsActive = true;
+                _activeSession = _manualSession;
+                if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_manualSession);
                 else _pauseTcs?.TrySetResult(true);
             }
-            else { mPlayIcon.IsVisible = true; mPauseIcon.IsVisible = false; _pauseTcs?.TrySetResult(false); }
+            else { _pauseTcs?.TrySetResult(false); }
         }
 
-        private void OnManualReplayClicked(object sender, EventArgs e)
+        private async void OnManualReplayClicked(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(_manualPoiId)) return;
-            _manualSentenceIndex = 0; _isManualPaused = false;
-            mPlayIcon.IsVisible = false; mPauseIcon.IsVisible = true;
-            if (!_isManualActive && _isActuallySpeaking) StopSpeech(false, false);
-            _isManualActive = true;
-            if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_manualLang, isManual: true);
+            if (string.IsNullOrEmpty(_manualSession.PoiId)) return;
+            _manualSession.SentenceIndex = 0; _manualSession.IsPaused = false;
+            await SyncPlayerUI(_manualSession);
+
+            if (!_manualSession.IsActive && _isActuallySpeaking) StopSpeech(false, false);
+            _manualSession.IsActive = true;
+            _activeSession = _manualSession;
+            if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_manualSession);
             else _pauseTcs?.TrySetResult(true);
         }
 
         private async void OnManualCloseClicked(object sender, EventArgs e)
         {
-            _isManualActive = false;
-            _isManualPaused = false;
-            StopSpeech(fullReset: false, clearQueue: false); // Chỉ dừng speech thủ công
-            
-            // Ẩn thanh thủ công ngay lập tức
-            manualMiniPlayer.IsVisible = false;
-            
-            // Dừng hình loa đập trong trang chi tiết
+            _manualSession.IsActive = false;
+            StopSpeech(fullReset: false, clearQueue: false);
+            await SyncPlayerUI(null);
             if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
             
-            // KIỂM TRA HÀNG ĐỢI HOẶC AUDIO TỰ ĐỘNG BỊ TẠM DỪNG
-            if (!string.IsNullOrEmpty(_autoPoiId) || _audioQueue.Count > 0)
+            bool isInterrupted = !string.IsNullOrEmpty(_autoSession.PoiId) && (_autoSession.Sentences != null && _autoSession.SentenceIndex < _autoSession.Sentences.Length);
+            
+            if (isInterrupted || _audioQueue.Count > 0)
             {
-                bool shouldResume = await DisplayAlert("Thông báo", "Bạn có muốn nghe audio ở gần không?", "OK", "Hủy");
-                
-                if (shouldResume)
+                if (await DisplayAlert("Thông báo", "Bạn có muốn nghe tiếp audio ở gần không?", "Tiếp tục", "Bỏ qua"))
                 {
-                    // Nếu _autoPoiId đang trống nhưng hàng đợi có, lấy quán tiếp theo
-                    if (string.IsNullOrEmpty(_autoPoiId) && _audioQueue.Count > 0)
+                    if (string.IsNullOrEmpty(_autoSession.PoiId) && _audioQueue.Count > 0 && _audioQueue.TryDequeue(out var next))
                     {
-                        if (_audioQueue.TryDequeue(out var next))
-                        {
-                            _autoPoiId = next.Id;
-                            _autoLang = next.Lang;
-                            _autoSentences = next.Text.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
-                            _autoSentenceIndex = 0;
-                        }
+                        _autoSession.PoiId = next.PoiId;
+                        _autoSession.Language = next.Language;
+                        _autoSession.Sentences = next.Sentences;
+                        _autoSession.SentenceIndex = 0;
                     }
 
-                    if (!string.IsNullOrEmpty(_autoPoiId))
+                    if (!string.IsNullOrEmpty(_autoSession.PoiId))
                     {
-                        _isAutoPaused = true;
-                        miniPlayer.IsVisible = true;
-                        playIcon.IsVisible = true;
-                        pauseIcon.IsVisible = false;
-                        
-                        // Đảm bảo tên quán tự động vẫn đúng
-                        if (_foodsJson != null) {
-                            try {
-                                var foods = JsonSerializer.Deserialize<List<FoodItem>>(_foodsJson);
-                                var currentFood = foods?.FirstOrDefault(f => f.id.ToString() == _autoPoiId);
-                                if (currentFood != null) detectedShopLabel.Text = currentFood.name;
-                            } catch { }
-                        }
+                        _autoSession.IsPaused = true;
+                        _autoSession.IsActive = true;
+                        await SyncPlayerUI(_autoSession);
                     }
                 }
                 else
                 {
-                    // Nếu hủy, xóa audio tự động hiện tại và hàng đợi để không làm phiền
-                    _autoPoiId = "";
+                    _autoSession.Reset();
                     _audioQueue.Clear();
-                    miniPlayer.IsVisible = false;
+                    await SyncPlayerUI(null);
                 }
             }
         }
 
         private async void OnDetailClicked(object sender, EventArgs e)
         {
-            if (!string.IsNullOrEmpty(_autoPoiId))
-                await mapView.EvaluateJavaScriptAsync($"openDetails({_autoPoiId})");
+            if (!string.IsNullOrEmpty(_autoSession.PoiId))
+                await mapView.EvaluateJavaScriptAsync($"openDetails({_autoSession.PoiId})");
         }
 
         public async void StopGlobalAudio()
@@ -487,78 +460,65 @@ namespace FoodMapApp
 
         private void StopSpeech(bool fullReset = false, bool clearQueue = true)
         {
+            _isActuallySpeaking = false;
             _currentSentenceCts?.Cancel();
-            _ttsCts?.Cancel(); // Hủy toàn bộ chuỗi speech đang chạy
+            _ttsCts?.Cancel(); 
             _pauseTcs?.TrySetResult(false);
             _audioStopwatch.Stop();
             
             if (fullReset)
             {
                 if (clearQueue) _audioQueue.Clear(); 
-                _autoPoiId = ""; _autoSentenceIndex = 0; _isAutoPaused = true;
-                _manualPoiId = ""; _manualSentenceIndex = 0; _isManualActive = false; _isManualPaused = false;
+                _autoSession.Reset();
+                _manualSession.Reset();
+                _activeSession = null;
             }
         }
 
-        private void StartNewManualSpeech(string text, string id, string normalizedText, string lang)
+        private async Task SpeakWithChunksAsync(AudioSession session)
         {
-            _manualPoiId = id;
-            _manualSentences = normalizedText.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
-            _manualSentenceIndex = 0;
-            _ = SpeakWithChunksAsync(lang, isManual: true);
-        }
-
-        private async Task SpeakWithChunksAsync(string lang, bool isManual)
-        {
-            if (!await _ttsSemaphore.WaitAsync(0)) return;
+            if (!await _ttsSemaphore.WaitAsync(500)) return;
             _isActuallySpeaking = true;
             _ttsCts = new CancellationTokenSource();
             _audioStopwatch.Restart();
 
             try
             {
-                // Capture local state to prevent "zombie tasks" from using new ID/sentences
-                var currentId = isManual ? _manualPoiId : _autoPoiId;
-                var sentences = isManual ? _manualSentences : _autoSentences;
-                
+                var sentences = session.Sentences;
                 if (sentences == null || sentences.Length == 0) return;
 
                 if (_cachedLocales == null) _cachedLocales = await TextToSpeech.Default.GetLocalesAsync();
-                var locale = _cachedLocales?.FirstOrDefault(l => l.Language.Equals(lang, StringComparison.OrdinalIgnoreCase)) ??
-                             _cachedLocales?.FirstOrDefault(l => l.Language.ToLower().StartsWith(lang.Split('-')[0].ToLower()));
+                var locale = _cachedLocales?.FirstOrDefault(l => l.Language.Equals(session.Language, StringComparison.OrdinalIgnoreCase)) ??
+                             _cachedLocales?.FirstOrDefault(l => l.Language.ToLower().StartsWith(session.Language.Split('-')[0].ToLower()));
                 var options = new SpeechOptions { Locale = locale };
 
-                _ = AnimateVisualizer(isManual);
+                _ = AnimateVisualizer(session);
 
-                while ((isManual ? _manualSentenceIndex : _autoSentenceIndex) < sentences.Length)
+                while (session.SentenceIndex < sentences.Length)
                 {
-                    int index = isManual ? _manualSentenceIndex : _autoSentenceIndex;
-                    
-                    // Đảm bảo vẫn đang trong cùng 1 phiên (ID không đổi)
-                    var activeId = isManual ? _manualPoiId : _autoPoiId;
-                    if (activeId != currentId || _ttsCts.Token.IsCancellationRequested) break;
+                    if (_ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || _activeSession != session) break;
 
-                    if (isManual) await mapView.EvaluateJavaScriptAsync($"if(window.onTtsProgress) window.onTtsProgress({index}, {sentences.Length});");
+                    int index = session.SentenceIndex;
+                    if (session.IsManual) await mapView.EvaluateJavaScriptAsync($"if(window.onTtsProgress) window.onTtsProgress({index}, {sentences.Length});");
 
-                    if (_isActuallySpeaking && ((isManual && _isManualPaused) || (!isManual && _isAutoPaused)))
+                    if (_isActuallySpeaking && session.IsPaused)
                     {
                         _pauseTcs = new TaskCompletionSource<bool>();
                         bool resume = await _pauseTcs.Task;
-                        if (!resume || _ttsCts.Token.IsCancellationRequested) break;
+                        if (!resume || _ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || _activeSession != session) break;
                     }
 
-                    if (_ttsCts.Token.IsCancellationRequested) break;
+                    if (_ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || _activeSession != session) break;
                     
                     _currentSentenceCts = CancellationTokenSource.CreateLinkedTokenSource(_ttsCts.Token);
                     string sentence = sentences[index];
                     if (!string.IsNullOrWhiteSpace(sentence)) await TextToSpeech.Default.SpeakAsync(sentence, options, _currentSentenceCts.Token);
                     
-                    // Kiểm tra lại sau khi nói xong 1 câu
-                    if (_ttsCts.Token.IsCancellationRequested) break;
-
-                    if (isManual) _manualSentenceIndex++; else _autoSentenceIndex++;
+                    if (_ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || _activeSession != session) break;
+                    session.SentenceIndex++;
                 }
-                if (!isManual && _autoSentenceIndex >= sentences.Length) _ = SendAudioLogAsync(_autoPoiId, (int)_audioStopwatch.Elapsed.TotalSeconds);
+
+                if (!session.IsManual && session.SentenceIndex >= sentences.Length) _ = SendAudioLogAsync(session.PoiId, (int)_audioStopwatch.Elapsed.TotalSeconds);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex) { Debug.WriteLine($"TTS Error: {ex.Message}"); }
@@ -566,71 +526,59 @@ namespace FoodMapApp
             { 
                 _isActuallySpeaking = false; 
                 _ttsSemaphore.Release(); 
-                // LUÔN LUÔN thông báo cho JS khi kết thúc (dù là xong hay là bị ngắt quãng)
                 MainThread.BeginInvokeOnMainThread(async () => {
                     if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
                 });
             }
 
             if (_isCleaningUp) return;
-            if (isManual) { 
-                if (_manualSentenceIndex >= _manualSentences.Length) { 
-                    _isManualActive = false; 
-                    await MainThread.InvokeOnMainThreadAsync(() => {
-                        manualMiniPlayer.IsVisible = false;
-                        // Hồi phục thanh tự động
-                        if (!string.IsNullOrEmpty(_autoPoiId)) {
-                            _isAutoPaused = true;
-                            miniPlayer.IsVisible = true;
-                            playIcon.IsVisible = true;
-                            pauseIcon.IsVisible = false;
-                            
-                            // Đảm bảo tên quán tự động vẫn đúng khi hiện lại
-                            if (_foodsJson != null) {
-                                try {
-                                    var foods = JsonSerializer.Deserialize<List<FoodItem>>(_foodsJson);
-                                    var currentFood = foods?.FirstOrDefault(f => f.id.ToString() == _autoPoiId);
-                                    if (currentFood != null) detectedShopLabel.Text = currentFood.name;
-                                } catch { }
-                            }
+
+            if (session.SentenceIndex >= session.Sentences.Length)
+            {
+                if (session.IsManual)
+                {
+                    session.IsActive = false;
+                    await MainThread.InvokeOnMainThreadAsync(async () => {
+                        await SyncPlayerUI(null);
+                        if (!string.IsNullOrEmpty(_autoSession.PoiId)) {
+                            _autoSession.IsPaused = true;
+                            _autoSession.IsActive = true;
+                            _activeSession = _autoSession;
+                            await SyncPlayerUI(_autoSession);
                         }
                     });
-                    await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();"); 
-                } 
-            }
-            else {
-                if (_autoSentenceIndex >= _autoSentences.Length) {
-                    if (_audioQueue.Count > 0) {
-                        if (_audioQueue.TryDequeue(out var next)) {
-                            _autoPoiId = next.Id;
-                            _autoSentences = next.Text.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
-                            _autoSentenceIndex = 0; _isAutoPaused = false; await ShowMiniPlayer(next.Id, false);
-                            _ = SpeakWithChunksAsync(next.Lang, isManual: false);
-                        }
+                }
+                else
+                {
+                    if (_audioQueue.Count > 0 && _audioQueue.TryDequeue(out var next))
+                    {
+                        _autoSession.PoiId = next.PoiId;
+                        _autoSession.Sentences = next.Sentences;
+                        _autoSession.SentenceIndex = 0;
+                        _autoSession.Language = next.Language;
+                        _autoSession.IsPaused = false;
+                        _activeSession = _autoSession;
+                        await SyncPlayerUI(_autoSession);
+                        _ = SpeakWithChunksAsync(_autoSession);
                     }
-                    else { playIcon.IsVisible = true; pauseIcon.IsVisible = false; }
+                    else
+                    {
+                        session.PoiId = ""; 
+                        await SyncPlayerUI(session);
+                    }
                 }
             }
+        }
         }
         public void HandleSystemInterruption()
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                if (_isActuallySpeaking)
+                if (_isActuallySpeaking && _activeSession != null)
                 {
+                    _activeSession.IsPaused = true;
                     StopSpeech(fullReset: false, clearQueue: false);
-                    if (_isManualActive)
-                    {
-                        _isManualPaused = true;
-                        mPlayIcon.IsVisible = true;
-                        mPauseIcon.IsVisible = false;
-                    }
-                    else
-                    {
-                        _isAutoPaused = true;
-                        playIcon.IsVisible = true;
-                        pauseIcon.IsVisible = false;
-                    }
+                    _ = SyncPlayerUI(_activeSession);
                 }
             });
         }
@@ -649,26 +597,27 @@ namespace FoodMapApp
         {
             base.OnAppearing();
 
-            // 1. KHÔI PHỤC GIAO DIỆN AUDIO NGAY LẬP TỨC (TRƯỚC KHI LÀM VIỆC KHÁC)
-            // Ưu tiên session Thủ công nếu đang active
-            if (_isManualActive && !string.IsNullOrEmpty(_manualPoiId))
+            if (_manualSession.IsActive)
             {
-                _isManualPaused = true;
-                _ = ShowMiniPlayer(_manualPoiId, true, startPaused: true);
+                _manualSession.IsPaused = true;
+                _activeSession = _manualSession;
+                _ = SyncPlayerUI(_manualSession);
             }
-            // Nếu không thì khôi phục session Tự động (GPS)
-            else if (!string.IsNullOrEmpty(_autoPoiId))
+            else if (_autoSession.IsActive)
             {
-                _isAutoPaused = true;
-                _ = ShowMiniPlayer(_autoPoiId, false, startPaused: true);
+                _autoSession.IsPaused = true;
+                _activeSession = _autoSession;
+                _ = SyncPlayerUI(_autoSession);
             }
-            // Trường hợp hàng đợi có quán tiếp theo
             else if (_audioQueue.Count > 0)
             {
                 if (_audioQueue.TryPeek(out var next))
                 {
-                    _isAutoPaused = true;
-                    _ = ShowMiniPlayer(next.Id, false, startPaused: true);
+                    _autoSession.PoiId = next.PoiId;
+                    _autoSession.IsActive = true;
+                    _autoSession.IsPaused = true;
+                    _activeSession = _autoSession;
+                    _ = SyncPlayerUI(_autoSession);
                 }
             }
 
@@ -687,22 +636,14 @@ namespace FoodMapApp
         {
             base.OnDisappearing();
             
-            // Khi rời trang bản đồ, tạm dừng đọc để tiết kiệm pin/tài nguyên
-            // nhưng TUYỆT ĐỐI KHÔNG reset session (_autoPoiId, _manualPoiId, _audioQueue)
-            if (_isActuallySpeaking)
+            if (_isActuallySpeaking && _activeSession != null)
             {
+                _activeSession.IsPaused = true;
                 StopSpeech(fullReset: false, clearQueue: false);
-                
-                if (_isManualActive) _isManualPaused = true;
-                else _isAutoPaused = true;
             }
 
-            // Đảm bảo icon hiển thị đúng trạng thái "Pause" (Sẵn sàng Play) kể cả khi vừa tắt/đang đợi
-            MainThread.BeginInvokeOnMainThread(() => {
-                mPlayIcon.IsVisible = true;
-                mPauseIcon.IsVisible = false;
-                playIcon.IsVisible = true;
-                pauseIcon.IsVisible = false;
+            MainThread.BeginInvokeOnMainThread(async () => {
+                await SyncPlayerUI(_activeSession);
             });
         }
 

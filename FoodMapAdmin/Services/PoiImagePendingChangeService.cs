@@ -10,6 +10,8 @@ namespace FoodMapAdmin.Services
         Task<bool> CreatePendingChangeAsync(PoiImagePendingChange change);
         Task<bool> ApproveChangeAsync(int changeId);
         Task<bool> RejectChangeAsync(int changeId);
+        Task<List<PoiImagePendingChange>> GetChangesByUserIdAsync(int userId);
+        Task<bool> CancelAsync(int id);
     }
 
     public class PoiImagePendingChangeService : IPoiImagePendingChangeService
@@ -17,13 +19,15 @@ namespace FoodMapAdmin.Services
         private readonly ApplicationDbContext _context;
         private readonly IActivityLogger _logger;
         private readonly IConfiguration _configuration;
+        private readonly INotificationService _notificationService;
         private readonly string _storagePath;
 
-        public PoiImagePendingChangeService(ApplicationDbContext context, IActivityLogger logger, IConfiguration configuration)
+        public PoiImagePendingChangeService(ApplicationDbContext context, IActivityLogger logger, IConfiguration configuration, INotificationService notificationService)
         {
             _context = context;
             _logger = logger;
             _configuration = configuration;
+            _notificationService = notificationService;
             _storagePath = _configuration["ImageStoragePath"] ?? @"d:\MapApp\FoodMapApp\Resources\Raw\images";
         }
 
@@ -124,6 +128,16 @@ namespace FoodMapAdmin.Services
                 pending.Status = "approved";
                 _context.PoiImagePendingChanges.Update(pending);
                 
+                // Notifications
+                string actionVn = pending.ChangeType == "add" ? "THÊM MỚI" : (pending.ChangeType == "delete" ? "XÓA BỎ" : "CẬP NHẬT");
+                await _notificationService.SendNotificationAsync(
+                    pending.UserId ?? 0,
+                    "Hình ảnh được phê duyệt",
+                    $"Yêu cầu {actionVn} hình ảnh cho '{poiName}' đã được duyệt.",
+                    "success",
+                    "image"
+                );
+
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return true;
@@ -150,6 +164,16 @@ namespace FoodMapAdmin.Services
             pending.Status = "rejected";
             _context.PoiImagePendingChanges.Update(pending);
             
+            // Notifications
+            string actionVn = pending.ChangeType == "add" ? "THÊM MỚI" : (pending.ChangeType == "delete" ? "XÓA BỎ" : "CẬP NHẬT");
+            await _notificationService.SendNotificationAsync(
+                pending.UserId ?? 0,
+                "Ảnh bị từ chối",
+                $"Rất tiếc, yêu cầu {actionVn} hình ảnh cho shop của bạn đã bị từ chối.",
+                "alert",
+                "image"
+            );
+
             var result = await _context.SaveChangesAsync() > 0;
             if (result)
             {
@@ -158,6 +182,31 @@ namespace FoodMapAdmin.Services
             }
             return result;
         }
+        public async Task<List<PoiImagePendingChange>> GetChangesByUserIdAsync(int userId)
+        {
+            return await _context.PoiImagePendingChanges
+                .Include(p => p.Poi)
+                .Where(p => p.UserId == userId && p.Status == "pending")
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<bool> CancelAsync(int id)
+        {
+            var p = await _context.PoiImagePendingChanges.FindAsync(id);
+            if (p != null)
+            {
+                // If it was an ADD request, delete the file too
+                if (p.ChangeType == "add" || p.ChangeType == "update")
+                {
+                    DeletePhysicalFile(p.ImageUrl);
+                }
+                _context.PoiImagePendingChanges.Remove(p);
+                return await _context.SaveChangesAsync() > 0;
+            }
+            return false;
+        }
+
         private void DeletePhysicalFile(string? imageUrl)
         {
             if (!string.IsNullOrEmpty(imageUrl))

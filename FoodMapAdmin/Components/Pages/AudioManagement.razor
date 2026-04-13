@@ -4,17 +4,20 @@
 @using FoodMapAdmin.Services
 @inject IPoiGuideService GuideService
 @inject IPoiService PoiService
+@inject ILanguageService LanguageService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
+@inject IPoiGuidePendingChangeService PendingChangeService
+@inject AuthenticationStateProvider AuthStateProvider
 @implements IAsyncDisposable
-@attribute [Authorize(Roles = "admin")]
+@attribute [Authorize(Roles = "admin,CNH")]
 
 <PageTitle>Quản lý Audio Guide - FoodMap Admin</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-5 mt-2 animate-fade-in">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;" class="animate-fade-in">
     <div>
-        <h2 class="mb-1" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Quản lí Audio</h2>
-        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý thuyết minh đa ngôn ngữ cho các địa điểm</p>
+        <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Quản lí Audio</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Quản lý thuyết minh đa ngôn ngữ cho các địa điểm</p>
     </div>
     <button class="glass-btn" @onclick="@(() => Navigation.NavigateTo("/audio-add"))">
         <i class="bi bi-plus-lg me-2"></i> Thêm Audio mới
@@ -65,56 +68,58 @@
                                         <div class="text-muted" style="font-size: 0.85rem; font-weight: 500;">
                                             <i class="bi bi-bookmark-fill me-1" style="color: var(--primary); opacity: 0.6;"></i>
                                             @(group.GetActiveGuide()?.Title ?? "Chưa có tiêu đề")
+                                            @if (!isAdmin && group.HasPending) {
+                                                <span class="badge-pending-mini ms-2"><i class="bi bi-clock-history me-1"></i>Đang chờ duyệt</span>
+                                            }
                                         </div>
                                     </div>
                                 </div>
                             </td>
-                            <td style="text-align: center;">
-                                <div class="lang-status-row">
-                                    <div class="lang-dot @(group.Guides.Any(g => g.Language == "vi") ? "active" : "")" title="Tiếng Việt">VI</div>
-                                    <div class="lang-dot @(group.Guides.Any(g => g.Language == "en") ? "active" : "")" title="Tiếng Anh">EN</div>
-                                    <div class="lang-dot @(group.Guides.Any(g => g.Language == "zh") ? "active" : "")" title="Tiếng Trung">ZH</div>
-                                    <div class="lang-dot @(group.Guides.Any(g => g.Language == "ko") ? "active" : "")" title="Tiếng Hàn">KO</div>
-                                    <div class="lang-dot @(group.Guides.Any(g => g.Language == "ja") ? "active" : "")" title="Tiếng Nhật">JA</div>
+                             <td style="text-align: center;">
+                                <div class="lang-selector-vertical">
+                                    @foreach (var lang in activeLanguages ?? new List<Language>()) {
+                                        var langCode = lang.LanguageCode;
+                                        var hasLang = group.Guides.Any(g => g.Language == langCode);
+                                        
+                                        // Hiển thị nếu là Tiếng Việt HOẶC đã có bản dịch
+                                        if (langCode == "vi" || hasLang)
+                                        {
+                                            <button class="lang-select-btn @(group.SelectedLang == langCode ? "active" : "")"
+                                                    @onclick="() => group.SelectedLang = langCode">
+                                                @langCode.ToUpper()
+                                            </button>
+                                        }
+                                    }
                                 </div>
                             </td>
-                            <td style="text-align: center;">
-                                <div class="play-action-btns">
-                                    <button class="btn-play-mini vi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "vi" && isActuallyPlaying && !isPaused ? "playing" : "")" 
-                                            disabled="@(!group.Guides.Any(g => g.Language == "vi"))"
-                                            @onclick="@(() => PlayAudio(group, "vi"))">
-                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "vi" && isActuallyPlaying && !isPaused ? "bi-pause-fill" : "bi-play-fill")"></i>
-                                    </button>
-                                    <button class="btn-play-mini en @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "en" && isActuallyPlaying && !isPaused ? "playing" : "")" 
-                                            disabled="@(!group.Guides.Any(g => g.Language == "en"))"
-                                            @onclick="@(() => PlayAudio(group, "en"))">
-                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "en" && isActuallyPlaying && !isPaused ? "bi-pause-fill" : "bi-play-fill")"></i>
-                                    </button>
-                                    <button class="btn-play-mini zh @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "zh" && isActuallyPlaying && !isPaused ? "playing" : "")" 
-                                            disabled="@(!group.Guides.Any(g => g.Language == "zh"))"
-                                            @onclick="@(() => PlayAudio(group, "zh"))">
-                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "zh" && isActuallyPlaying && !isPaused ? "bi-pause-fill" : "bi-play-fill")"></i>
-                                    </button>
-                                    <button class="btn-play-mini ko @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "ko" && isActuallyPlaying && !isPaused ? "playing" : "")" 
-                                            disabled="@(!group.Guides.Any(g => g.Language == "ko"))"
-                                            @onclick="@(() => PlayAudio(group, "ko"))">
-                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "ko" && isActuallyPlaying && !isPaused ? "bi-pause-fill" : "bi-play-fill")"></i>
-                                    </button>
-                                    <button class="btn-play-mini ja @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "ja" && isActuallyPlaying && !isPaused ? "playing" : "")" 
-                                            disabled="@(!group.Guides.Any(g => g.Language == "ja"))"
-                                            @onclick="@(() => PlayAudio(group, "ja"))">
-                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == "ja" && isActuallyPlaying && !isPaused ? "bi-pause-fill" : "bi-play-fill")"></i>
+                             <td style="text-align: center;">
+                                <div class="master-play-zone">
+                                    <button class="btn-play-master @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == group.SelectedLang && isActuallyPlaying && !isPaused ? "playing" : "")" 
+                                            @onclick="@(() => PlayAudio(group, group.SelectedLang))">
+                                        <i class="bi @(currentPlayingPoi?.PoiId == group.Poi.PoiId && currentLang == group.SelectedLang && isActuallyPlaying && !isPaused ? "bi-pause-circle-fill" : "bi-play-circle-fill")"></i>
+                                        <span>Nghe thử @group.SelectedLang.ToUpper()</span>
                                     </button>
                                 </div>
                             </td>
                             <td style="text-align: center; padding-right: 2rem; white-space: nowrap;">
                                 <div style="display: flex !important; flex-direction: row !important; justify-content: center; align-items: center; gap: 0.75rem;">
-                                    <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick="() => NavigateToEdit(group)">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </button>
-                                    <button class="action-btn btn-delete" title="Xóa" @onclick="() => DeleteGuide(group)">
-                                        <i class="bi bi-trash-fill"></i>
-                                    </button>
+                                    @{
+                                        if (isAdmin || !group.HasPending)
+                                        {
+                                            <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick="() => NavigateToEdit(group)">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <button class="action-btn btn-delete" title="Xóa" @onclick="() => DeleteGuide(group)">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge-lock-mini" title="Không thể thao tác khi có đơn chờ duyệt">
+                                                <i class="bi bi-lock-fill"></i> Khóa
+                                            </span>
+                                        }
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -214,62 +219,81 @@
         box-shadow: 0 8px 18px var(--primary-glow);
     }
 
-    /* Language Status Dots */
-    .lang-status-row { display: flex; gap: 0.6rem; justify-content: center; }
-    .lang-dot {
-        width: 28px;
-        height: 28px;
-        border-radius: 8px;
-        background: #f0f2f5;
-        color: #BCC;
-        font-size: 0.65rem;
-        font-weight: 800;
+    /* Vertical Language Selector */
+    .lang-selector-vertical {
         display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
         align-items: center;
-        justify-content: center;
-        transition: all 0.3s;
+        padding: 0.5rem 0;
     }
-    .lang-dot.active {
-        background: rgba(255, 45, 133, 0.1);
-        color: var(--primary);
-        border: 1px solid rgba(255, 45, 133, 0.2);
-    }
-
-    /* Mini Play Buttons */
-    .play-action-btns { display: flex; gap: 0.5rem; justify-content: center; }
-    .btn-play-mini {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        border: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        background: #f0f2f5;
-        color: #999;
-        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    .btn-play-mini:hover:not(:disabled) { transform: scale(1.15); }
-    .btn-play-mini.vi:hover:not(:disabled) { background: #E6FFFA; color: #38B2AC; }
-    .btn-play-mini.en:hover:not(:disabled) { background: #EBF4FF; color: #4299E1; }
-    .btn-play-mini.zh:hover:not(:disabled) { background: #FFF5F5; color: #E53E3E; }
-    .btn-play-mini.ko:hover:not(:disabled) { background: #F5F3FF; color: #7C3AED; }
-    .btn-play-mini.ja:hover:not(:disabled) { background: #FFF1F2; color: #E11D48; }
     
-    .btn-play-mini.playing {
-        background: var(--primary) !important;
-        color: white !important;
-        box-shadow: 0 5px 15px var(--primary-glow);
-        animation: mini-pulse 1.5s infinite;
+    .lang-select-btn {
+        width: 60px;
+        padding: 4px 0;
+        border-radius: 8px;
+        border: 1px solid #f0f2f5;
+        background: #f8f9fa;
+        color: #999;
+        font-size: 0.7rem;
+        font-weight: 800;
+        transition: all 0.2s;
+    }
+    .lang-select-btn:hover:not(.disabled) {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: white;
+    }
+    .lang-select-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+        box-shadow: 0 4px 10px var(--primary-glow);
+    }
+    .lang-select-btn.disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
     }
 
-    @@keyframes mini-pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
+    /* Master Play Button */
+    .master-play-zone {
+        display: flex;
+        justify-content: center;
     }
-
-    .btn-play-mini:disabled { opacity: 0.3; cursor: not-allowed; }
+    
+    .btn-play-master {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.8rem 1.4rem;
+        border-radius: 16px;
+        border: none;
+        background: #f8f9fa;
+        color: var(--primary);
+        font-weight: 800;
+        font-size: 0.9rem;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    }
+    
+    .btn-play-master i {
+        font-size: 1.6rem;
+        line-height: 1;
+    }
+    
+    .btn-play-master:hover {
+        transform: translateY(-3px);
+        background: white;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+    
+    .btn-play-master.playing {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 8px 25px var(--primary-glow);
+    }
+    
+    .btn-play-master:active { transform: scale(0.95); }
 
     /* Action Buttons */
     .action-btn {
@@ -295,14 +319,20 @@
     .animate-stagger > *:nth-child(1) { animation-delay: 0.1s; }
     .animate-stagger > *:nth-child(2) { animation-delay: 0.2s; }
     
-    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @("@")keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @("@")keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .badge-lock-mini {
+        background: rgba(255, 77, 79, 0.1); color: #ff4d4f;
+        font-size: 0.65rem; font-weight: 850; padding: 4px 10px; border-radius: 8px;
+        text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid rgba(255, 77, 79, 0.1);
+    }
 
     .loader-spinner {
         width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary);
         border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;
     }
-    @@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @("@")keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     /* Floating Player Styles */
     .audio-player-fixed {
@@ -352,11 +382,14 @@
     .player-progress-bar { height: 100%; background: var(--primary); transition: width 0.3s; }
 
     .animate-slide-up { animation: playerSlideUp 0.5s cubic-bezier(0.19, 1, 0.22, 1); }
-    @@keyframes playerSlideUp { from { transform: translate(-50%, 100px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+    @("@")keyframes playerSlideUp { from { transform: translate(-50%, 100px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 </style>
 
 @code {
-    private List<PoiGroup>? poiGroups;
+    private List<Poi>? pois;
+    private List<PoiGroup> poiGroups = new();
+    private List<Language>? activeLanguages;
+    private bool isAdmin = false;
     private DotNetObjectReference<AudioManagement>? dotNetHelper;
     private Poi? currentPlayingPoi;
     private string currentLang = "vi";
@@ -368,6 +401,8 @@
     public class PoiGroup {
         public Poi Poi { get; set; } = null!;
         public List<PoiGuide> Guides { get; set; } = new();
+        public string SelectedLang { get; set; } = "vi";
+        public bool HasPending { get; set; }
 
         public PoiGuide? GetActiveGuide() =>
             Guides.FirstOrDefault(g => g.Language == "vi") ?? Guides.FirstOrDefault();
@@ -386,13 +421,32 @@
 
     private async Task LoadData() {
         try {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            isAdmin = user.IsInRole("admin");
+
+            activeLanguages = await LanguageService.GetAllLanguagesAsync();
             var guides = await GuideService.GetAllGuidesAsync();
-            var allPois = await PoiService.GetAllPoisAsync();
+            var allPois = new List<Poi>();
+            var pendingGuides = new List<PoiGuidePendingChange>();
+
+            if (user.IsInRole("admin")) {
+                allPois = await PoiService.GetAllPoisAsync();
+                pendingGuides = await PendingChangeService.GetAllPendingChangesAsync();
+            } else {
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(userIdStr, out var userId)) {
+                    allPois = await PoiService.GetPoisByOwnerAsync(userId);
+                    pendingGuides = await PendingChangeService.GetChangesByOwnerAsync(userId);
+                }
+            }
+
             poiGroups = allPois
-                .Where(p => guides.Any(g => g.PoiId == p.PoiId))
+                .Where(p => guides.Any(g => g.PoiId == p.PoiId) || (!user.IsInRole("admin") && pendingGuides.Any(pg => pg.PoiId == p.PoiId)))
                 .Select(p => new PoiGroup {
                     Poi = p,
-                    Guides = guides.Where(g => g.PoiId == p.PoiId).ToList()
+                    Guides = guides.Where(g => g.PoiId == p.PoiId).ToList(),
+                    HasPending = pendingGuides.Any(pg => pg.PoiId == p.PoiId)
                 })
                 .ToList();
         } catch (Exception ex) {
@@ -490,10 +544,44 @@
     }
 
     private async Task DeleteGuide(PoiGroup group) {
-        var ok = await JSRuntime.InvokeAsync<bool>("confirm", $"Xóa toàn bộ thuyết minh của \"{group.Poi.Name}\"?");
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        string msg = user.IsInRole("admin") 
+            ? $"Xóa vĩnh viễn toàn bộ thuyết minh của \"{group.Poi.Name}\"?" 
+            : $"Gửi yêu cầu XÓA toàn bộ thuyết minh của \"{group.Poi.Name}\" cho Admin phê duyệt?";
+
+        var ok = await JSRuntime.InvokeAsync<bool>("confirm", msg);
         if (!ok) return;
-        foreach (var g in group.Guides) await GuideService.DeleteGuideAsync(g.GuideId);
-        await LoadData();
+
+        if (user.IsInRole("CNH"))
+        {
+            var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userId = int.TryParse(userIdStr, out var id) ? (int?)id : null;
+
+            var pendingChange = new PoiGuidePendingChange
+            {
+                PoiId = group.Poi.PoiId,
+                Title = group.GetActiveGuide()?.Title ?? "N/A",
+                Description = group.GetActiveGuide()?.Description ?? "N/A",
+                Language = "vi",
+                ChangeType = "delete",
+                UserId = userId,
+                Status = "pending"
+            };
+
+            if (await PendingChangeService.SubmitChangeAsync(pendingChange))
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Yêu cầu xóa đã được gửi cho Admin phê duyệt.");
+                await LoadData();
+            }
+        }
+        else 
+        {
+            foreach (var g in group.Guides) await GuideService.DeleteGuideAsync(g.GuideId);
+            await LoadData();
+        }
+        
         StateHasChanged();
     }
 

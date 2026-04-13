@@ -6,10 +6,12 @@ namespace FoodMapApp
 {
     public partial class FoodTourPage : ContentPage
     {
-        private int _maxDuration = 0;
         private int _minDuration = 0;
+        private int _maxDuration = 0;
+        private decimal _minPrice = 0;
         private decimal _maxPrice = 0;
         private string _searchText = string.Empty;
+        private CancellationTokenSource _searchCts;
 
         public FoodTourPage()
         {
@@ -38,11 +40,15 @@ namespace FoodMapApp
 
                 if (!string.IsNullOrEmpty(_searchText))
                     queryParams.Add($"search={Uri.EscapeDataString(_searchText)}");
+                
                 if (_minDuration > 0)
                     queryParams.Add($"min_duration={_minDuration}");
                 if (_maxDuration > 0 && _maxDuration < 999)
                     queryParams.Add($"max_duration={_maxDuration}");
-                if (_maxPrice > 0 && _maxPrice < 999999)
+                
+                if (_minPrice > 0)
+                    queryParams.Add($"min_price={_minPrice}");
+                if (_maxPrice > 0 && _maxPrice < 9999999)
                     queryParams.Add($"max_price={_maxPrice}");
 
                 if (queryParams.Count > 0)
@@ -59,12 +65,65 @@ namespace FoodMapApp
 
         // --- Search & Filter Handlers ---
 
-        private async void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+        private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
         {
             _searchText = e.NewTextValue;
             clearBtn.IsVisible = !string.IsNullOrEmpty(_searchText);
             
-            // Immediate search for responsiveness
+            // Debounce logic: cancel previous task and start a new one
+            _searchCts?.Cancel();
+            _searchCts = new CancellationTokenSource();
+            var token = _searchCts.Token;
+
+            Task.Run(async () => {
+                try {
+                    await Task.Delay(300, token);
+                    MainThread.BeginInvokeOnMainThread(async () => await LoadTours());
+                } catch (OperationCanceledException) { }
+            }, token);
+        }
+        
+        private async void OnTimeFilterChanged(object sender, EventArgs e)
+        {
+            var picker = (Picker)sender;
+            int selectedIndex = picker.SelectedIndex;
+
+            switch (selectedIndex)
+            {
+                case 0: // Tất cả
+                    _minDuration = 0; _maxDuration = 0; break;
+                case 1: // < 1 giờ
+                    _minDuration = 0; _maxDuration = 60; break;
+                case 2: // 1 - 2 giờ
+                    _minDuration = 60; _maxDuration = 120; break;
+                case 3: // 2 - 3 giờ
+                    _minDuration = 120; _maxDuration = 180; break;
+                case 4: // Trên 3 giờ
+                    _minDuration = 181; _maxDuration = 9999; break;
+            }
+
+            await LoadTours();
+        }
+
+        private async void OnPriceFilterChanged(object sender, EventArgs e)
+        {
+            var picker = (Picker)sender;
+            int selectedIndex = picker.SelectedIndex;
+
+            switch (selectedIndex)
+            {
+                case 0: // Tất cả
+                    _minPrice = 0; _maxPrice = 0; break;
+                case 1: // < 100.000đ
+                    _minPrice = 0; _maxPrice = 100000; break;
+                case 2: // 100k - 250k
+                    _minPrice = 100000; _maxPrice = 250000; break;
+                case 3: // 250k - 500k
+                    _minPrice = 250000; _maxPrice = 500000; break;
+                case 4: // Trên 500.000đ
+                    _minPrice = 500000; _maxPrice = 9999999; break;
+            }
+
             await LoadTours();
         }
 
@@ -74,29 +133,12 @@ namespace FoodMapApp
             _searchText = string.Empty;
             _minDuration = 0;
             _maxDuration = 0;
+            _minPrice = 0;
             _maxPrice = 0;
-            await LoadTours();
-        }
-
-        private async void OnQuickFilterTapped(object sender, TappedEventArgs e)
-        {
-            var param = e.Parameter?.ToString() ?? "";
             
-            if (param.StartsWith("TIME_"))
-            {
-                var val = int.Parse(param.Replace("TIME_", ""));
-                if (val == 60) { _minDuration = 0; _maxDuration = 60; }
-                else if (val == 120) { _minDuration = 61; _maxDuration = 120; }
-                else if (val == 999) { _minDuration = 181; _maxDuration = 0; }
-            }
-            else if (param.StartsWith("PRICE_"))
-            {
-                var val = decimal.Parse(param.Replace("PRICE_", ""));
-                _maxPrice = val;
-            }
+            if (timePicker != null) timePicker.SelectedIndex = 0;
+            if (pricePicker != null) pricePicker.SelectedIndex = 0;
 
-            // Visual feedback - optional: we could highlight the selected chip
-            // For now, just reload
             await LoadTours();
         }
 

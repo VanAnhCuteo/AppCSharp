@@ -4,6 +4,7 @@
 @using FoodMapAdmin.Services
 @inject IPoiImageService PoiImageService
 @inject IPoiService PoiService
+@inject IPoiImagePendingChangeService PendingChangeService
 @inject NavigationManager Navigator
 @inject IJSRuntime JS
 @attribute [Authorize(Roles = "admin,CNH")]
@@ -87,7 +88,8 @@
                     {
                         @foreach (var img in filtered)
                         {
-                            <tr class="align-middle transition-all">
+                            var pending = pendingImages?.FirstOrDefault(p => p.ImageId == img.ImageId);
+                            <tr class="align-middle transition-all @(pending != null ? "pending-row" : "")">
                                 <td style="padding-left: 2rem; color: var(--text-muted); font-weight: 600;">#@img.ImageId</td>
                                 <td>
                                     <div class="image-preview-container">
@@ -98,7 +100,13 @@
                                     @if (img.Poi != null)
                                     {
                                         <div style="font-weight: 700; color: var(--text-main);">@img.Poi.Name</div>
-                                        <div class="text-muted" style="font-size: 0.8rem;">ID: #@img.PoiId</div>
+                                        <div class="text-muted" style="font-size: 0.8rem;">
+                                            ID: #@img.PoiId
+                                            @if (!isAdmin && pending != null && pending.ChangeType == "delete")
+                                            {
+                                                <span class="badge-pending-danger ms-2" title="Yêu cầu xóa đang chờ duyệt">CHỜ XÓA</span>
+                                            }
+                                        </div>
                                     }
                                 </td>
                                 <td>
@@ -106,15 +114,45 @@
                                 </td>
                                 <td style="text-align: center; padding-right: 2rem; white-space: nowrap;">
                                     <div style="display: flex !important; flex-direction: row !important; justify-content: center; align-items: center; gap: 0.75rem;">
-                                        <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick="() => Edit(img.ImageId)">
-                                            <i class="bi bi-pencil-square"></i>
-                                        </button>
-                                        <button class="action-btn btn-delete" title="Xóa" @onclick="() => Delete(img.ImageId)">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </button>
+                                        @if (isAdmin || pending == null) {
+                                            <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick="() => Edit(img.ImageId)">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <button class="action-btn btn-delete" title="Xóa" @onclick="() => Delete(img.ImageId)">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        } else {
+                                            <span class="badge-lock-mini" title="Không thể thao tác khi đang chờ duyệt">
+                                                <i class="bi bi-lock-fill"></i> Khóa
+                                            </span>
+                                        }
                                     </div>
                                 </td>
                             </tr>
+                        }
+
+                        <!-- SHOW PENDING ADDITIONS (Owner only) -->
+                        @if (!isAdmin && pendingImages != null)
+                        {
+                            @foreach (var p in pendingImages.Where(pi => pi.ChangeType == "add" || pi.ChangeType == "update"))
+                            {
+                                <tr class="align-middle pending-creation-row">
+                                    <td style="padding-left: 2rem; color: #999; font-style: italic;">(Mới)</td>
+                                    <td>
+                                        <div class="image-preview-container" style="opacity: 0.7;">
+                                            <img src="@p.ImageUrl" alt="Preview" class="image-preview" />
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div style="font-weight: 700; color: #777;">@p.Poi?.Name</div>
+                                        <div class="badge-pending-primary mt-1" style="display: inline-block;">ĐANG CHỜ DUYỆT</div>
+                                    </td>
+                                    <td><code class="text-muted" style="font-size: 0.85rem;">@p.ImageUrl</code></td>
+                                    <td style="text-align: center; padding-right: 2rem;">
+                                        <i class="bi bi-shield-lock text-muted" title="Admin đang xem xét"></i>
+                                    </td>
+                                </tr>
+                            }
                         }
                     }
                 }
@@ -224,6 +262,12 @@
         transform: translateY(-2px);
     }
 
+    .badge-lock-mini {
+        background: rgba(255, 77, 79, 0.1); color: #ff4d4f;
+        font-size: 0.65rem; font-weight: 850; padding: 4px 10px; border-radius: 8px;
+        text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid rgba(255, 77, 79, 0.1);
+    }
+
     .transition-all {
         transition: all 0.3s ease;
     }
@@ -231,14 +275,19 @@
     tr:hover {
         background: rgba(255, 45, 133, 0.01) !important;
     }
+    tr.pending-creation-row { background: rgba(52, 152, 219, 0.02) !important; border-style: dashed; }
+    .badge-pending-primary { background: rgba(52, 152, 219, 0.1); color: #3498db; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.65rem; font-weight: 800; cursor: default; }
+    .badge-pending-danger { background: rgba(255, 71, 87, 0.1); color: #FF4757; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.65rem; font-weight: 800; cursor: default; }
 </style>
 
 @code {
     private List<PoiImage>? images;
+    private List<PoiImagePendingChange>? pendingImages;
     private List<Poi> pois = new();
     private string activeTab = "all";
     private int selectedPoiId = 0;
-    
+    private bool isAdmin = false;
+
     [CascadingParameter]
     private Task<AuthenticationState>? AuthStateTask { get; set; }
 
@@ -250,11 +299,13 @@
             {
                 var authState = await AuthStateTask;
                 var user = authState.User;
+                isAdmin = user.IsInRole("admin");
 
-                if (user.IsInRole("admin"))
+                if (isAdmin)
                 {
                     images = await PoiImageService.GetAllImagesAsync();
                     pois = await PoiService.GetAllPoisAsync();
+                    pendingImages = await PendingChangeService.GetPendingChangesAsync();
                 }
                 else if (user.IsInRole("CNH"))
                 {
@@ -263,6 +314,7 @@
                     {
                         images = await PoiImageService.GetImagesByOwnerAsync(userId);
                         pois = await PoiService.GetPoisByOwnerAsync(userId);
+                        pendingImages = await PendingChangeService.GetChangesByUserIdAsync(userId);
                     }
                 }
             }

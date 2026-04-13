@@ -1,0 +1,38 @@
+@page "/debug-auth"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>Auth Debug Page</h3>
+
+<div class="card p-4 shadow-sm">
+    @if (authState == null)
+    {
+        <p>Loading auth state...</p>
+    }
+    else
+    {
+        <p><strong>Username:</strong> @authState.User.Identity?.Name</p>
+        <p><strong>Is Authenticated:</strong> @authState.User.Identity?.IsAuthenticated</p>
+        <p><strong>Roles Found:</strong></p>
+        <ul>
+            @foreach (var claim in authState.User.Claims.Where(c => c.Type == ClaimTypes.Role))
+            {
+                <li>@claim.Value</li>
+            }
+        </ul>
+        <hr />
+        <p><strong>user.IsInRole("admin"):</strong> @authState.User.IsInRole("admin")</p>
+        <p><strong>user.IsInRole("Admin"):</strong> @authState.User.IsInRole("Admin")</p>
+        <p><strong>user.IsInRole("CNH"):</strong> @authState.User.IsInRole("CNH")</p>
+    }
+</div>
+
+@code {
+    private AuthenticationState? authState;
+
+    protected override async Task OnInitializedAsync()
+    {
+        authState = await AuthStateProvider.GetAuthenticationStateAsync();
+    }
+}

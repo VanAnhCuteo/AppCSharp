@@ -67,14 +67,19 @@
                                     <div>
                                         <div style="font-weight: 700; color: var(--text-main); font-size: 0.92rem;">
                                             @poi.Name
-                                            @if (pendingChangesList.Any(pc => pc.PoiId == poi.PoiId))
-                                            {
-                                                var change = pendingChangesList.FirstOrDefault(pc => pc.PoiId == poi.PoiId);
-                                                string badgeText = change?.ChangeType == "delete" ? "CHỜ XÓA" : "CHỜ SỬA";
-                                                string badgeColor = change?.ChangeType == "delete" ? "background: rgba(255,71,87,0.08); color: #FF4757;" : "background: rgba(255,159,67,0.08); color: #FF9F43;";
-                                                <span style="@badgeColor padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.62rem; font-weight: 700; margin-left: 0.4rem; letter-spacing: 0.3px;">
-                                                    @badgeText
-                                                </span>
+                                            @{
+                                                var pending = pendingChangesList.FirstOrDefault(pc => pc.PoiId == poi.PoiId);
+                                                if (!isAdmin && pending != null)
+                                                {
+                                                    @if (pending.ChangeType == "update")
+                                                    {
+                                                        <span class="badge-pending-warning ms-2"><i class="bi bi-clock-history me-1"></i>CHỜ SỬA</span>
+                                                    }
+                                                    else if (pending.ChangeType == "delete")
+                                                    {
+                                                        <span class="badge-pending-danger ms-2"><i class="bi bi-trash me-1"></i>CHỜ XÓA</span>
+                                                    }
+                                                }
                                             }
                                         </div>
                                         <div style="color: var(--text-muted); font-size: 0.78rem;">@poi.OpenTime</div>
@@ -96,15 +101,55 @@
                             </td>
                             <td style="text-align: center;">
                                 <div style="display: flex; justify-content: center; gap: 0.5rem;">
-                                    <button class="act-btn act-edit" title="Chỉnh sửa" @onclick="() => Edit(poi.PoiId)">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </button>
-                                    <button class="act-btn act-del" title="Xóa" @onclick="() => Delete(poi.PoiId)">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                    @{
+                                        var hasPending = pendingChangesList.Any(pc => pc.PoiId == poi.PoiId);
+                                        if (isAdmin || !hasPending)
+                                        {
+                                            <button class="act-btn act-edit" title="Chỉnh sửa" @onclick="() => Edit(poi.PoiId)">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <button class="act-btn act-del" title="Xóa" @onclick="() => Delete(poi.PoiId)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge-lock-mini" title="Không thể chỉnh sửa khi đang có đơn chờ duyệt">
+                                                <i class="bi bi-lock-fill"></i> Khóa
+                                            </span>
+                                        }
+                                    }
                                 </div>
                             </td>
                         </tr>
+                    }
+
+                    <!-- SHOW PENDING CREATIONS (Owner only) -->
+                    @if (!isAdmin)
+                    {
+                        @foreach (var pending in pendingChangesList.Where(pc => pc.ChangeType == "create"))
+                        {
+                        <tr class="pending-creation-row">
+                            <td style="padding-left: 1.75rem; color: #999; font-style: italic;">(Mới)</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <div class="poi-avatar" style="background: #e1e1e1; color: #aaa;">?</div>
+                                    <div>
+                                        <div style="font-weight: 700; color: #777; font-size: 0.92rem;">
+                                            @pending.Name
+                                            <span class="badge-lock-mini ms-2"><i class="bi bi-hourglass-split me-1"></i>CHỜ DUYỆT MỚI</span>
+                                        </div>
+                                        <div style="color: #bbb; font-size: 0.78rem;">Đang xử lý hồ sơ...</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="cat-badge" style="background: #eee; color: #aaa;">@pending.Category?.CategoryName</span></td>
+                            <td colspan="2"><i class="text-muted" style="font-size: 0.8rem;">Vị trí: @pending.Latitude, @pending.Longitude</i></td>
+                            <td style="text-align: center;">
+                                <i class="bi bi-shield-lock-fill text-muted" title="Đang đợi Admin phê duyệt"></i>
+                            </td>
+                        </tr>
+                        }
                     }
                 }
             </tbody>
@@ -185,11 +230,15 @@
         color: white;
         transform: translateY(-1px);
     }
+    .badge-pending-warning { background: rgba(255, 159, 67, 0.1); color: #FF9F43; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.65rem; font-weight: 800; }
+    .badge-pending-danger { background: rgba(255, 71, 87, 0.1); color: #FF4757; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.65rem; font-weight: 800; }
+    .badge-pending-primary { background: rgba(52, 152, 219, 0.1); color: #3498db; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.65rem; font-weight: 800; }
 </style>
 
 @code {
     private List<Poi>? pois;
     private List<PoiPendingChange> pendingChangesList = new();
+    private bool isAdmin = false;
     
     [CascadingParameter]
     private Task<AuthenticationState>? AuthStateTask { get; set; }
@@ -202,10 +251,12 @@
             {
                 var authState = await AuthStateTask;
                 var user = authState.User;
+                isAdmin = user.IsInRole("admin");
 
-                if (user.IsInRole("admin"))
+                if (isAdmin)
                 {
                     pois = await PoiService.GetAllPoisAsync();
+                    pendingChangesList = await PendingChangeService.GetPendingChangesAsync();
                 }
                 else if (user.IsInRole("CNH"))
                 {
@@ -213,11 +264,9 @@
                     if (int.TryParse(userIdStr, out var userId))
                     {
                         pois = await PoiService.GetPoisByOwnerAsync(userId);
+                        pendingChangesList = await PendingChangeService.GetChangesByUserIdAsync(userId);
                     }
                 }
-
-                // Load pending changes to show badges
-                pendingChangesList = await PendingChangeService.GetPendingChangesAsync();
             }
         }
         catch (Exception ex)
@@ -268,3 +317,12 @@
         }
     }
 }
+
+<style>
+    .badge-lock-mini {
+        background: rgba(255, 77, 79, 0.1); color: #ff4d4f;
+        font-size: 0.65rem; font-weight: 850; padding: 4px 10px; border-radius: 8px;
+        text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid rgba(255, 77, 79, 0.1);
+    }
+    .pending-creation-row { background: rgba(0,0,0,0.02); }
+</style>

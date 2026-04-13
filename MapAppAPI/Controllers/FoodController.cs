@@ -389,6 +389,45 @@ namespace FoodMapAPI.Controllers
             return NotFound();
         }
 
+        [HttpGet("{id}/available-languages")]
+        public async Task<IActionResult> GetAvailableLanguages(int id)
+        {
+            List<Language> languages = new List<Language>();
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+                    string query = @"
+                        SELECT l.* 
+                        FROM languages l
+                        INNER JOIN poi_guides g ON l.language_code = g.language
+                        WHERE g.poi_id = @id";
 
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", id);
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                languages.Add(new Language
+                                {
+                                    language_code = reader["language_code"].ToString(),
+                                    name = reader["name"].ToString(),
+                                    flag_url = reader["flag_url"].ToString()
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            return Ok(languages);
+        }
     }
-}
+}

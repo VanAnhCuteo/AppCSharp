@@ -1,6 +1,10 @@
 using System.Collections.Generic;
 using System.Net.Http.Json;
 using FoodMapApp.Models;
+using System.Web;
+using System.Text.Json;
+using System.Diagnostics;
+using System.Threading;
 
 namespace FoodMapApp.Views
 {
@@ -12,6 +16,33 @@ namespace FoodMapApp.Views
         private Location? _userLocation;
         private bool _isJourneyStarted = false;
         private int _visitedCount = 0;
+
+        // Audio Session for Tour
+        private AudioSession _tourSession = new() { IsManual = true };
+        private bool _isActuallySpeaking = false;
+        private bool _isCleaningUp = false;
+        private CancellationTokenSource? _ttsCts;
+        private CancellationTokenSource? _currentSentenceCts;
+        private TaskCompletionSource<bool>? _pauseTcs;
+        private SemaphoreSlim _ttsSemaphore = new(1, 1);
+        private Stopwatch _audioStopwatch = new();
+        private IEnumerable<Locale>? _cachedLocales;
+
+        public class AudioSession
+        {
+            public string PoiId { get; set; } = "";
+            public string[] Sentences { get; set; } = Array.Empty<string>();
+            public int SentenceIndex { get; set; } = 0;
+            public string Language { get; set; } = "vi-VN";
+            public bool IsPaused { get; set; } = true;
+            public bool IsActive { get; set; } = false;
+
+            public void Reset()
+            {
+                PoiId = ""; Sentences = Array.Empty<string>(); SentenceIndex = 0;
+                IsPaused = true; IsActive = false;
+            }
+        }
 
         public TourMapPage(int tourId)
         {
@@ -25,6 +56,55 @@ namespace FoodMapApp.Views
                     await SendTourToMap();
                 }
             };
+
+            tourMapView.Navigating += async (s, e) =>
+            {
+                if (e.Url.StartsWith("app-tts://speak?"))
+                {
+                    e.Cancel = true;
+                    var uri = new Uri(e.Url);
+                    var query = HttpUtility.ParseQueryString(uri.Query);
+                    string text = query["text"] ?? "";
+                    string lang = query["lang"] ?? "vi-VN";
+                    string id = query["id"] ?? "";
+
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        // Stop any previous speech in this tour
+                        StopSpeech(fullReset: false);
+                        
+                        _tourSession.PoiId = id;
+                        _tourSession.Language = lang;
+                        _tourSession.Sentences = text.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                                                    .Select(s => s.Trim())
+                                                    .Where(s => s.Length > 0)
+                                                    .ToArray();
+                        _tourSession.SentenceIndex = 0;
+                        _tourSession.IsPaused = false;
+                        _tourSession.IsActive = true;
+
+                        await SyncPlayerUI();
+                        _ = SpeakWithChunksAsync();
+                    }
+                }
+                else if (e.Url.StartsWith("app-tts://stop"))
+                {
+                    e.Cancel = true;
+                    var uri = new Uri(e.Url);
+                    var query = HttpUtility.ParseQueryString(uri.Query);
+                    bool fullReset = (query["reset"] == "true");
+                    
+                    if (fullReset) {
+                        StopSpeech(true);
+                        await SyncPlayerUI();
+                    } else {
+                        _tourSession.IsPaused = true;
+                        _currentSentenceCts?.Cancel();
+                        await SyncPlayerUI();
+                    }
+                }
+            };
+
             tourMapView.Source = "tour_map.html";
         }
 
@@ -128,7 +208,14 @@ namespace FoodMapApp.Views
                     return;
                 }
 
-                // Chuyển chặng theo vòng tròn (Phương án A)
+                // GIẢ LẬP: Coi như người dùng đã đến quán hiện tại.
+                // Khi bấm "Tiếp theo", vị trí xuất phát cho chặng kế tiếp sẽ là quán vừa ở.
+                var justVisitedPoi = _tour.pois[_currentStopIndex];
+                if (justVisitedPoi != null)
+                {
+                    _userLocation = new Location(justVisitedPoi.latitude, justVisitedPoi.longitude);
+                }
+
                 _currentStopIndex = (_currentStopIndex + 1) % _tour.pois.Count;
                 _visitedCount++;
                 UpdateStopInfo();
@@ -159,6 +246,137 @@ namespace FoodMapApp.Views
         {
             await DisplayAlert("Chúc mừng!", "Bạn đã hoàn thành toàn bộ hành trình tour.", "Tuyệt vời");
             await Navigation.PopAsync();
+        }
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            StopSpeech(true);
+        }
+
+        private async Task SyncPlayerUI()
+        {
+            try {
+                await MainThread.InvokeOnMainThreadAsync(() => {
+                    tourMiniPlayer.IsVisible = _tourSession.IsActive;
+                    if (_tourSession.IsActive) {
+                        playIcon.IsVisible = _tourSession.IsPaused;
+                        pauseIcon.IsVisible = !_tourSession.IsPaused;
+                        
+                        // Set shop name
+                        var poi = _tour?.pois?.FirstOrDefault(p => p.poi_id.ToString() == _tourSession.PoiId);
+                        tourShopLabel.Text = poi?.name ?? "...";
+                    }
+                });
+            } catch { }
+        }
+
+        private void StopSpeech(bool fullReset = false)
+        {
+            _isActuallySpeaking = false;
+            _currentSentenceCts?.Cancel();
+            _ttsCts?.Cancel(); 
+            _pauseTcs?.TrySetResult(false);
+            _audioStopwatch.Stop();
+            
+            if (fullReset) _tourSession.Reset();
+        }
+
+        private async Task SpeakWithChunksAsync()
+        {
+            if (!await _ttsSemaphore.WaitAsync(500)) return;
+            _isActuallySpeaking = true;
+            _ttsCts = new CancellationTokenSource();
+            _audioStopwatch.Restart();
+
+            try {
+                var sentences = _tourSession.Sentences;
+                if (sentences == null || sentences.Length == 0) return;
+
+                if (_cachedLocales == null) _cachedLocales = await TextToSpeech.Default.GetLocalesAsync();
+                var locale = _cachedLocales?.FirstOrDefault(l => l.Language.Equals(_tourSession.Language, StringComparison.OrdinalIgnoreCase)) ??
+                             _cachedLocales?.FirstOrDefault(l => l.Language.ToLower().StartsWith(_tourSession.Language.Split('-')[0].ToLower()));
+                var options = new SpeechOptions { Locale = locale };
+
+                _ = AnimateVisualizer();
+
+                while (_tourSession.SentenceIndex < sentences.Length) {
+                    if (_ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking) break;
+
+                    int index = _tourSession.SentenceIndex;
+                    await tourMapView.EvaluateJavaScriptAsync($"if(window.onTtsProgress) window.onTtsProgress({index}, {sentences.Length});");
+
+                    if (_isActuallySpeaking && _tourSession.IsPaused) {
+                        _pauseTcs = new TaskCompletionSource<bool>();
+                        bool resume = await _pauseTcs.Task;
+                        if (!resume || _ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking) break;
+                    }
+
+                    if (_ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking) break;
+                    
+                    _currentSentenceCts = CancellationTokenSource.CreateLinkedTokenSource(_ttsCts.Token);
+                    string sentence = sentences[index];
+                    if (!string.IsNullOrWhiteSpace(sentence)) await TextToSpeech.Default.SpeakAsync(sentence, options, _currentSentenceCts.Token);
+                    
+                    if (_ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking) break;
+                    _tourSession.SentenceIndex++;
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { Debug.WriteLine($"Tour TTS Error: {ex.Message}"); }
+            finally { 
+                _isActuallySpeaking = false; 
+                _ttsSemaphore.Release(); 
+                MainThread.BeginInvokeOnMainThread(async () => {
+                    if (tourMapView != null) await tourMapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+                });
+            }
+
+            if (_tourSession.SentenceIndex >= _tourSession.Sentences.Length) {
+                _tourSession.IsActive = false;
+                await SyncPlayerUI();
+            }
+        }
+
+        private async Task AnimateVisualizer()
+        {
+            Random rnd = new Random();
+            while (_isActuallySpeaking && !_tourSession.IsPaused && _tourSession.IsActive) {
+                await MainThread.InvokeOnMainThreadAsync(() => {
+                    wave1.HeightRequest = rnd.Next(8, 20); wave2.HeightRequest = rnd.Next(10, 25);
+                    wave3.HeightRequest = rnd.Next(5, 15); wave4.HeightRequest = rnd.Next(12, 28);
+                    wave5.HeightRequest = rnd.Next(8, 22); wave6.HeightRequest = rnd.Next(10, 24);
+                });
+                await Task.Delay(130);
+            }
+            await MainThread.InvokeOnMainThreadAsync(() => {
+                wave1.HeightRequest = 12; wave2.HeightRequest = 18; wave3.HeightRequest = 10;
+                wave4.HeightRequest = 22; wave5.HeightRequest = 14; wave6.HeightRequest = 19;
+            });
+        }
+
+        private async void OnPlayAudioClicked(object sender, EventArgs e)
+        {
+            _tourSession.IsPaused = !_tourSession.IsPaused;
+            await SyncPlayerUI();
+            if (!_tourSession.IsPaused) {
+                if (!_isActuallySpeaking) _ = SpeakWithChunksAsync();
+                else _pauseTcs?.TrySetResult(true);
+            } else _pauseTcs?.TrySetResult(false);
+        }
+
+        private async void OnReplayAudioClicked(object sender, EventArgs e)
+        {
+            _tourSession.SentenceIndex = 0; _tourSession.IsPaused = false;
+            await SyncPlayerUI();
+            if (!_isActuallySpeaking) _ = SpeakWithChunksAsync();
+            else _pauseTcs?.TrySetResult(true);
+        }
+
+        private async void OnClosePlayerClicked(object sender, EventArgs e)
+        {
+            StopSpeech(true);
+            await SyncPlayerUI();
+            if (tourMapView != null) await tourMapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
         }
     }
 }

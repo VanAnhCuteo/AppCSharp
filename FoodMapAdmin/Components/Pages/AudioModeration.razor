@@ -1,0 +1,243 @@
+@page "/moderation/audio"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject IPoiGuidePendingChangeService PendingChangeService
+@inject IJSRuntime JS
+@attribute [Authorize(Roles = "admin")]
+
+<PageTitle>Duyệt Audio Guide - FoodMap Admin</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-2">
+    <div>
+        <h2 class="mb-1" style="font-size: 2.22rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Duyệt Audio Guide</h2>
+        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Phê duyệt nội dung kịch bản thuyết minh từ chủ quán</p>
+    </div>
+</div>
+
+@if (allRequests == null)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+    </div>
+}
+
+<div class="row animate-stagger">
+    <div class="col-12">
+        <!-- Tabs -->
+        <div class="moderation-tabs mb-5">
+            <button class="mod-tab @(activeTab == "create" ? "active" : "")" @onclick='() => SetTab("create")'>
+                <i class="bi bi-mic-fill"></i> Thêm Audio
+                @if (getTabCount("create") > 0) { <span class="tab-badge">@getTabCount("create")</span> }
+            </button>
+            <button class="mod-tab @(activeTab == "update" ? "active" : "")" @onclick='() => SetTab("update")'>
+                <i class="bi bi-pencil-square"></i> Sửa Audio
+                @if (getTabCount("update") > 0) { <span class="tab-badge">@getTabCount("update")</span> }
+            </button>
+            <button class="mod-tab @(activeTab == "delete" ? "active" : "")" @onclick='() => SetTab("delete")'>
+                <i class="bi bi-trash3-fill"></i> Xóa Audio
+                @if (getTabCount("delete") > 0) { <span class="tab-badge">@getTabCount("delete")</span> }
+            </button>
+        </div>
+
+        @if (!GetFilteredRequests().Any())
+        {
+            <div class="card shadow-glass text-center py-5" style="border-radius: 35px; border: none; background: var(--surface);">
+                <i class="bi bi-check-circle text-success mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+                <h4 class="text-muted">Không có yêu cầu nào trong mục này</h4>
+                <p class="text-muted">Mọi thứ đã được xử lý xong.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var request in GetFilteredRequests())
+            {
+                <div class="card shadow-glass mb-4 overflow-hidden border-0" style="border-radius: 25px; background: var(--surface);">
+                    <div class="card-header bg-white border-0 p-4 d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="req-icon-audio @request.ChangeType">
+                                <i class="bi @(request.ChangeType == "create" ? "bi-plus-lg" : (request.ChangeType == "delete" ? "bi-trash" : "bi-pencil-square"))"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0" style="font-weight: 850; color: var(--text-main);">@request.Poi?.Name</h5>
+                                <p class="mb-0 text-muted" style="font-size: 0.85rem;">
+                                    Gửi bởi: <strong>@request.Requester?.Username</strong> • @request.CreatedAt?.ToString("HH:mm dd/MM/yyyy")
+                                </p>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn @(expandedId == request.ChangeId ? "btn-primary shadow-primary" : "btn-outline-primary")" style="border-radius: 12px; font-weight: 700; min-width: 90px;" @onclick="() => ToggleExpand(request.ChangeId)">
+                                <i class="bi @(expandedId == request.ChangeId ? "bi-eye-slash-fill" : "bi-eye-fill") me-1"></i> Xem
+                            </button>
+                            <button class="btn glass-btn-success" @onclick="() => Approve(request)">Duyệt & Dịch</button>
+                            <button class="btn btn-outline-danger" style="border-radius: 12px; font-weight: 700;" @onclick="() => Reject(request)">Từ chối</button>
+                        </div>
+                    </div>
+
+                    @if (expandedId == request.ChangeId)
+                    {
+                        <div class="card-body p-4 border-top animate-expand">
+                            @if (request.ChangeType == "update")
+                            {
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <div class="comparison-box original">
+                                            <label class="mod-label">TIÊU ĐỀ HIỆN TẠI</label>
+                                            <div class="mod-value muted">@originalGuide?.Title</div>
+                                            <label class="mod-label mt-3">KỊCH BẢN HIỆN TẠI</label>
+                                            <div class="mod-value muted description">@originalGuide?.Description</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="comparison-box modified">
+                                            <label class="mod-label text-primary">TIÊU ĐỀ THAY ĐỔI</label>
+                                            <div class="mod-value highlight">@request.Title</div>
+                                            <label class="mod-label mt-3 text-primary">KỊCH BẢN THAY ĐỔI</label>
+                                            <div class="mod-value highlight description">@request.Description</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else if (request.ChangeType == "create")
+                            {
+                                <div class="mod-content-preview">
+                                    <div class="mb-3">
+                                        <label class="mod-label">TIÊU ĐỀ KỊCH BẢN MỚI</label>
+                                        <div class="mod-value title highlight">@request.Title</div>
+                                    </div>
+                                    <div>
+                                        <label class="mod-label">NỘI DUNG THUYẾT MINH</label>
+                                        <div class="mod-value description highlight">@request.Description</div>
+                                    </div>
+                                </div>
+                            }
+                            else if (request.ChangeType == "delete")
+                            {
+                                <div class="alert alert-danger border-0 rounded-4 p-4 d-flex align-items-center mb-0">
+                                    <i class="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">Xác nhận xóa thuyết minh</h6>
+                                        <p class="mb-0 small opacity-75">Yêu cầu này sẽ gỡ bỏ hoàn toàn bản thuyết minh đa ngôn ngữ của địa điểm này.</p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<PoiGuidePendingChange>? allRequests;
+    private string activeTab = "update";
+    private int? expandedId;
+    private PoiGuide? originalGuide;
+
+    [Inject] private IPoiGuideService GuideService { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        if (getTabCount("update") > 0) activeTab = "update";
+        else if (getTabCount("create") > 0) activeTab = "create";
+        else if (getTabCount("delete") > 0) activeTab = "delete";
+    }
+
+    private async Task LoadData()
+    {
+        allRequests = await PendingChangeService.GetAllPendingChangesAsync();
+    }
+
+    private void SetTab(string tab) { 
+        activeTab = tab;
+        expandedId = null;
+    }
+
+    private IEnumerable<PoiGuidePendingChange> GetFilteredRequests() 
+        => allRequests?.Where(r => r.ChangeType == activeTab) ?? new List<PoiGuidePendingChange>();
+
+    private int getTabCount(string type) => allRequests?.Count(r => r.ChangeType == type) ?? 0;
+
+    private async Task ToggleExpand(int id)
+    {
+        if (expandedId == id) {
+            expandedId = null;
+            originalGuide = null;
+        } else {
+            expandedId = id;
+            var req = allRequests?.FirstOrDefault(r => r.ChangeId == id);
+            if (req != null && req.ChangeType == "update" && req.GuideId.HasValue) {
+                originalGuide = await GuideService.GetGuideByIdAsync(req.GuideId.Value);
+            } else {
+                originalGuide = null;
+            }
+        }
+    }
+
+    private async Task Approve(PoiGuidePendingChange request)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Duyệt kịch bản này? Hệ thống sẽ tự động dịch sang các ngôn ngữ khác sau khi duyệt."))
+        {
+            var success = await PendingChangeService.ApproveChangeAsync(request.ChangeId);
+            if (success) {
+                await LoadData();
+                expandedId = null;
+                await JS.InvokeVoidAsync("alert", "Đã duyệt và hệ thống đang tiến hành dịch tự động.");
+            }
+        }
+    }
+
+    private async Task Reject(PoiGuidePendingChange request)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc muốn từ chối kịch bản này?"))
+        {
+            var success = await PendingChangeService.RejectChangeAsync(request.ChangeId);
+            if (success) {
+                await LoadData();
+                expandedId = null;
+            }
+        }
+    }
+}
+
+<style>
+    :root {
+        --primary: #FF2D85;
+        --primary-gradient: linear-gradient(135deg, #FF2D85 0%, #FF8235 100%);
+        --primary-glow: rgba(255, 45, 133, 0.3);
+        --success-gradient: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+        --success-glow: rgba(46, 204, 113, 0.3);
+    }
+    .moderation-tabs { display: flex; gap: 1rem; background: rgba(0,0,0,0.03); padding: 0.5rem; border-radius: 20px; width: fit-content; }
+    .mod-tab { border: none; background: transparent; padding: 0.7rem 1.5rem; border-radius: 15px; font-weight: 800; font-size: 0.9rem; color: #666; display: flex; align-items: center; gap: 0.6rem; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .mod-tab.active { background: white; color: var(--primary); box-shadow: 0 5px 15px rgba(0,0,0,0.05); transform: translateY(-2px); }
+    .tab-badge { background: var(--primary); color: white; font-size: 0.65rem; padding: 0.1rem 0.5rem; border-radius: 10px; }
+
+    .req-icon-audio { width: 45px; height: 45px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
+    .req-icon-audio.create { background: rgba(46, 204, 113, 0.1); color: #2ecc71; }
+    .req-icon-audio.update { background: rgba(52, 152, 219, 0.1); color: #3498db; }
+    .req-icon-audio.delete { background: rgba(231, 76, 60, 0.1); color: #e74c3c; }
+
+    .mod-label { font-size: 0.65rem; font-weight: 900; color: #AAA; letter-spacing: 1.5px; margin-bottom: 0.8rem; display: block; text-transform: uppercase; }
+    .mod-value { padding: 1.2rem; background: #fbfbfb; border-radius: 18px; border: 1px solid #f0f0f0; }
+    .mod-value.highlight { background: white; border: 1.5px solid rgba(255, 45, 133, 0.15); box-shadow: 0 4px 15px rgba(255, 45, 133, 0.03); }
+    .mod-value.muted { opacity: 0.6; font-style: italic; }
+    .mod-value.description { font-size: 0.92rem; line-height: 1.7; color: #444; min-height: 120px; }
+
+    .comparison-box { height: 100%; }
+
+    .glass-btn-success { background: var(--success-gradient); color: white; border: none; border-radius: 12px; padding: 0.6rem 1.5rem; font-weight: 800; box-shadow: 0 8px 20px var(--success-glow); transition: all 0.3s; }
+    .glass-btn-success:hover { transform: translateY(-2px); box-shadow: 0 12px 25px var(--success-glow); color: white; }
+
+    .shadow-primary { box-shadow: 0 5px 15px var(--primary-glow); }
+
+    .animate-stagger > * { animation: slideUp 0.5s cubic-bezier(0.19, 1, 0.22, 1) both; }
+    @@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .animate-expand { animation: expandDown 0.4s cubic-bezier(0.19, 1, 0.22, 1) both; transform-origin: top; }
+    @@keyframes expandDown { from { transform: scaleY(0.95); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+</style>

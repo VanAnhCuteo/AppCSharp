@@ -12,17 +12,21 @@ namespace FoodMapAdmin.Services
         Task<bool> ApproveChangeAsync(int changeId);
         Task<bool> RejectChangeAsync(int changeId);
         Task<PoiPendingChange?> GetByPoiIdAsync(int poiId);
+        Task<List<PoiPendingChange>> GetChangesByUserIdAsync(int userId);
+        Task<bool> CancelAsync(int id);
     }
 
     public class PoiPendingChangeService : IPoiPendingChangeService
     {
         private readonly ApplicationDbContext _context;
         private readonly IActivityLogger _logger;
+        private readonly INotificationService _notificationService;
 
-        public PoiPendingChangeService(ApplicationDbContext context, IActivityLogger logger)
+        public PoiPendingChangeService(ApplicationDbContext context, IActivityLogger logger, INotificationService notificationService)
         {
             _context = context;
             _logger = logger;
+            _notificationService = notificationService;
         }
 
         public async Task<List<PoiPendingChange>> GetPendingChangesAsync()
@@ -205,6 +209,16 @@ namespace FoodMapAdmin.Services
                 pending.Status = "approved";
                 _context.PoiPendingChanges.Update(pending);
 
+                // Notifications
+                string actionVn = pending.ChangeType == "create" ? "THÊM MỚI" : (pending.ChangeType == "delete" ? "XÓA BỎ" : "CẬP NHẬT");
+                await _notificationService.SendNotificationAsync(
+                    pending.UserId ?? 0, 
+                    "Cửa hàng được phê duyệt", 
+                    $"Yêu cầu {actionVn} cho quán '{poiName}' đã được Admin phê duyệt.", 
+                    "success", 
+                    "poi"
+                );
+
                 // Log the action
                 string logDetails = $"Admin đã phê duyệt yêu cầu {pending.ChangeType} cho quán {poiName}";
                 _logger.LogToContext(null, actionLabel != "" ? actionLabel : "Phê duyệt", poiName, logDetails);
@@ -231,6 +245,16 @@ namespace FoodMapAdmin.Services
             pending.Status = "rejected";
             _context.PoiPendingChanges.Update(pending);
 
+            // Notifications
+            string actionVn = pending.ChangeType == "create" ? "THÊM MỚI" : (pending.ChangeType == "delete" ? "XÓA BỎ" : "CẬP NHẬT");
+            await _notificationService.SendNotificationAsync(
+                pending.UserId ?? 0, 
+                "Yêu cầu bị từ chối", 
+                $"Rất tiếc, yêu cầu {actionVn} cửa hàng '{pending.Name}' đã bị từ chối.", 
+                "alert", 
+                "poi"
+            );
+
             var result = await _context.SaveChangesAsync() > 0;
             if (result)
             {
@@ -245,6 +269,27 @@ namespace FoodMapAdmin.Services
         {
             return await _context.PoiPendingChanges
                 .FirstOrDefaultAsync(p => p.PoiId == poiId && p.Status == "pending");
+        }
+
+        public async Task<List<PoiPendingChange>> GetChangesByUserIdAsync(int userId)
+        {
+            return await _context.PoiPendingChanges
+                .Include(p => p.Poi)
+                .Include(p => p.Category)
+                .Where(p => p.UserId == userId && p.Status == "pending")
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<bool> CancelAsync(int id)
+        {
+            var p = await _context.PoiPendingChanges.FindAsync(id);
+            if (p != null)
+            {
+                _context.PoiPendingChanges.Remove(p);
+                return await _context.SaveChangesAsync() > 0;
+            }
+            return false;
         }
     }
 }

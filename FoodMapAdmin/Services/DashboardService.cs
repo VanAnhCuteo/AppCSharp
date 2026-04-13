@@ -11,15 +11,16 @@ namespace FoodMapAdmin.Services
 
     public class DashboardService : IDashboardService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _factory;
 
-        public DashboardService(ApplicationDbContext context)
+        public DashboardService(IDbContextFactory<ApplicationDbContext> factory)
         {
-            _context = context;
+            _factory = factory;
         }
 
         public async Task<DashboardStats> GetDashboardStatsAsync()
         {
+            using var _context = _factory.CreateDbContext();
             var stats = new DashboardStats();
 
             // 1. Lấy thống kê cơ bản

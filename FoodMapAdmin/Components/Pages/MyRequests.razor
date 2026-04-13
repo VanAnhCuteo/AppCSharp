@@ -1,0 +1,243 @@
+@page "/owner-requests"
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@using Microsoft.AspNetCore.Authorization
+@inject IPoiPendingChangeService PoiPendingService
+@inject IPoiImagePendingChangeService ImagePendingService
+@inject IPoiGuidePendingChangeService GuidePendingService
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JSRuntime
+@attribute [Authorize(Roles = "CNH")]
+
+<PageTitle>Yêu cầu của tôi - FoodMap Admin</PageTitle>
+
+<div class="animate-fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h2 style="font-size: 1.8rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Yêu cầu của tôi</h2>
+            <p class="text-muted" style="font-size: 0.9rem; margin-top: 0.2rem;">Theo dõi và quản lý các thay đổi đang chờ Admin phê duyệt</p>
+        </div>
+        <div class="request-stats">
+            <div class="stat-pill">
+                <span class="label">Tổng số:</span>
+                <span class="value">@totalPending</span>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loader-container">
+            <div class="loader-spinner"></div>
+            <p>Đang tải danh sách yêu cầu...</p>
+        </div>
+    }
+    else if (totalPending == 0)
+    {
+        <div class="empty-state-card animate-pop-in">
+            <div class="empty-icon"><i class="bi bi-patch-check-fill"></i></div>
+            <h3>Mọi thứ đã sẵn sàng!</h3>
+            <p>Bạn không có yêu cầu nào đang chờ xử lý. Shop của bạn đã được cập nhật hoàn toàn.</p>
+        </div>
+    }
+    else
+    {
+        <div class="requests-grid animate-stagger">
+            @foreach (var p in poiChanges)
+            {
+                <div class="request-row-premium animate-fade-in shadow-sm">
+                    <div class="req-icon-box poi">
+                        <i class="bi bi-shop"></i>
+                    </div>
+                    <div class="req-content">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h4 class="req-title">@p.Name</h4>
+                            @RenderTypeBadge(p.ChangeType)
+                        </div>
+                        <p class="req-subtitle"><i class="bi bi-geo-alt-fill me-1"></i>@p.Address</p>
+                        <span class="req-time">@(p.CreatedAt?.ToString("HH:mm dd/MM/yyyy") ?? "N/A")</span>
+                    </div>
+                    <div class="action-zone">
+                        <span class="status-chip pending"><i class="bi bi-hourglass-split me-1"></i>Đang chờ</span>
+                        <button class="btn-cancel-glass" @onclick="() => CancelPoi(p.ChangeId)">Hủy bỏ</button>
+                    </div>
+                </div>
+            }
+
+            @foreach (var i in imageChanges)
+            {
+                <div class="request-row-premium animate-fade-in shadow-sm">
+                    <div class="req-thumb">
+                        <img src="@i.ImageUrl" alt="Unapproved" />
+                        <div class="req-icon-box-overlay">
+                            <i class="bi bi-image"></i>
+                        </div>
+                    </div>
+                    <div class="req-content">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h4 class="req-title">@(i.Poi?.Name ?? "Ảnh mới")</h4>
+                            @RenderTypeBadge(i.ChangeType)
+                        </div>
+                        <p class="req-subtitle text-muted italic">Yêu cầu quản lý hình ảnh</p>
+                        <span class="req-time">@(i.CreatedAt?.ToString("HH:mm dd/MM/yyyy") ?? "N/A")</span>
+                    </div>
+                    <div class="action-zone">
+                        <span class="status-chip pending"><i class="bi bi-hourglass-split me-1"></i>Đang chờ</span>
+                        <button class="btn-cancel-glass" @onclick="() => CancelImage(i.ChangeId)">Hủy bỏ</button>
+                    </div>
+                </div>
+            }
+
+            @foreach (var a in audioChanges)
+            {
+                <div class="request-row-premium animate-fade-in shadow-sm">
+                    <div class="req-icon-box audio">
+                        <i class="bi bi-mic-fill"></i>
+                    </div>
+                    <div class="req-content">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h4 class="req-title">@(a.Title ?? "Audio Guide")</h4>
+                            @RenderTypeBadge(a.ChangeType)
+                        </div>
+                        <p class="req-subtitle"><i class="bi bi-music-note-beamed me-1"></i>Địa điểm: @(a.Poi?.Name ?? "N/A")</p>
+                        <span class="req-time">@(a.CreatedAt?.ToString("HH:mm dd/MM/yyyy") ?? "N/A")</span>
+                    </div>
+                    <div class="action-zone">
+                        <span class="status-chip pending"><i class="bi bi-hourglass-split me-1"></i>Đang chờ</span>
+                        <button class="btn-cancel-glass" @onclick="() => CancelAudio(a.ChangeId)">Hủy bỏ</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    RenderFragment RenderTypeBadge(string type) => __builder => {
+        var (label, colorClass, icon) = type.ToLower() switch {
+            "create" or "add" => ("THÊM MỚI", "type-create", "bi-plus-circle-fill"),
+            "delete" => ("XÓA BỎ", "type-delete", "bi-trash-fill"),
+            _ => ("CẬP NHẬT", "type-update", "bi-pencil-square")
+        };
+        <div class="type-badge @colorClass animate-pop-in">
+            <i class="bi @icon me-1"></i> @label
+        </div>
+    };
+}
+
+<style>
+    .requests-grid { display: flex; flex-direction: column; gap: 1.25rem; }
+
+    .request-row-premium {
+        background: white; border-radius: 20px; border: 1px solid rgba(0,0,0,0.03);
+        padding: 1.5rem; display: flex; gap: 1.5rem; align-items: center; position: relative;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .request-row-premium:hover { transform: translateX(5px); box-shadow: 0 10px 40px rgba(0,0,0,0.06); border-color: var(--primary-light); }
+
+    .req-icon-box {
+        width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem; flex-shrink: 0;
+    }
+    .req-icon-box.poi { background: rgba(52, 152, 219, 0.1); color: #3498db; }
+    .req-icon-box.audio { background: rgba(255, 45, 133, 0.1); color: var(--primary); }
+
+    .req-thumb {
+        width: 80px; height: 60px; border-radius: 12px; overflow: hidden; position: relative; flex-shrink: 0; border: 2px solid #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+    .req-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .req-icon-box-overlay {
+        position: absolute; top: 0; right: 0; width: 20px; height: 20px;
+        background: var(--primary); color: white; border-radius: 0 0 0 8px;
+        font-size: 0.6rem; display: flex; align-items: center; justify-content: center;
+    }
+
+    .req-content { flex: 1; }
+    .req-title { margin: 0; font-size: 1.15rem; font-weight: 850; color: var(--text-main); }
+    .req-subtitle { margin: 0.2rem 0; font-size: 0.82rem; color: #777; font-weight: 600; display: flex; align-items: center; }
+    .req-time { font-size: 0.75rem; color: #bbb; font-weight: 700; }
+
+    .type-badge {
+        padding: 0.35rem 0.75rem; border-radius: 10px; font-size: 0.65rem; font-weight: 900; letter-spacing: 0.5px; display: inline-flex; align-items: center;
+    }
+    .type-create { background: rgba(46, 204, 113, 0.1); color: #2ecc71; }
+    .type-update { background: rgba(52, 152, 219, 0.1); color: #3498db; }
+    .type-delete { background: rgba(231, 76, 60, 0.1); color: #e74c3c; }
+
+    .action-zone { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
+    .status-chip { padding: 0.35rem 0.85rem; border-radius: 20px; font-size: 0.75rem; font-weight: 800; }
+    .status-chip.pending { background: rgba(255, 159, 67, 0.1); color: #FF9F43; }
+
+    .btn-cancel-glass {
+        border: 1px solid rgba(255, 71, 87, 0.1); background: rgba(255, 71, 87, 0.03);
+        color: #FF4757; font-size: 0.75rem; font-weight: 800; padding: 0.4rem 1rem;
+        border-radius: 12px; transition: all 0.2s;
+    }
+    .btn-cancel-glass:hover { background: #FF4757; color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 71, 87, 0.2); }
+
+    .empty-state-card {
+        background: white; padding: 5rem 2rem; border-radius: 35px; text-align: center; border: 1px solid rgba(0,0,0,0.03);
+    }
+    .empty-icon { font-size: 4rem; color: #2ecc71; opacity: 0.3; margin-bottom: 1rem; }
+    .empty-state-card h3 { font-weight: 900; color: var(--text-main); font-size: 1.5rem; }
+    .empty-state-card p { color: #999; font-size: 0.95rem; }
+
+    .loader-spinner { width: 45px; height: 45px; border: 5px solid rgba(0,0,0,0.03); border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s infinite linear; margin: 0 auto; }
+    @("@")keyframes spin { 100% { transform: rotate(360deg); } }
+    @("@")keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .animate-stagger > * { animation: slideUp 0.5s both cubic-bezier(0.19, 1, 0.22, 1); }
+</style>
+
+@code {
+    private List<PoiPendingChange> poiChanges = new();
+    private List<PoiImagePendingChange> imageChanges = new();
+    private List<PoiGuidePendingChange> audioChanges = new();
+    private bool isLoading = true;
+    private int userId = 0;
+    private int totalPending => poiChanges.Count + imageChanges.Count + audioChanges.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        
+        if (int.TryParse(userIdStr, out var id))
+        {
+            userId = id;
+            await RefreshData();
+        }
+        isLoading = false;
+    }
+
+    private async Task RefreshData()
+    {
+        poiChanges = await PoiPendingService.GetChangesByUserIdAsync(userId);
+        imageChanges = await ImagePendingService.GetChangesByUserIdAsync(userId);
+        audioChanges = await GuidePendingService.GetChangesByOwnerAsync(userId);
+    }
+
+    private async Task CancelPoi(int id)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Bạn muốn hủy yêu cầu này?"))
+        {
+            if (await PoiPendingService.CancelAsync(id)) await RefreshData();
+        }
+    }
+
+    private async Task CancelImage(int id)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Bạn muốn hủy yêu cầu này?"))
+        {
+            if (await ImagePendingService.CancelAsync(id)) await RefreshData();
+        }
+    }
+
+    private async Task CancelAudio(int id)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Bạn muốn hủy yêu cầu này?"))
+        {
+            if (await GuidePendingService.CancelAsync(id)) await RefreshData();
+        }
+    }
+}

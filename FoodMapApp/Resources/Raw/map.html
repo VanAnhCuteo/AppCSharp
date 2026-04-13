@@ -1,119 +1,119 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Restaurant Map</title>
-
+    <title>Food Map</title>
+    
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-
-    <!-- Google Fonts for Modern Typography -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Custom CSS Modules -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="base.css" />
     <link rel="stylesheet" href="markers.css" />
     <link rel="stylesheet" href="sheet.css" />
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
-
 <body>
-
+    <!-- Search Bar -->
     <div class="map-header">
-        <svg fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path></svg>
-        <input type="text" id="map-search-input" placeholder="Tìm quán, địa chỉ..." autocomplete="off">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="map-search-input" placeholder="Tìm kiếm quán ăn..." autocomplete="off">
         <button id="search-clear-btn" class="search-clear-btn hidden">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
         </button>
         <!-- Search Results Dropdown -->
         <div id="search-results" class="search-results-dropdown hidden"></div>
     </div>
 
-    <div id="map"></div>
-
-    <!-- Navigation Overlay (Google Maps Style) -->
+    <!-- Navigation Overlay -->
     <div id="nav-overlay" class="nav-overlay hidden">
-        <div class="nav-info">
-            <span id="nav-distance">0.0 km</span>
-        </div>
-        <button class="nav-cancel-btn" onclick="cancelNavigation()">Hủy chỉ dẫn</button>
+        <div class="nav-info">Đang đến: <span id="nav-distance">0.0 km</span></div>
+        <button class="nav-cancel-btn" onclick="cancelNavigation()">Hủy</button>
     </div>
 
-    <button id="locate-btn" onclick="centerOnUser()" title="My Location">
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Center Button -->
+    <button id="locate-btn" onclick="centerOnUser()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-            <circle cx="12" cy="10" r="3"></circle>
+            <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
         </svg>
     </button>
 
-    <!-- Bottom Sheet -->
-    <div id="bottom-sheet" class="bottom-sheet hidden">
+    <!-- Bottom Sheet Details -->
+    <div id="bottom-sheet" class="bottom-sheet">
         <div class="sheet-drag-handle" id="drag-handle">
             <div class="drag-bar"></div>
         </div>
         <div class="sheet-content">
             <div id="sheet-header">
-                <div style="flex: 1;">
-                    <h2 id="sheet-title">Loading...</h2>
-                    <div class="lang-selector">
-                        <div class="lang-btn active" onclick="setSelectedLang('vi', this)">
-                            <img src="images/vn_flag.png" alt="VI">
-                        </div>
-                        <div class="lang-btn" onclick="setSelectedLang('en-US', this)">
-                            <img src="images/uk_flag.png" alt="EN">
-                        </div>
-                        <div class="lang-btn" onclick="setSelectedLang('zh-CN', this)">
-                            <img src="images/cn_flag.png" alt="CN">
-                        </div>
-                        <div class="lang-btn" onclick="setSelectedLang('ko-KR', this)">
-                            <img src="images/kr_flag.png" alt="KR">
-                        </div>
-                        <div class="lang-btn" onclick="setSelectedLang('ja-JP', this)">
-                            <img src="images/jp_flag.png" alt="JP">
+                <div style="flex: 1; min-width: 0;">
+                    <h2 id="sheet-title">Tên quán</h2>
+                    <div class="lang-selector-modern" onclick="openLanguagePicker()">
+                        <div class="current-lang-btn">
+                            <span id="current-lang-name">Tiếng Việt</span>
+                            <svg class="chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
                         </div>
                     </div>
                 </div>
-                <button id="sheet-speaker-btn" class="speaker-btn" onclick="toggleAudioProfessional()">
+                <button id="sheet-speaker-btn" class="speaker-btn hidden" onclick="toggleAudioProfessional()">
                     <svg viewBox="0 0 24 24" fill="currentColor">
                         <path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.03,19.86 21,16.28 21,12C21,7.72 18.03,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16.02C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/>
                     </svg>
                 </button>
             </div>
 
-            <!-- Images Carousel -->
-            <div class="sheet-images" id="sheet-images">
-                <!-- Generated dynamically -->
-            </div>
+            <!-- Image Gallery -->
+            <div class="sheet-images" id="sheet-images"></div>
 
-                <!-- Details -->
-                <div class="sheet-info">
 
-                    <div class="info-row">
-                    <svg class="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <!-- Info Section -->
+            <div class="sheet-info">
+                <div class="info-row">
+                    <svg class="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
                     <span id="sheet-address"></span>
                 </div>
                 <div class="info-row">
-                    <svg class="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <svg class="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     <span id="sheet-time"></span>
                 </div>
-
-                <!-- Navigation Button -->
-                <button id="get-directions-btn" class="resto-btn" style="background: var(--pink-dark); width: 100%; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 14px; height: 50px;">
-                    <svg fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>
-                    Đến quán
+                
+                <button id="get-directions-btn" class="resto-btn" style="background: var(--pink-dark); width: 100%; margin-top: 15px; border-radius: 14px; height: 50px; color: white; border: none; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(255, 106, 136, 0.3);">
+                    Chỉ đường đến quán
                 </button>
             </div>
-
-
         </div>
     </div>
 
-    <!-- Custom JS Modules -->
+    <!-- Language Picker Overlay -->
+    <div id="lang-picker-overlay" class="lang-picker-overlay hidden">
+        <div class="lang-picker-container">
+            <div class="lang-picker-header">
+                <h3>Chọn ngôn ngữ</h3>
+                <button onclick="closeLanguagePicker()">Xong</button>
+            </div>
+            <div id="lang-picker-list" class="lang-picker-list">
+                <!-- Dynamic Content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="constants.js"></script>
     <script src="features.js"></script>
     <script src="script.js"></script>

@@ -6,7 +6,10 @@
 @inject IPoiService PoiService
 @inject NavigationManager Navigation
 @inject ITranslationService TranslationService
-@attribute [Authorize(Roles = "admin")]
+@inject IPoiGuidePendingChangeService PendingChangeService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JSRuntime
+@attribute [Authorize(Roles = "admin,CNH")]
 
 <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
     <div>
@@ -95,11 +98,23 @@ else
     private PoiGuide newGuide = new() { Language = "vi" };
     private List<Poi>? availablePois;
     private bool isSaving = false;
-    private List<string> selectedLangs = new() { "en", "zh", "ko", "ja" };
+    private List<string> selectedLangs = new(); 
 
     protected override async Task OnInitializedAsync()
     {
-        var allPois = await PoiService.GetAllPoisAsync();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var allPois = new List<Poi>();
+        
+        if (user.IsInRole("admin")) {
+            allPois = await PoiService.GetAllPoisAsync();
+        } else if (user.IsInRole("CNH")) {
+            var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(userIdStr, out var userId)) {
+                allPois = await PoiService.GetPoisByOwnerAsync(userId);
+            }
+        }
+
         var allGuides = await GuideService.GetAllGuidesAsync();
         
         // Only show POIs that don't have a guide yet
@@ -121,61 +136,85 @@ else
 
         try 
         {
-            // 1. Save Vietnamese record
-            bool success = await GuideService.CreateGuideAsync(newGuide);
-            if (success)
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.IsInRole("CNH"))
             {
-                // 2. Auto-translate and save for SELECTED languages
-                // Find the POI name to protect it during translation
-                var poiName = availablePois?.FirstOrDefault(p => p.PoiId == newGuide.PoiId)?.Name ?? "";
-                var placeholder = "[[POI_NAME]]";
+                // OWNER LOGIC: Submit for review (Vietnamese only)
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                int? userId = int.TryParse(userIdStr, out var id) ? id : null;
 
-                foreach (var lang in selectedLangs)
+                var pendingChange = new PoiGuidePendingChange
                 {
-                    try 
-                    {
-                        // Normalize title and script for translation
-                        var sourceTitle = newGuide.Title?.Trim() ?? "";
-                        var sourceDesc = newGuide.Description?.Trim() ?? "";
+                    PoiId = newGuide.PoiId ?? 0,
+                    Title = newGuide.Title,
+                    Description = newGuide.Description,
+                    Language = "vi",
+                    ChangeType = "create",
+                    UserId = userId,
+                    Status = "pending"
+                };
 
-                        // Inject placeholder for the POI name
-                        if (!string.IsNullOrEmpty(poiName))
-                        {
-                            sourceTitle = sourceTitle.Replace(poiName, placeholder);
-                            sourceDesc = sourceDesc.Replace(poiName, placeholder);
-                        }
-
-                        var tTitle = await TranslationService.TranslateAsync(sourceTitle, lang);
-                        var tDesc = await TranslationService.TranslateAsync(sourceDesc, lang);
-                        
-                        // Swap placeholder back with original POI name
-                        if (!string.IsNullOrEmpty(poiName))
-                        {
-                            tTitle = tTitle?.Replace(placeholder, poiName) ?? "";
-                            tDesc = tDesc?.Replace(placeholder, poiName) ?? "";
-                            // Some translation APIs might add spaces around brackets or lowercase the placeholder
-                            tTitle = tTitle.Replace("[[ POI_NAME ]]", poiName).Replace("[[ poi_name ]]", poiName);
-                            tDesc = tDesc.Replace("[[ POI_NAME ]]", poiName).Replace("[[ poi_name ]]", poiName);
-                        }
-
-                        var tGuide = new PoiGuide {
-                            PoiId = newGuide.PoiId,
-                            Title = tTitle,
-                            Description = tDesc,
-                            Language = lang
-                        };
-                        await GuideService.CreateGuideAsync(tGuide);
-                        
-                        // Add a small delay to be kind to the translation API and improve reliability
-                        await Task.Delay(500);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[Translation Error] Failed for {lang}: {ex.Message}");
-                    }
+                if (await PendingChangeService.SubmitChangeAsync(pendingChange))
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Đã gửi bản thảo thuyết minh để Admin phê duyệt!");
+                    Navigation.NavigateTo("/audio-management");
                 }
-                
-                Navigation.NavigateTo("/audio-management");
+            }
+            else 
+            {
+                // ADMIN LOGIC: Direct update (all languages)
+                // 1. Save Vietnamese record
+                bool success = await GuideService.CreateGuideAsync(newGuide);
+                if (success)
+                {
+                    // 2. Auto-translate and save for SELECTED languages
+                    var poiName = availablePois?.FirstOrDefault(p => p.PoiId == newGuide.PoiId)?.Name ?? "";
+                    var placeholder = "[[POI_NAME]]";
+
+                    foreach (var lang in selectedLangs)
+                    {
+                        try 
+                        {
+                            var sourceTitle = newGuide.Title?.Trim() ?? "";
+                            var sourceDesc = newGuide.Description?.Trim() ?? "";
+
+                            if (!string.IsNullOrEmpty(poiName))
+                            {
+                                sourceTitle = sourceTitle.Replace(poiName, placeholder);
+                                sourceDesc = sourceDesc.Replace(poiName, placeholder);
+                            }
+
+                            var tTitle = await TranslationService.TranslateAsync(sourceTitle, lang);
+                            var tDesc = await TranslationService.TranslateAsync(sourceDesc, lang);
+                            
+                            if (!string.IsNullOrEmpty(poiName))
+                            {
+                                tTitle = tTitle?.Replace(placeholder, poiName)
+                                               ?.Replace("[[ POI_NAME ]]", poiName)
+                                               ?.Replace("[[ poi_name ]]", poiName) ?? "";
+                                tDesc = tDesc?.Replace(placeholder, poiName)
+                                              ?.Replace("[[ POI_NAME ]]", poiName)
+                                              ?.Replace("[[ poi_name ]]", poiName) ?? "";
+                            }
+
+                            var tGuide = new PoiGuide {
+                                PoiId = newGuide.PoiId,
+                                Title = tTitle,
+                                Description = tDesc,
+                                Language = lang
+                            };
+                            await GuideService.CreateGuideAsync(tGuide);
+                            await Task.Delay(500);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[Translation Error] Failed for {lang}: {ex.Message}");
+                        }
+                    }
+                    Navigation.NavigateTo("/audio-management");
+                }
             }
         }
         finally 
