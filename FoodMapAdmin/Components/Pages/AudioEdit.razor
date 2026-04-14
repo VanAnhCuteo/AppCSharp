@@ -10,13 +10,14 @@
 @inject IPoiGuidePendingChangeService PendingChangeService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IPoiService PoiService
+@inject IActivityLogger Logger
 @attribute [Authorize(Roles = "admin,CNH")]
 
 <PageTitle>Chỉnh sửa Audio - @(currentPoi?.Name ?? "FoodMap Admin")</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
     <div>
-        <h2 class="mb-1" style="font-size: 1.6rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">@(isOwner ? "Gửi duyệt Audio" : "Chỉnh sửa Audio") "@(currentPoi?.Name ?? "Guide")"</h2>
+        <h2 class="page-title">@(isOwner ? "Gửi duyệt Audio" : "Chỉnh sửa Audio") "@(currentPoi?.Name ?? "Guide")"</h2>
         <p class="text-muted mb-0" style="font-size: 0.85rem; font-weight: 500;">@(isOwner ? "Cập nhật kịch bản tiếng Việt và gửi Admin phê duyệt" : "Cập nhật kịch bản thuyết minh đa ngôn ngữ cho địa điểm")</p>
     </div>
     <button class="back-btn-premium transition-up" @onclick="GoBack" title="Quay lại">
@@ -280,9 +281,12 @@ else
             }
             else 
             {
-                // ADMIN (or direct) LOGIC
+                // ADMIN (or direct) logic
                 bool success = guide.GuideId == 0 ? await GuideService.CreateGuideAsync(guide) : await GuideService.UpdateGuideAsync(guide);
-                if (success) await JSRuntime.InvokeVoidAsync("alert", $"Đã lưu kịch bản {guide.Language?.ToUpper()} thành công!");
+                if (success) {
+                    await Logger.LogAsync(currentUserId, "Cập nhật thuyết minh", $"{currentPoi?.Name} ({guide.Language?.ToUpper()})");
+                    await JSRuntime.InvokeVoidAsync("alert", $"Đã lưu kịch bản {guide.Language?.ToUpper()} thành công!");
+                }
                 // Refresh local list to get IDs
                 poiGuides = await GuideService.GetGuidesByPoiIdAsync(currentPoi?.PoiId ?? 0);
             }

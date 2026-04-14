@@ -5,29 +5,32 @@
 @inject ICategoryService CategoryService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Navigator
+@inject IActivityLogger Logger
+@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Quản lý Danh mục - FoodMap Admin</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+<!-- Page Header -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
     <div>
-        <h2 class="mb-1" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Danh mục</h2>
-        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Phân loại các địa điểm ăn uống trên toàn hệ thống</p>
+        <h2 class="page-title">Danh mục</h2>
+        <p class="page-subtitle">Phân loại các địa điểm ăn uống trên toàn hệ thống</p>
     </div>
     <button class="glass-btn" @onclick='() => Navigator.NavigateTo("/categories/add")'>
-        <i class="bi bi-tag-fill me-2"></i> Thêm danh mục
+        <i class="bi bi-plus-lg"></i> Thêm danh mục
     </button>
 </div>
 
-<div class="card shadow-glass border-0 p-0" style="border-radius: 30px; overflow: hidden; background: var(--surface);">
+<div class="card" style="padding: 0; overflow: hidden;">
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
-                <tr style="background: rgba(255, 45, 133, 0.03);">
-                    <th style="padding: 1.5rem 1rem 1.5rem 2rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; width: 120px;">Mã số</th>
-                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; width: 300px;">Tên danh mục</th>
-                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Mô tả chi tiết</th>
-                    <th style="padding: 1.5rem 2rem 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center; width: 180px;">Thao tác</th>
+                <tr>
+                    <th style="padding-left: 2rem; width: 120px;">Mã số</th>
+                    <th style="width: 300px;">Tên danh mục</th>
+                    <th>Mô tả chi tiết</th>
+                    <th style="text-align: center; padding-right: 2rem; width: 180px;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
@@ -149,7 +152,17 @@
 
     private async Task Delete(int id)
     {
+        var category = categories?.FirstOrDefault(c => c.CategoryId == id);
         var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc muốn xóa danh mục này?");
-        if (confirmed && await CategoryService.DeleteCategoryAsync(id)) await LoadData();
+        if (confirmed && await CategoryService.DeleteCategoryAsync(id))
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            int.TryParse(userIdStr, out var currentUserId);
+            
+            await Logger.LogAsync(currentUserId, "Xóa danh mục", category?.CategoryName ?? "N/A");
+            await LoadData();
+        }
     }
 }

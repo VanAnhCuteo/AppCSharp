@@ -4,6 +4,7 @@
 @using FoodMapAdmin.Services
 @inject IUserService UserService
 @inject NavigationManager Navigator
+@inject IActivityLogger Logger
 @inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize(Roles = "admin")]
 
@@ -11,8 +12,8 @@
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
     <div>
-        <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Người dùng</h2>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Quản lý tài khoản quản trị viên và chủ nhà hàng</p>
+        <h2 class="page-title">Người dùng</h2>
+        <p class="page-subtitle">Quản lý tài khoản quản trị viên và chủ nhà hàng</p>
     </div>
     <div class="filter-wrapper">
         <div class="filter-group">
@@ -247,10 +248,18 @@
     private async Task DeleteUser(int id)
     {
         var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xóa người dùng này? Thao tác này có thể ảnh hưởng đến các dữ liệu liên quan.");
-        if (confirmed && await UserService.DeleteUserAsync(id))
+        if (confirmed)
         {
-            users = users?.Where(u => u.UserId != id).ToList();
-            ApplyFilter();
+            var userToDelete = users?.FirstOrDefault(u => u.UserId == id);
+            if (await UserService.DeleteUserAsync(id))
+            {
+                if (userToDelete != null)
+                {
+                    await Logger.LogAsync(currentUserId, "Xóa người dùng", userToDelete.Username);
+                }
+                users = users?.Where(u => u.UserId != id).ToList();
+                ApplyFilter();
+            }
         }
     }
 }

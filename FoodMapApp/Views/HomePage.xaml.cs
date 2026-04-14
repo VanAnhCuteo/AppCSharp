@@ -1,5 +1,6 @@
 using FoodMapApp.Services;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Linq;
 using System.Text;
 using System.Globalization;
@@ -41,32 +42,20 @@ namespace FoodMapApp.Views
         {
             try
             {
+                // 1. Try to load from Cache first for instant display
+                var cachedCategories = await CacheService.GetCacheAsync<List<CategoryItem>>("categories_cache");
+                if (cachedCategories != null)
+                {
+                    DisplayCategories(cachedCategories);
+                }
+
+                // 2. Load from Network
                 var categories = await HttpService.GetAsync<List<CategoryItem>>($"{BackendUrl}/categories");
                 if (categories != null)
                 {
-                    _allCategories.Clear();
-                    foreach (var c in categories) _allCategories.Add(c);
-
-                    // Assign elegant pastel colors & beautiful real food images
-                    var styleMap = new Dictionary<string, (string bg, string text, string img)>(StringComparer.OrdinalIgnoreCase)
-                    {
-                        { "Hải sản",  ("#F0F8FF", "#5D9CEC", "https://images.unsplash.com/photo-1615141982883-c7ad0e69fd62?auto=format&fit=crop&w=300&q=80") },
-                        { "vặt",      ("#FFFBF0", "#F6BB42", "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=300&q=80") },
-                        { "Ăn vặt",   ("#FFFBF0", "#F6BB42", "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=300&q=80") },
-                        { "nướng",    ("#FFF0F3", "#ED5565", "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=300&q=80") },
-                    };
-
-                    foreach (var cat in _allCategories)
-                    {
-                        var normalizedCat = RemoveDiacritics(cat.category_name?.ToLower() ?? "");
-                        var matched = styleMap.FirstOrDefault(kv => 
-                            normalizedCat.Contains(RemoveDiacritics(kv.Key.ToLower())));
-
-                        cat.BackgroundColor = matched.Key != null ? matched.Value.bg : "#F5F5F7";
-                        cat.TextColor       = matched.Key != null ? matched.Value.text : "#A1A1B5";
-                        cat.ImageUrl        = matched.Key != null ? matched.Value.img : "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=300&q=80"; // Default restaurant img
-                    }
-                    CategoriesCollection.ItemsSource = _allCategories;
+                    // Update cache in background
+                    _ = CacheService.SaveCacheAsync("categories_cache", JsonSerializer.Serialize(categories));
+                    DisplayCategories(categories);
                 }
             }
             catch (Exception ex)
@@ -75,30 +64,79 @@ namespace FoodMapApp.Views
             }
         }
 
+        private void DisplayCategories(List<CategoryItem> categories)
+        {
+            if (categories == null) return;
+            
+            _allCategories.Clear();
+            foreach (var c in categories) _allCategories.Add(c);
+
+            // Assign elegant pastel colors & beautiful real food images
+            var styleMap = new Dictionary<string, (string bg, string text, string img)>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "Hải sản",  ("#F0F8FF", "#5D9CEC", "https://images.unsplash.com/photo-1615141982883-c7ad0e69fd62?auto=format&fit=crop&w=300&q=80") },
+                { "vặt",      ("#FFFBF0", "#F6BB42", "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=300&q=80") },
+                { "Ăn vặt",   ("#FFFBF0", "#F6BB42", "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=300&q=80") },
+                { "nướng",    ("#FFF0F3", "#ED5565", "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=300&q=80") },
+            };
+
+            foreach (var cat in _allCategories)
+            {
+                var normalizedCat = RemoveDiacritics(cat.category_name?.ToLower() ?? "");
+                var matched = styleMap.FirstOrDefault(kv => 
+                    normalizedCat.Contains(RemoveDiacritics(kv.Key.ToLower())));
+
+                cat.BackgroundColor = matched.Key != null ? matched.Value.bg : "#F5F5F7";
+                cat.TextColor       = matched.Key != null ? matched.Value.text : "#A1A1B5";
+                cat.ImageUrl        = matched.Key != null ? matched.Value.img : "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=300&q=80"; // Default restaurant img
+            }
+            CategoriesCollection.ItemsSource = null;
+            CategoriesCollection.ItemsSource = _allCategories;
+        }
+
         private async Task LoadRestaurants(int? categoryId = null)
         {
             try
             {
                 string url = $"{BackendUrl}?lang=vi";
                 if (categoryId.HasValue) url += $"&category_id={categoryId.Value}";
+                
+                string cacheKey = categoryId.HasValue ? $"restaurants_cat_{categoryId.Value}" : "restaurants_main";
 
+                // 1. Try to load from Cache first
+                var cachedFoods = await CacheService.GetCacheAsync<List<FoodItem>>(cacheKey);
+                if (cachedFoods != null)
+                {
+                    DisplayRestaurants(cachedFoods);
+                }
+
+                // 2. Load from Network
                 var foods = await HttpService.GetAsync<List<FoodItem>>(url);
                 if (foods != null)
                 {
-                    _allRestaurants = foods.OrderByDescending(f => f.total_listens).ToList();
-                    
-                    // Update main collection and recommended collection
-                    UpdateCollections(_allRestaurants);
-
-                    // Update visibility if searching
-                    if (!string.IsNullOrWhiteSpace(SearchEntry.Text))
-                        OnSearchTextChanged(null, new TextChangedEventArgs(null, SearchEntry.Text));
+                    // Update cache
+                    _ = CacheService.SaveCacheAsync(cacheKey, JsonSerializer.Serialize(foods));
+                    DisplayRestaurants(foods);
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error loading restaurants: {ex.Message}");
             }
+        }
+
+        private void DisplayRestaurants(List<FoodItem> foods)
+        {
+            if (foods == null) return;
+
+            _allRestaurants = foods.OrderByDescending(f => f.total_listens).ToList();
+            
+            // Update main collection and recommended collection
+            UpdateCollections(_allRestaurants);
+
+            // Update visibility if searching
+            if (!string.IsNullOrWhiteSpace(SearchEntry.Text))
+                OnSearchTextChanged(null, new TextChangedEventArgs(null, SearchEntry.Text));
         }
 
         private void UpdateCollections(List<FoodItem> source)

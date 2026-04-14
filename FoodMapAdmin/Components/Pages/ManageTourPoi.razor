@@ -5,6 +5,8 @@
 @inject ITourService TourService
 @inject IPoiService PoiService
 @inject NavigationManager Navigation
+@inject IActivityLogger Logger
+@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Thiết lập Lộ trình - @(tour?.Name ?? "Loading...")</PageTitle>
@@ -641,14 +643,33 @@
         };
 
         await TourService.AddPoiToTourAsync(TourId, detail);
+        
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        int.TryParse(userIdStr, out var currentUserId);
+        
+        var poiName = allPois?.FirstOrDefault(p => p.PoiId == poiId)?.Name ?? "N/A";
+        await Logger.LogAsync(currentUserId, "Thêm điểm dừng", $"{tour.Name}: {poiName}");
+
         await LoadTour();
     }
 
     private async Task RemovePoi(int poiId)
     {
-        await TourService.RemovePoiFromTourAsync(TourId, poiId);
-        expandedPoiId = null;
-        await LoadTour();
+        var poiName = tour?.Pois?.FirstOrDefault(p => p.PoiId == poiId)?.Poi?.Name ?? "N/A";
+        
+        if (await TourService.RemovePoiFromTourAsync(TourId, poiId))
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            int.TryParse(userIdStr, out var currentUserId);
+
+            await Logger.LogAsync(currentUserId, "Xóa điểm dừng", $"{tour?.Name}: {poiName}");
+            expandedPoiId = null;
+            await LoadTour();
+        }
     }
 
     private async Task OnStayDurationChanged(TourPoi stop, ChangeEventArgs e)

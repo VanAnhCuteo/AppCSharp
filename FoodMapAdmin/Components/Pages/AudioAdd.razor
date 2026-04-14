@@ -9,11 +9,12 @@
 @inject IPoiGuidePendingChangeService PendingChangeService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JSRuntime
+@inject IActivityLogger Logger
 @attribute [Authorize(Roles = "admin,CNH")]
 
 <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
     <div>
-        <h2 class="mb-1" style="font-size: 1.6rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Tạo Audio Guide</h2>
+        <h2 class="page-title">Tạo Audio Guide</h2>
         <p class="text-muted mb-0" style="font-size: 0.85rem; font-weight: 500;">Thêm nội dung thuyết minh mới cho địa điểm</p>
     </div>
     <button class="back-btn-premium transition-up" @onclick="GoBack" title="Quay lại">
@@ -158,6 +159,7 @@ else
 
                 if (await PendingChangeService.SubmitChangeAsync(pendingChange))
                 {
+                    await Logger.LogAsync(userId, "Đề nghị thêm audio", availablePois?.FirstOrDefault(p => p.PoiId == newGuide.PoiId)?.Name ?? "N/A");
                     await JSRuntime.InvokeVoidAsync("alert", "Đã gửi bản thảo thuyết minh để Admin phê duyệt!");
                     Navigation.NavigateTo("/audio-management");
                 }
@@ -169,8 +171,13 @@ else
                 bool success = await GuideService.CreateGuideAsync(newGuide);
                 if (success)
                 {
-                    // 2. Auto-translate and save for SELECTED languages
+                    var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    int? currentUserId = int.TryParse(userIdStr, out var id) ? id : null;
                     var poiName = availablePois?.FirstOrDefault(p => p.PoiId == newGuide.PoiId)?.Name ?? "";
+                    
+                    await Logger.LogAsync(currentUserId, "Thêm audio guide", poiName);
+
+                    // 2. Auto-translate and save for SELECTED languages
                     var placeholder = "[[POI_NAME]]";
 
                     foreach (var lang in selectedLangs)

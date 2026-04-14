@@ -9,11 +9,12 @@
 @inject IUserService UserService
 @inject NavigationManager Navigator
 @inject IJSRuntime JSRuntime
+@inject IActivityLogger Logger
 @attribute [Authorize(Roles = "admin,CNH")]
 
 <div class="d-flex justify-content-between align-items-center mb-5 mt-2">
     <div>
-        <h2 class="mb-1" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Sửa địa điểm</h2>
+        <h2 class="page-title">Sửa địa điểm</h2>
         <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Cập nhật thông tin chi tiết và vị trí của "@(poiToEdit?.Name ?? "...")" trên bản đồ</p>
     </div>
     <button class="back-btn-premium transition-up" @onclick="HandleCancel" title="Quay lại">
@@ -125,7 +126,13 @@ else
                 if (user.IsInRole("admin"))
                 {
                     bool success = await PoiService.UpdatePoiAsync(poiToEdit);
-                    if (success) Navigator.NavigateTo("/pois");
+                    if (success) 
+                    {
+                        var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == ClaimTypes.NameIdentifier)?.Value;
+                        int.TryParse(userIdStr, out var currentUserId);
+                        await Logger.LogAsync(currentUserId, "Cập nhật thông tin", poiToEdit.Name);
+                        Navigator.NavigateTo("/pois");
+                    }
                 }
                 else if (user.IsInRole("CNH"))
                 {
@@ -135,6 +142,7 @@ else
                         bool success = await PendingChangeService.CreatePendingChangeAsync(poiToEdit, currentUserId);
                         if (success) 
                         {
+                            await Logger.LogAsync(currentUserId, "Gửi đề nghị sửa quán", poiToEdit.Name);
                             await JSRuntime.InvokeVoidAsync("alert", "Thay đổi đã được gửi! Quản trị viên sẽ sớm xem xét và phê duyệt thông tin của bạn.");
                             Navigator.NavigateTo("/pois");
                         }

@@ -1,9 +1,13 @@
 using System.Collections.ObjectModel;
+using FoodMapApp.Services;
 using System.Net.Http.Json;
 using FoodMapApp.Models;
+using System.Diagnostics;
+using System.Threading;
 
 namespace FoodMapApp
 {
+
     public partial class FoodTourPage : ContentPage
     {
         private int _minDuration = 0;
@@ -12,6 +16,9 @@ namespace FoodMapApp
         private decimal _maxPrice = 0;
         private string _searchText = string.Empty;
         private CancellationTokenSource _searchCts;
+
+        // Bottom Sheet State
+        private TourModel _selectedTour;
 
         public FoodTourPage()
         {
@@ -34,7 +41,6 @@ namespace FoodMapApp
         {
             try
             {
-                using HttpClient client = new HttpClient();
                 string url = AppConfig.TourApiUrl;
                 var queryParams = new List<string>();
 
@@ -53,8 +59,11 @@ namespace FoodMapApp
 
                 if (queryParams.Count > 0)
                     url += "?" + string.Join("&", queryParams);
+                
+                // Cache key includes query params to store different filter results
+                string cacheKey = "tours_list_" + url.GetHashCode();
 
-                var tours = await client.GetFromJsonAsync<List<TourModel>>(url);
+                var tours = await HttpService.GetWithCacheAsync<List<TourModel>>(url, cacheKey);
                 tourList.ItemsSource = new ObservableCollection<TourModel>(tours ?? new List<TourModel>());
             }
             catch (Exception ex)
@@ -70,7 +79,6 @@ namespace FoodMapApp
             _searchText = e.NewTextValue;
             clearBtn.IsVisible = !string.IsNullOrEmpty(_searchText);
             
-            // Debounce logic: cancel previous task and start a new one
             _searchCts?.Cancel();
             _searchCts = new CancellationTokenSource();
             var token = _searchCts.Token;
@@ -87,21 +95,14 @@ namespace FoodMapApp
         {
             var picker = (Picker)sender;
             int selectedIndex = picker.SelectedIndex;
-
             switch (selectedIndex)
             {
-                case 0: // Tất cả
-                    _minDuration = 0; _maxDuration = 0; break;
-                case 1: // < 1 giờ
-                    _minDuration = 0; _maxDuration = 60; break;
-                case 2: // 1 - 2 giờ
-                    _minDuration = 60; _maxDuration = 120; break;
-                case 3: // 2 - 3 giờ
-                    _minDuration = 120; _maxDuration = 180; break;
-                case 4: // Trên 3 giờ
-                    _minDuration = 181; _maxDuration = 9999; break;
+                case 0: _minDuration = 0; _maxDuration = 0; break;
+                case 1: _minDuration = 0; _maxDuration = 60; break;
+                case 2: _minDuration = 60; _maxDuration = 120; break;
+                case 3: _minDuration = 120; _maxDuration = 180; break;
+                case 4: _minDuration = 181; _maxDuration = 9999; break;
             }
-
             await LoadTours();
         }
 
@@ -109,21 +110,14 @@ namespace FoodMapApp
         {
             var picker = (Picker)sender;
             int selectedIndex = picker.SelectedIndex;
-
             switch (selectedIndex)
             {
-                case 0: // Tất cả
-                    _minPrice = 0; _maxPrice = 0; break;
-                case 1: // < 100.000đ
-                    _minPrice = 0; _maxPrice = 100000; break;
-                case 2: // 100k - 250k
-                    _minPrice = 100000; _maxPrice = 250000; break;
-                case 3: // 250k - 500k
-                    _minPrice = 250000; _maxPrice = 500000; break;
-                case 4: // Trên 500.000đ
-                    _minPrice = 500000; _maxPrice = 9999999; break;
+                case 0: _minPrice = 0; _maxPrice = 0; break;
+                case 1: _minPrice = 0; _maxPrice = 100000; break;
+                case 2: _minPrice = 100000; _maxPrice = 250000; break;
+                case 3: _minPrice = 250000; _maxPrice = 500000; break;
+                case 4: _minPrice = 500000; _maxPrice = 9999999; break;
             }
-
             await LoadTours();
         }
 
@@ -131,10 +125,8 @@ namespace FoodMapApp
         {
             searchEntry.Text = string.Empty;
             _searchText = string.Empty;
-            _minDuration = 0;
-            _maxDuration = 0;
-            _minPrice = 0;
-            _maxPrice = 0;
+            _minDuration = 0; _maxDuration = 0;
+            _minPrice = 0; _maxPrice = 0;
             
             if (timePicker != null) timePicker.SelectedIndex = 0;
             if (pricePicker != null) pricePicker.SelectedIndex = 0;
@@ -142,12 +134,53 @@ namespace FoodMapApp
             await LoadTours();
         }
 
-        private async void OnTourSelected(object sender, TappedEventArgs e)
+        // --- Bottom Sheet & Detail Logic ---
+
+        private void OnTourSelected(object sender, TappedEventArgs e)
         {
             if (e.Parameter is TourModel tour)
             {
-                await Navigation.PushAsync(new Views.TourMapPage(tour.tour_id));
+                _selectedTour = tour;
+                UpdateBottomSheetUI();
+                OpenBottomSheet();
             }
         }
+
+        private void UpdateBottomSheetUI()
+        {
+            if (_selectedTour == null) return;
+            sheetTitle.Text = _selectedTour.name;
+            sheetDesc.Text = _selectedTour.description;
+            sheetTime.Text = _selectedTour.DurationDisplay;
+            sheetPrice.Text = _selectedTour.PriceDisplay;
+        }
+
+        private async void OpenBottomSheet()
+        {
+            dimOverlay.IsVisible = true;
+            _ = dimOverlay.FadeTo(0.6, 250);
+            await bottomSheet.TranslateTo(0, 0, 300, Easing.CubicOut);
+        }
+
+        private async void OnCloseBottomSheet(object sender, EventArgs e)
+        {
+            _ = dimOverlay.FadeTo(0, 250);
+            await bottomSheet.TranslateTo(0, 1000, 300, Easing.CubicIn);
+            dimOverlay.IsVisible = false;
+        }
+
+        private async void OnStartJourneyClicked(object sender, EventArgs e)
+        {
+            dimOverlay.IsVisible = false;
+            dimOverlay.Opacity = 0;
+            bottomSheet.TranslationY = 1000;
+
+            if (_selectedTour != null)
+            {
+                await Navigation.PushAsync(new Views.TourMapPage(_selectedTour.tour_id));
+            }
+        }
+
+
     }
 }

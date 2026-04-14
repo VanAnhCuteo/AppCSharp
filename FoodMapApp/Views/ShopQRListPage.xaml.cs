@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
-using FoodMapApp.Models; // I should check if there's a Food model in FoodMapApp
+using FoodMapApp.Models;
+using FoodMapApp.Services;
 
 namespace FoodMapApp.Views;
 
@@ -24,12 +25,7 @@ public partial class ShopQRListPage : ContentPage
 
         try
         {
-            using HttpClient client = new HttpClient();
-            var foodsJson = await client.GetStringAsync($"{AppConfig.FoodApiUrl}?lang=vi");
-            
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var foods = JsonSerializer.Deserialize<List<Models.FoodModel>>(foodsJson, options); 
-
+            var foods = await HttpService.GetWithCacheAsync<List<Models.FoodModel>>($"{AppConfig.FoodApiUrl}?lang=vi", "shop_qr_list_cache");
             shopsCollection.ItemsSource = foods;
         }
         catch (Exception ex)

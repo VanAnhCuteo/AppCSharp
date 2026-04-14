@@ -4,13 +4,15 @@
 @using FoodMapAdmin.Services
 @inject IPoiPendingChangeService PendingChangeService
 @inject IJSRuntime JS
+@inject IActivityLogger Logger
+@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Quản lý Phê duyệt - FoodMap Admin</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4 mt-2">
     <div>
-        <h2 class="mb-1" style="font-size: 2.22rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Duyệt địa điểm</h2>
+        <h2 class="page-title">Duyệt địa điểm</h2>
         <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Xử lý các yêu cầu Thêm, Sửa, Xóa từ chủ quán</p>
     </div>
 </div>
@@ -167,6 +169,13 @@ else
         {
             if (await PendingChangeService.ApproveChangeAsync(request.ChangeId))
             {
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                int.TryParse(userIdStr, out var currentUserId);
+                
+                await Logger.LogAsync(currentUserId, "Duyệt yêu cầu", request.Name);
+
                 await LoadData();
                 await JS.InvokeVoidAsync("alert", "Đã duyệt thành công!");
             }
@@ -183,6 +192,13 @@ else
         {
             if (await PendingChangeService.RejectChangeAsync(request.ChangeId))
             {
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                int.TryParse(userIdStr, out var currentUserId);
+                
+                await Logger.LogAsync(currentUserId, "Từ chối yêu cầu", request.Name);
+
                 await LoadData();
                 await JS.InvokeVoidAsync("alert", "Đã từ chối yêu cầu.");
             }

@@ -6,6 +6,7 @@
 @inject IPoiPendingChangeService PendingChangeService
 @inject NavigationManager Navigator
 @inject IJSRuntime JSRuntime
+@inject IActivityLogger Logger
 @attribute [Authorize(Roles = "admin,CNH")]
 
 <PageTitle>Quản lý Quán ăn - FoodMap Admin</PageTitle>
@@ -13,8 +14,8 @@
 <!-- Page Header -->
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
     <div>
-        <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Quán ăn & Địa điểm</h2>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Quản lý danh sách các điểm đến trên hệ thống FoodMap</p>
+        <h2 class="page-title">Quán ăn & Địa điểm</h2>
+        <p class="page-subtitle">Quản lý danh sách các điểm đến trên hệ thống FoodMap</p>
     </div>
     <button class="glass-btn" @onclick="AddNew">
         <i class="bi bi-plus-lg"></i> Thêm quán mới
@@ -296,6 +297,10 @@
             {
                 if (await PoiService.DeletePoiAsync(id))
                 {
+                    var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    int.TryParse(userIdStr, out var currentUserId);
+                    await Logger.LogAsync(currentUserId, "Xóa quán ăn", poi.Name);
+                    
                     pois = pois?.Where(p => p.PoiId != id).ToList();
                     StateHasChanged();
                 }
@@ -308,6 +313,7 @@
                 {
                     if (await PendingChangeService.CreatePendingChangeAsync(poi, userId, "delete"))
                     {
+                        await Logger.LogAsync(userId, "Gửi yêu cầu xóa quán", poi.Name);
                         await JSRuntime.InvokeVoidAsync("alert", "Yêu cầu xóa đã được gửi. Quán sẽ biến mất sau khi được Admin phê duyệt.");
                         pendingChangesList = await PendingChangeService.GetPendingChangesAsync();
                         StateHasChanged();

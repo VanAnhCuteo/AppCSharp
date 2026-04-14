@@ -16,8 +16,8 @@
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;" class="animate-fade-in">
     <div>
-        <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Quản lí Audio</h2>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Quản lý thuyết minh đa ngôn ngữ cho các địa điểm</p>
+        <h2 class="page-title">Quản lí Audio</h2>
+        <p class="page-subtitle">Quản lý thuyết minh đa ngôn ngữ cho các địa điểm</p>
     </div>
     <button class="glass-btn" @onclick="@(() => Navigation.NavigateTo("/audio-add"))">
         <i class="bi bi-plus-lg me-2"></i> Thêm Audio mới
@@ -26,15 +26,15 @@
 
 
 <!-- Table Section -->
-<div class="card shadow-glass border-0 animate-stagger" style="border-radius: 30px; overflow: hidden; background: var(--surface);">
+<div class="card" style="padding: 0; overflow: hidden;">
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
-                <tr style="background: rgba(255, 45, 133, 0.03);">
-                    <th style="padding: 1.5rem 2rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Địa điểm / Thuyết minh</th>
-                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Ngôn ngữ hỗ trợ</th>
-                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Nghe thử</th>
-                    <th style="padding: 1.5rem 2rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Thao tác</th>
+                <tr>
+                    <th style="padding-left: 2rem;">Địa điểm / Thuyết minh</th>
+                    <th style="text-align: center;">Ngôn ngữ hỗ trợ</th>
+                    <th style="text-align: center;">Nghe thử</th>
+                    <th style="text-align: center; padding-right: 2rem;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>

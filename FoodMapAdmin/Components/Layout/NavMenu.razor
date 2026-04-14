@@ -6,6 +6,7 @@
 
     <nav class="nav-menu">
         <AuthorizeView Roles="admin">
+            <div class="nav-section-label">Tổng quan</div>
             <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
                 <i class="bi bi-grid-1x2-fill"></i> Tổng quan
             </NavLink>
@@ -13,6 +14,7 @@
 
         <!-- Q.Lý Cửa Hàng - Admin Version (with Dropdown) -->
         <AuthorizeView Roles="admin">
+            <div class="nav-section-label">Quản lý nội dung</div>
             <div class="nav-item-group">
                 <div class="nav-link nav-link-item @(isPoisExpanded ? "is-expanded" : "")" @onclick="TogglePois">
                     <div class="d-flex align-items-center gap-3">
@@ -59,6 +61,7 @@
 
         <!-- Q.Lý Cửa Hàng - Chủ Quán Version (Direct Link) -->
         <AuthorizeView Roles="CNH">
+            <div class="nav-section-label">Quản lý</div>
             <NavLink class="nav-link" href="/pois">
                 <i class="bi bi-shop-window"></i> Q.Lý Cửa Hàng
             </NavLink>
@@ -81,6 +84,7 @@
         </AuthorizeView>
 
         <AuthorizeView Roles="admin">
+            <div class="nav-section-label">Hệ thống</div>
             <NavLink class="nav-link" href="/audio-management">
                 <i class="bi bi-mic-fill"></i> Hướng dẫn Audio
             </NavLink>

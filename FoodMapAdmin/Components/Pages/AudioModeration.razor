@@ -4,13 +4,15 @@
 @using FoodMapAdmin.Services
 @inject IPoiGuidePendingChangeService PendingChangeService
 @inject IJSRuntime JS
+@inject IActivityLogger Logger
+@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Duyệt Audio Guide - FoodMap Admin</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4 mt-2">
     <div>
-        <h2 class="mb-1" style="font-size: 2.22rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Duyệt Audio Guide</h2>
+        <h2 class="page-title">Duyệt Audio Guide</h2>
         <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Phê duyệt nội dung kịch bản thuyết minh từ chủ quán</p>
     </div>
 </div>
@@ -184,6 +186,13 @@
         {
             var success = await PendingChangeService.ApproveChangeAsync(request.ChangeId);
             if (success) {
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                int.TryParse(userIdStr, out var currentUserId);
+                
+                await Logger.LogAsync(currentUserId, "Duyệt thuyết minh", request.Poi?.Name ?? "N/A");
+
                 await LoadData();
                 expandedId = null;
                 await JS.InvokeVoidAsync("alert", "Đã duyệt và hệ thống đang tiến hành dịch tự động.");
@@ -197,6 +206,13 @@
         {
             var success = await PendingChangeService.RejectChangeAsync(request.ChangeId);
             if (success) {
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                int.TryParse(userIdStr, out var currentUserId);
+                
+                await Logger.LogAsync(currentUserId, "Từ chối thuyết minh", request.Poi?.Name ?? "N/A");
+
                 await LoadData();
                 expandedId = null;
             }

@@ -100,13 +100,8 @@ async function setSelectedLang(lang, name, flag) {
 
     let confirmed = true;
     if (isAudioSpeaking || isAudioPaused) {
-        confirmed = confirm("Bạn muốn chuyển ngôn ngữ?");
-        if (!confirmed) return;
-        
-        isAudioSpeaking = false;
-        isAudioPaused = false;
-        const speakerBtn = document.getElementById('sheet-speaker-btn');
-        if (speakerBtn) speakerBtn.classList.remove('playing');
+        window.location.href = `app-request-confirm://lang-switch?lang=${lang}&name=${encodeURIComponent(name || '')}`;
+        return;
     }
     
     selectedLanguage = lang;
@@ -273,7 +268,7 @@ function startGeofencing() {
     if ("geolocation" in navigator) {
         navigator.geolocation.watchPosition(processLocation, (err) => {
             console.log(err);
-            alert("Geolocation Error: " + err.message + " (Code: " + err.code + ")");
+            window.location.href = `app-ui://alert?message=${encodeURIComponent("Lỗi định vị: " + err.message)}`;
         }, { enableHighAccuracy: true });
     }
 }
@@ -437,7 +432,7 @@ function centerOnUser() {
     if (userMarker) {
         map.flyTo(userMarker.getLatLng(), 17, { animate: true, duration: 1 });
     } else {
-        alert("Waiting for GPS location...");
+        window.location.href = `app-ui://alert?message=${encodeURIComponent("Đang xác định vị trí của bạn...")}`;
     }
 }
 
@@ -500,7 +495,7 @@ async function startNavigation(slat, slon, dlat, dlon) {
         }
     } catch (e) {
         console.error("Routing error", e);
-        alert("Không thể tìm đường đi lúc này.");
+        window.location.href = `app-ui://alert?message=${encodeURIComponent("Không thể tìm đường đi lúc này.")}`;
     }
 }
 

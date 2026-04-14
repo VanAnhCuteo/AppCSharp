@@ -33,29 +33,38 @@ namespace FoodMapAdmin.Services
 
             try
             {
-                string fromLang = "vi-VN";
-                // Map internal codes to MyMemory codes
+                // Map to Google Translate compatible codes
                 string toLang = targetLang switch
                 {
-                    "en" => "en-GB",
                     "zh" => "zh-CN",
-                    "ko" => "ko-KR",
-                    "ja" => "ja-JP",
                     _ => targetLang
                 };
 
-                string url = $"https://api.mymemory.translated.net/get?q={WebUtility.UrlEncode(text)}&langpair={fromLang}|{toLang}";
+                string url = $"https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl={toLang}&dt=t&q={WebUtility.UrlEncode(text)}";
 
                 var response = await _httpClient.GetStringAsync(url);
                 using (var doc = JsonDocument.Parse(response))
                 {
-                    if (doc.RootElement.TryGetProperty("responseData", out var responseData))
+                    // Response format: [[["Hello","Xin chào",null,null,1]],null,"vi"]
+                    if (doc.RootElement.ValueKind == JsonValueKind.Array && doc.RootElement.GetArrayLength() > 0)
                     {
-                        if (responseData.TryGetProperty("translatedText", out var translatedText))
+                        var segments = doc.RootElement[0];
+                        if (segments.ValueKind == JsonValueKind.Array)
                         {
-                            string result = translatedText.GetString() ?? text;
-                            _cache.Set(cacheKey, result, TimeSpan.FromHours(24));
-                            return result;
+                            string translatedText = "";
+                            foreach (var segment in segments.EnumerateArray())
+                            {
+                                if (segment.ValueKind == JsonValueKind.Array && segment.GetArrayLength() > 0)
+                                {
+                                    translatedText += segment[0].GetString() ?? "";
+                                }
+                            }
+                            
+                            if (!string.IsNullOrWhiteSpace(translatedText))
+                            {
+                                _cache.Set(cacheKey, translatedText, TimeSpan.FromHours(24));
+                                return translatedText;
+                            }
                         }
                     }
                 }

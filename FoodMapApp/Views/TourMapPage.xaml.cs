@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using FoodMapApp.Services;
 using System.Net.Http.Json;
 using FoodMapApp.Models;
 using System.Web;
@@ -35,6 +36,7 @@ namespace FoodMapApp.Views
             public int SentenceIndex { get; set; } = 0;
             public string Language { get; set; } = "vi-VN";
             public bool IsPaused { get; set; } = true;
+            public bool IsManual { get; set; } = false;
             public bool IsActive { get; set; } = false;
 
             public void Reset()
@@ -51,9 +53,13 @@ namespace FoodMapApp.Views
 
             tourMapView.Navigated += async (s, e) =>
             {
-                if (e.Url.Contains("tour_map.html") && _tour != null)
+                if (e.Url.Contains("tour_map.html"))
                 {
-                    await SendTourToMap();
+                    await tourMapView.EvaluateJavaScriptAsync($"platformApiBase = '{AppConfig.FoodApiUrl}';");
+                    if (_tour != null)
+                    {
+                        await SendTourToMap();
+                    }
                 }
             };
 
@@ -68,22 +74,40 @@ namespace FoodMapApp.Views
                     string lang = query["lang"] ?? "vi-VN";
                     string id = query["id"] ?? "";
 
+                    if (string.IsNullOrEmpty(text) && !string.IsNullOrEmpty(id) && _tour?.pois != null)
+                    {
+                        var poi = _tour.pois.FirstOrDefault(p => p.poi_id.ToString() == id || p.id.ToString() == id);
+                        if (poi != null && !string.IsNullOrEmpty(poi.description))
+                        {
+                            text = $"{poi.name}. {poi.description}";
+                        }
+                    }
+
                     if (!string.IsNullOrWhiteSpace(text))
                     {
-                        // Stop any previous speech in this tour
+                        // Stop any previous speech
                         StopSpeech(fullReset: false);
                         
                         _tourSession.PoiId = id;
                         _tourSession.Language = lang;
-                        _tourSession.Sentences = text.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                        
+                        // Normalize and split text into sentences like MainPage
+                        string normalizedText = System.Text.RegularExpressions.Regex.Replace(text.Trim().ToLower(), @"\s+", " ");
+                        _tourSession.Sentences = normalizedText.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
                                                     .Select(s => s.Trim())
                                                     .Where(s => s.Length > 0)
                                                     .ToArray();
+                                                    
                         _tourSession.SentenceIndex = 0;
                         _tourSession.IsPaused = false;
                         _tourSession.IsActive = true;
 
+                        _isCleaningUp = true;
+                        await MainThread.InvokeOnMainThreadAsync(() => tourMiniPlayer.IsVisible = false);
+                        await Task.Delay(100);
+                        _isCleaningUp = false;
                         await SyncPlayerUI();
+
                         _ = SpeakWithChunksAsync();
                     }
                 }
@@ -99,9 +123,52 @@ namespace FoodMapApp.Views
                         await SyncPlayerUI();
                     } else {
                         _tourSession.IsPaused = true;
-                        _currentSentenceCts?.Cancel();
+                        StopSpeech(false);
                         await SyncPlayerUI();
                     }
+                }
+                else if (e.Url.StartsWith("app-ui://alert?"))
+                {
+                    e.Cancel = true;
+                    var uri = new Uri(e.Url);
+                    var query = HttpUtility.ParseQueryString(uri.Query);
+                    string message = query["message"] ?? "";
+                    await DisplayAlert("Thông báo", message, "Đóng");
+                }
+                else if (e.Url.StartsWith("app-request-confirm://lang-switch?"))
+                {
+                    e.Cancel = true;
+                    var uri = new Uri(e.Url);
+                    var query = HttpUtility.ParseQueryString(uri.Query);
+                    string lang = query["lang"] ?? "vi";
+                    string name = query["name"] ?? "";
+                    
+                    bool confirmed = await DisplayAlert("Thông báo", $"Bạn muốn chuyển sang {name}?", "Đồng ý", "Hủy");
+                    if (confirmed)
+                    {
+                        StopSpeech(true);
+                        _tourSession.Language = lang;
+                        await SyncPlayerUI();
+                        await Task.Delay(200);
+                        if (tourMapView != null) await tourMapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+                        await LoadTourDetails(lang);
+                    }
+                }
+                else if (e.Url.StartsWith("app-request-reload://markers?"))
+                {
+                    e.Cancel = true;
+                    var uri = new Uri(e.Url);
+                    var query = HttpUtility.ParseQueryString(uri.Query);
+                    string lang = query["lang"] ?? "vi";
+                    
+                    StopSpeech(true);
+                    _tourSession.Language = lang;
+                    await SyncPlayerUI();
+
+                    await Task.Delay(200);
+                    if (tourMapView != null) await tourMapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+                    
+                    await LoadTourDetails(lang);
                 }
             };
 
@@ -114,10 +181,22 @@ namespace FoodMapApp.Views
             await LoadTourDetails();
         }
 
-        private async Task LoadTourDetails()
+        private string GetTtsLanguageCode(string lang)
+        {
+            if (string.IsNullOrEmpty(lang)) return "vi-VN";
+            if (lang.ToLower() == "vi") return "vi-VN";
+            if (lang.ToLower() == "en") return "en-US";
+            if (lang.Contains("-")) return lang;
+            return lang;
+        }
+
+        private async Task LoadTourDetails(string lang = "vi")
         {
             try
             {
+                // Sync session language
+                _tourSession.Language = GetTtsLanguageCode(lang);
+
                 // Try to get current location
                 try
                 {
@@ -133,13 +212,18 @@ namespace FoodMapApp.Views
                 }
                 catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Location Error: {ex.Message}"); }
 
-                using HttpClient client = new HttpClient();
-                _tour = await client.GetFromJsonAsync<TourModel>($"{AppConfig.TourApiUrl}/{_tourId}");
+                // Replacement for: using HttpClient client = new HttpClient();
+                // _tour = await client.GetFromJsonAsync<TourModel>($"{AppConfig.TourApiUrl}/{_tourId}?lang={lang}");
+                
+                _tour = await HttpService.GetWithCacheAsync<TourModel>($"{AppConfig.TourApiUrl}/{_tourId}?lang={lang}", $"tour_details_{_tourId}_{lang}");
+                
                 if (_tour != null)
                 {
-                    currentStopNameLabel.Text = _tour.name;
-                    stopCountLabel.Text = $"{_tour.pois?.Count ?? 0} quán";
-                    UpdateStopInfo();
+                    await MainThread.InvokeOnMainThreadAsync(() => {
+                        currentStopNameLabel.Text = _tour.name;
+                        stopCountLabel.Text = $"{_tour.pois?.Count ?? 0} quán";
+                        UpdateStopInfo();
+                    });
                 }
             }
             catch (Exception ex)
@@ -181,6 +265,7 @@ namespace FoodMapApp.Views
             
             // Pass the state: isJourneyStarted (0/1)
             int journeyState = _isJourneyStarted ? 1 : 0;
+            await tourMapView.EvaluateJavaScriptAsync($"platformApiBase = '{AppConfig.FoodApiUrl}';");
             await tourMapView.EvaluateJavaScriptAsync($"loadTourRoute({json}, {userLocParams}, {_currentStopIndex}, {journeyState})");
         }
 
@@ -257,28 +342,36 @@ namespace FoodMapApp.Views
         {
             try {
                 await MainThread.InvokeOnMainThreadAsync(() => {
+                    if (_isCleaningUp) return;
+                    
                     tourMiniPlayer.IsVisible = _tourSession.IsActive;
                     if (_tourSession.IsActive) {
                         playIcon.IsVisible = _tourSession.IsPaused;
                         pauseIcon.IsVisible = !_tourSession.IsPaused;
                         
                         // Set shop name
-                        var poi = _tour?.pois?.FirstOrDefault(p => p.poi_id.ToString() == _tourSession.PoiId);
+                        var poi = _tour?.pois?.FirstOrDefault(p => p.id.ToString() == _tourSession.PoiId || p.poi_id.ToString() == _tourSession.PoiId);
                         tourShopLabel.Text = poi?.name ?? "...";
                     }
                 });
-            } catch { }
+            } catch (Exception ex) { Debug.WriteLine($"SyncUI error: {ex.Message}"); }
         }
 
         private void StopSpeech(bool fullReset = false)
         {
-            _isActuallySpeaking = false;
-            _currentSentenceCts?.Cancel();
-            _ttsCts?.Cancel(); 
-            _pauseTcs?.TrySetResult(false);
-            _audioStopwatch.Stop();
-            
-            if (fullReset) _tourSession.Reset();
+            try {
+                _isActuallySpeaking = false;
+                _currentSentenceCts?.Cancel();
+                _ttsCts?.Cancel(); 
+                _pauseTcs?.TrySetResult(false);
+                _audioStopwatch.Stop();
+                
+                // Hard reset the OS TTS engine to clear buffers
+                _ = TextToSpeech.Default.SpeakAsync("", new SpeechOptions { Volume = 0 });
+
+                if (fullReset) _tourSession.Reset();
+            }
+            catch (Exception ex) { Debug.WriteLine($"Tour StopSpeech error: {ex.Message}"); }
         }
 
         private async Task SpeakWithChunksAsync()
@@ -331,9 +424,14 @@ namespace FoodMapApp.Views
                 });
             }
 
+            if (_isCleaningUp) return;
+
             if (_tourSession.SentenceIndex >= _tourSession.Sentences.Length) {
                 _tourSession.IsActive = false;
                 await SyncPlayerUI();
+                await MainThread.InvokeOnMainThreadAsync(async () => {
+                   if (tourMapView != null) await tourMapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+                });
             }
         }
 

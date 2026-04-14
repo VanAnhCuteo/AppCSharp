@@ -5,14 +5,16 @@
 @inject ITourService TourService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
+@inject IActivityLogger Logger
+@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Quản lý Tour - FoodMap Admin</PageTitle>
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
     <div>
-        <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Quản lý Tour</h2>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Hệ thống tối ưu hóa và quản lý lộ trình ẩm thực</p>
+        <h2 class="page-title">Quản lý Tour</h2>
+        <p class="page-subtitle">Hệ thống tối ưu hóa và quản lý lộ trình ẩm thực</p>
     </div>
     <button class="glass-btn" @onclick='(() => Navigation.NavigateTo("/tours/create"))'>
         <i class="bi bi-plus-lg"></i> Tạo Tour mới
@@ -768,19 +770,37 @@
     {
         if (editingTour == null || string.IsNullOrEmpty(editingTour.Name)) return;
 
-        await TourService.UpdateTourAsync(editingTour);
-        showEditModal = false;
-        editingTour = null;
-        await LoadData();
+        if (await TourService.UpdateTourAsync(editingTour))
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            int.TryParse(userIdStr, out var currentUserId);
+
+            await Logger.LogAsync(currentUserId, "Cập nhật hành trình", editingTour.Name);
+            
+            showEditModal = false;
+            editingTour = null;
+            await LoadData();
+        }
     }
 
     private async Task DeleteTour(int id)
     {
+        var tourName = tours?.FirstOrDefault(t => t.TourId == id)?.Name ?? "N/A";
         var ok = await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xóa tour này và toàn bộ lộ trình liên quan?");
         if (ok)
         {
-            await TourService.DeleteTourAsync(id);
-            await LoadData();
+            if (await TourService.DeleteTourAsync(id))
+            {
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                int.TryParse(userIdStr, out var currentUserId);
+
+                await Logger.LogAsync(currentUserId, "Xóa hành trình", tourName);
+                await LoadData();
+            }
         }
     }
 }

@@ -5,10 +5,11 @@
 @inject NavigationManager Navigator
 @attribute [Authorize(Roles = "admin")]
 
-<div class="d-flex justify-content-between align-items-center mb-5 mt-2">
+<!-- Page Header -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
     <div>
-        <h2 class="mb-1" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Quản lý mã QR</h2>
-        <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý mã QR riêng biệt cho từng quán ăn trong hệ thống</p>
+        <h2 class="page-title">Quản lý mã QR</h2>
+        <p class="page-subtitle">Quản lý mã QR riêng biệt cho từng quán ăn trong hệ thống</p>
     </div>
 </div>
 
@@ -26,11 +27,11 @@ else
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
-                    <tr style="background: rgba(255, 45, 133, 0.03);">
-                        <th style="padding: 1.5rem 1rem 1.5rem 2rem;" class="uppercase-tracking">Mã ID</th>
-                        <th style="padding: 1.5rem 1rem;" class="uppercase-tracking">Quán ăn & Địa chỉ</th>
-                        <th style="padding: 1.5rem 1rem;" class="uppercase-tracking text-center">Ảnh QR Hiện tại</th>
-                        <th style="padding: 1.5rem 2rem 1.5rem 1rem;" class="uppercase-tracking text-center">Thao tác</th>
+                    <tr>
+                        <th style="padding-left: 2rem;">Mã ID</th>
+                        <th>Quán ăn & Địa chỉ</th>
+                        <th style="text-align: center;">Ảnh QR Hiện tại</th>
+                        <th style="text-align: center; padding-right: 2rem;">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>

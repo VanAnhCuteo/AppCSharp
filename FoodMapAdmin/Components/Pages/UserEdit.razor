@@ -4,6 +4,8 @@
 @using FoodMapAdmin.Services
 @inject IUserService UserService
 @inject NavigationManager Navigator
+@inject IActivityLogger Logger
+@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Chỉnh sửa Người dùng - FoodMap Admin</PageTitle>
@@ -20,7 +22,7 @@ else
 {
     <div class="d-flex justify-content-between align-items-center mb-5 mt-2">
         <div>
-            <h2 class="mb-1" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Sửa người dùng</h2>
+            <h2 class="page-title">Sửa người dùng</h2>
             <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý quyền hạn và trạng thái của tài khoản "@user.Username"</p>
         </div>
         <button class="back-btn-premium transition-up" @onclick="Cancel" title="Quay lại">
@@ -109,11 +111,19 @@ else
 @code {
     [Parameter] public int id { get; set; }
     private User? user;
+    private bool initialIsBlocked;
+    private string initialRole = "";
 
     protected override async Task OnInitializedAsync()
     {
         user = await UserService.GetUserByIdAsync(id);
-        if (user == null) Navigator.NavigateTo("/users");
+        if (user == null) 
+        {
+            Navigator.NavigateTo("/users");
+            return;
+        }
+        initialIsBlocked = user.IsBlocked;
+        initialRole = user.Role ?? "";
     }
 
     private void ToggleBlock() => user!.IsBlocked = !user.IsBlocked;
@@ -122,6 +132,26 @@ else
     {
         if (user != null && await UserService.UpdateUserAsync(user))
         {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var currentUser = authState.User;
+            var userIdStr = currentUser.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            int? currentUserId = int.TryParse(userIdStr, out var idParsed) ? idParsed : null;
+
+            // Log ONLY if blocked status changed
+            if (user.IsBlocked != initialIsBlocked)
+            {
+                if (user.IsBlocked) 
+                    await Logger.LogAsync(currentUserId, "Khóa người dùng", user.Username);
+                else
+                    await Logger.LogAsync(currentUserId, "Mở khóa", user.Username);
+            }
+
+            // Log ONLY if role changed
+            if (user.Role != initialRole)
+            {
+                await Logger.LogAsync(currentUserId, "Cập nhật quyền hạn", user.Username, $"Vai trò mới: {user.Role}");
+            }
+
             Navigator.NavigateTo("/users");
         }
     }

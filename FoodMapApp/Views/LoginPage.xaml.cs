@@ -23,7 +23,7 @@ namespace FoodMapApp.Views
             PasswordLabel.Text = "Mật khẩu";
             LoginButton.Text = "ĐĂNG NHẬP";
             OrLabel.Text = "HOẶC";
-            OfflineButton.Text = "ĐĂNG NHẬP OFFLIVE";
+            OfflineButton.Text = "ĐĂNG NHẬP OFFLINE";
             NoAccountLabel.Text = "Chưa có tài khoản?";
             RegisterNowLabel.Text = "Đăng ký ngay";
         }

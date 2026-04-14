@@ -18,38 +18,42 @@ else
 {
     <!-- Page Header -->
     <div style="margin-bottom: 2rem;">
-        <h2 style="font-size: 1.65rem; font-weight: 800; margin-bottom: 0.25rem; color: var(--text-main);">Tổng quan hệ thống</h2>
-        <p style="color: var(--text-muted); font-size: 0.88rem; margin: 0;">Theo dõi hoạt động và dữ liệu FoodMap</p>
+        <h2 class="page-title">Tổng quan hệ thống</h2>
+        <p class="page-subtitle">Theo dõi hoạt động và dữ liệu FoodMap theo thời gian thực</p>
     </div>
 
     <!-- Stats Grid -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
-        <div class="stat-card">
-            <div class="stat-icon" style="background: rgba(248, 43, 96, 0.1); color: var(--primary);"><i class="bi bi-shop"></i></div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.25rem; margin-bottom: 2.25rem;">
+        <div class="stat-card stat-pink">
+            <div class="stat-accent"></div>
+            <div class="stat-icon" style="background: rgba(248, 43, 96, 0.08); color: var(--primary);"><i class="bi bi-shop"></i></div>
             <div class="stat-info">
                 <span class="stat-label">Tổng số quán ăn</span>
                 <span class="stat-value">@stats.TotalPois</span>
             </div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: rgba(108, 92, 231, 0.1); color: #6c5ce7;"><i class="bi bi-shield-lock"></i></div>
+        <div class="stat-card stat-purple">
+            <div class="stat-accent"></div>
+            <div class="stat-icon" style="background: rgba(108, 92, 231, 0.08); color: #6c5ce7;"><i class="bi bi-shield-lock"></i></div>
             <div class="stat-info">
                 <span class="stat-label">Quản trị viên</span>
                 <span class="stat-value">@stats.TotalAdmins</span>
             </div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: rgba(69, 170, 242, 0.1); color: #45AAF2;"><i class="bi bi-person-badge"></i></div>
+        <div class="stat-card stat-blue">
+            <div class="stat-accent"></div>
+            <div class="stat-icon" style="background: rgba(69, 170, 242, 0.08); color: #45AAF2;"><i class="bi bi-person-badge"></i></div>
             <div class="stat-info">
                 <span class="stat-label">Chủ nhà hàng</span>
                 <span class="stat-value">@stats.TotalOwners</span>
             </div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: rgba(46, 213, 115, 0.1); color: #2ED573;"><i class="bi bi-people"></i></div>
+        <div class="stat-card stat-green">
+            <div class="stat-accent"></div>
+            <div class="stat-icon" style="background: rgba(46, 213, 115, 0.08); color: #2ED573;"><i class="bi bi-people"></i></div>
             <div class="stat-info">
                 <span class="stat-label">Khách hàng</span>
                 <span class="stat-value">@stats.TotalCustomers</span>
@@ -58,18 +62,24 @@ else
     </div>
 
     <!-- Activity Table -->
-    <div class="card" style="padding: 0; overflow: hidden;">
-        <div style="padding: 1.5rem 1.75rem 1rem;">
-            <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-main);">Hoạt động gần đây</h3>
+    <div class="card activity-card" style="padding: 0; overflow: hidden;">
+        <div class="activity-card-header">
+            <div class="activity-header-left">
+                <div class="activity-header-icon"><i class="bi bi-activity"></i></div>
+                <div>
+                    <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-main);">Hoạt động gần đây</h3>
+                    <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">Cập nhật theo thời gian thực</span>
+                </div>
+            </div>
         </div>
         <div class="table-responsive">
             <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%;">
                 <thead>
-                    <tr>
-                        <th style="width: 22%; padding-left: 1.75rem;">Hành động</th>
-                        <th style="width: 23%;">Người thực hiện</th>
-                        <th style="width: 35%;">Đối tượng</th>
-                        <th style="width: 20%;">Thời gian</th>
+                    <tr style="border-bottom: 2px solid rgba(248, 43, 96, 0.05);">
+                        <th style="width: 22%; padding: 1.25rem 1rem 1.25rem 1.75rem; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; text-align: left;">Hành động</th>
+                        <th style="width: 23%; padding: 1.25rem 1rem; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; text-align: left;">Người thực hiện</th>
+                        <th style="width: 35%; padding: 1.25rem 1rem; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; text-align: left;">Đối tượng</th>
+                        <th style="width: 20%; padding: 1.25rem 1.75rem 1.25rem 1rem; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; text-align: left;">Thời gian</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -77,8 +87,8 @@ else
                     {
                         <tr>
                             <td colspan="4" style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
-                                <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.5rem;"></i>
-                                Chưa có hoạt động nào gần đây
+                                <i class="bi bi-inbox" style="font-size: 2.5rem; opacity: 0.15; display: block; margin-bottom: 0.75rem;"></i>
+                                <span style="font-weight: 500;">Chưa có hoạt động nào gần đây</span>
                             </td>
                         </tr>
                     }
@@ -86,20 +96,30 @@ else
                     {
                         @foreach (var activity in stats.RecentActivities)
                         {
-                            <tr>
-                                <td style="padding-left: 1.75rem;">
+                            <tr class="align-middle">
+                                <td style="padding: 1rem 1rem 1rem 1.75rem;">
                                     <span class="activity-badge @(activity.ActionType switch { 
-                                        "Đăng ký mới" => "ab-pink",
-                                        "Thêm quán ăn mới" => "ab-pink",
-                                        "Cập nhật thông tin" => "ab-blue",
-                                        "Thêm danh mục" => "ab-pink",
-                                        "Xóa quán ăn" => "ab-red",
+                                        var a when a.Contains("Thêm") || a.Contains("mới") => "ab-pink",
+                                        var a when a.Contains("Cập nhật") || a.Contains("Sửa") => "ab-blue",
+                                        var a when a.Contains("Xóa") || a.Contains("Từ chối") || a.Contains("Khóa") => "ab-red",
+                                        var a when a.Contains("Duyệt") || a.Contains("Mở khóa") => "ab-green",
                                         _ => "ab-gray"
                                     })">@activity.ActionType</span>
                                 </td>
-                                <td><span style="font-weight: 600; color: var(--text-main); font-size: 0.88rem;">@activity.UserName</span></td>
-                                <td><span class="text-truncate d-block" style="max-width: 100%; font-size: 0.88rem; color: var(--text-secondary);" title="@activity.TargetName">@activity.TargetName</span></td>
-                                <td style="color: var(--text-muted); font-size: 0.82rem;">@activity.RelativeTime</td>
+                                <td style="padding: 1rem;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <div class="user-dot"></div>
+                                        <span style="font-weight: 700; color: var(--text-main); font-size: 0.88rem;">@activity.UserName</span>
+                                    </div>
+                                </td>
+                                <td style="padding: 1rem;">
+                                    <span class="text-truncate d-block" style="max-width: 100%; font-size: 0.88rem; color: var(--text-secondary); font-weight: 500;" title="@activity.TargetName">@activity.TargetName</span>
+                                </td>
+                                <td style="padding: 1rem 1.75rem 1rem 1rem;">
+                                    <span style="color: var(--text-muted); font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem; font-weight: 500;">
+                                        <i class="bi bi-clock" style="font-size: 0.75rem; opacity: 0.6;"></i> @activity.RelativeTime
+                                    </span>
+                                </td>
                             </tr>
                         }
                     }
@@ -113,60 +133,120 @@ else
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius-xl);
-            padding: 1.35rem 1.5rem;
+            padding: 1.5rem 1.5rem 1.5rem 1.75rem;
             display: flex;
             align-items: center;
             gap: 1rem;
-            transition: all 0.25s var(--ease-out);
+            transition: all 0.3s var(--ease-out);
             box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
         }
         .stat-card:hover {
-            transform: translateY(-2px);
+            transform: translateY(-3px);
             box-shadow: var(--shadow-md);
-            border-color: rgba(248, 43, 96, 0.12);
+            border-color: rgba(248, 43, 96, 0.10);
         }
+        .stat-accent {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 4px;
+            height: 100%;
+            border-radius: 0 4px 4px 0;
+        }
+        .stat-pink .stat-accent { background: linear-gradient(180deg, var(--primary-light), var(--primary)); }
+        .stat-purple .stat-accent { background: linear-gradient(180deg, #a29bfe, #6c5ce7); }
+        .stat-blue .stat-accent { background: linear-gradient(180deg, #74b9ff, #0984e3); }
+        .stat-green .stat-accent { background: linear-gradient(180deg, #55efc4, #00b894); }
+
         .stat-icon {
-            width: 48px;
-            height: 48px;
+            width: 50px;
+            height: 50px;
             border-radius: var(--radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.3rem;
             flex-shrink: 0;
+            transition: transform 0.3s var(--ease-bounce);
+        }
+        .stat-card:hover .stat-icon {
+            transform: scale(1.1);
         }
         .stat-info {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 4px;
         }
         .stat-label {
             color: var(--text-muted);
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
         }
         .stat-value {
-            font-size: 1.6rem;
+            font-size: 1.75rem;
             font-weight: 800;
             color: var(--text-main);
             line-height: 1;
+            letter-spacing: -0.5px;
+        }
+
+        /* Activity Card */
+        .activity-card {
+            border: 1px solid var(--border);
+        }
+        .activity-card:hover::before {
+            opacity: 1;
+        }
+        .activity-card-header {
+            padding: 1.35rem 1.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .activity-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+        .activity-header-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            background: var(--primary-subtle);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
         }
 
         .activity-badge {
-            padding: 0.3rem 0.65rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.68rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: var(--radius-full);
+            font-size: 0.66rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.3px;
             display: inline-block;
         }
-        .ab-pink { background: rgba(248, 43, 96, 0.08); color: var(--primary); }
-        .ab-blue { background: rgba(69, 170, 242, 0.08); color: #2D98DA; }
-        .ab-red { background: rgba(255, 71, 87, 0.08); color: #FF4757; }
+        .ab-pink { background: rgba(248, 43, 96, 0.07); color: var(--primary); }
+        .ab-blue { background: rgba(69, 170, 242, 0.07); color: #2D98DA; }
+        .ab-red { background: rgba(255, 71, 87, 0.07); color: #FF4757; }
+        .ab-green { background: rgba(33, 191, 115, 0.07); color: #21bf73; }
         .ab-gray { background: rgba(0, 0, 0, 0.04); color: var(--text-muted); }
+
+        .user-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--primary);
+            opacity: 0.4;
+            flex-shrink: 0;
+        }
     </style>
 }
 

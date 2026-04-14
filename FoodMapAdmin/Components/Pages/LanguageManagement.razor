@@ -4,6 +4,8 @@
 @using FoodMapAdmin.Services
 @inject ILanguageService LanguageService
 @inject IJSRuntime JSRuntime
+@inject IActivityLogger Logger
+@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Kích hoạt Ngôn ngữ - FoodMap Admin</PageTitle>
@@ -143,23 +145,6 @@
     }
     .empty-search-state i { font-size: 2.5rem; opacity: 0.2; display: block; margin-bottom: 1rem; }
     .empty-search-state p { font-weight: 600; font-size: 0.9rem; }
-
-    .page-title {
-        font-size: 1.8rem;
-        font-weight: 900;
-        background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        letter-spacing: -1px;
-        margin-bottom: 0.3rem;
-    }
-
-    .page-subtitle {
-        font-size: 0.9rem;
-        font-weight: 500;
-        color: var(--text-muted);
-        margin: 0;
-    }
 
     /* Search Box */
     .search-box-wrapper {
@@ -431,7 +416,16 @@
                 Name = lang.Name,
                 FlagUrl = "" // Flags are removed as per user request
             });
-            if (success) await LoadData();
+            if (success) 
+            {
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                int.TryParse(userIdStr, out var currentUserId);
+                
+                await Logger.LogAsync(currentUserId, "Thêm ngôn ngữ", lang.Name);
+                await LoadData();
+            }
         }
         finally { isProcessing = false; }
     }
@@ -442,7 +436,15 @@
         if (confirmed)
         {
             if (await LanguageService.DeleteLanguageAsync(code))
+            {
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                int.TryParse(userIdStr, out var currentUserId);
+                
+                await Logger.LogAsync(currentUserId, "Xóa ngôn ngữ", code.ToUpper());
                 await LoadData();
+            }
         }
     }
 }

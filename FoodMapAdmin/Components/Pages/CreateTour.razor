@@ -4,6 +4,8 @@
 @using FoodMapAdmin.Services
 @inject ITourService TourService
 @inject NavigationManager Navigation
+@inject IActivityLogger Logger
+@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Tạo Tour mới - FoodMap Admin</PageTitle>
@@ -384,6 +386,13 @@
         var id = await TourService.CreateTourAsync(newTour);
         if (id > 0)
         {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            int.TryParse(userIdStr, out var currentUserId);
+
+            await Logger.LogAsync(currentUserId, "Tạo hành trình mới", newTour.Name);
+            
             Navigation.NavigateTo($"/tours/{id}/manage");
         }
     }

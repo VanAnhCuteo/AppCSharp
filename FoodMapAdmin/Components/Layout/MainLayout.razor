@@ -8,66 +8,76 @@
     <NavMenu />
 
     <main class="content">
-        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 0.9rem 1.5rem; background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--success);"></div>
-                <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500;">Bảng điều khiển</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 1.25rem;">
-                <!-- Notification Bell -->
-                <div class="notification-wrapper">
-                    <div class="bell-container @(unreadCount > 0 ? "has-unread" : "")" @onclick="ToggleNotifications">
-                        <i class="bi bi-bell-fill"></i>
-                        @if (unreadCount > 0)
-                        {
-                            <span class="unread-badge">@unreadCount</span>
-                        }
-                    </div>
-
-                    @if (showNotifications)
-                    {
-                        <div class="notification-dropdown shadow-lg animate-pop-in">
-                            <div class="notif-header">
-                                <h3>Thông báo</h3>
-                                <button class="mark-all-btn" @onclick="MarkAllRead">Đánh dấu tất cả đã đọc</button>
-                            </div>
-                            <div class="notif-body">
-                                @if (notifications == null || !notifications.Any())
-                                {
-                                    <div class="notif-empty">
-                                        <i class="bi bi-chat-dots"></i>
-                                        <p>Không có thông báo mới nào</p>
-                                    </div>
-                                }
-                                else
-                                {
-                                    @foreach (var n in notifications)
-                                    {
-                                        <div class="notif-item @(n.IsRead ? "read" : "unread")" @onclick="() => MarkAsRead(n.Id)">
-                                            <div class="notif-icon @n.Type">
-                                                <i class="bi @(n.Type == "success" ? "bi-check-circle-fill" : n.Type == "alert" ? "bi-exclamation-triangle-fill" : "bi-info-circle-fill")"></i>
-                                            </div>
-                                            <div class="notif-content">
-                                                <div class="notif-title">@n.Title</div>
-                                                <div class="notif-message">@n.Message</div>
-                                                <div class="notif-time">@GetTimeAgo(n.CreatedAt)</div>
-                                            </div>
-                                            @if (!n.IsRead)
-                                            {
-                                                <div class="unread-dot"></div>
-                                            }
-                                        </div>
-                                    }
-                                }
-                            </div>
-                        </div>
-                    }
+        <header class="top-header">
+            <div class="header-left">
+                <div class="header-status-dot"></div>
+                <div class="header-greeting">
+                    <span class="header-greeting-text">Xin chào, <strong>@username</strong></span>
+                    <span class="header-subtitle">Bảng điều khiển quản trị</span>
                 </div>
+            </div>
+            <div class="header-right">
+                <!-- Notification Bell (Visible only to Restaurant Owners/CNH) -->
+                <AuthorizeView Roles="CNH">
+                    <Authorized>
+                        <div class="notification-wrapper">
+                            <div class="bell-container @(unreadCount > 0 ? "has-unread" : "")" @onclick="ToggleNotifications">
+                                <i class="bi bi-bell-fill"></i>
+                                @if (unreadCount > 0)
+                                {
+                                    <span class="unread-badge">@unreadCount</span>
+                                }
+                            </div>
 
-                <span style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 600;">
-                    @username
-                </span>
-                <div style="width: 36px; height: 36px; border-radius: var(--radius-md); background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: white; box-shadow: var(--shadow-glow);">
+                            @if (showNotifications)
+                            {
+                                <div class="notification-dropdown shadow-lg animate-pop-in">
+                                    <div class="notif-header">
+                                        <h3>Thông báo</h3>
+                                        <button class="mark-all-btn" @onclick="MarkAllRead">Đánh dấu tất cả đã đọc</button>
+                                    </div>
+                                    <div class="notif-body">
+                                        @if (notifications == null || !notifications.Any())
+                                        {
+                                            <div class="notif-empty">
+                                                <i class="bi bi-chat-dots"></i>
+                                                <p>Không có thông báo mới nào</p>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var n in notifications)
+                                            {
+                                                <div class="notif-item @(n.IsRead ? "read" : "unread")" @onclick="() => MarkAsRead(n.Id)">
+                                                    <div class="notif-icon @n.Type">
+                                                        <i class="bi @(n.Type == "success" ? "bi-check-circle-fill" : n.Type == "alert" ? "bi-exclamation-triangle-fill" : "bi-info-circle-fill")"></i>
+                                                    </div>
+                                                    <div class="notif-content">
+                                                        <div class="notif-title">@n.Title</div>
+                                                        <div class="notif-message">@n.Message</div>
+                                                        <div class="notif-time">@GetTimeAgo(n.CreatedAt)</div>
+                                                    </div>
+                                                    @if (!n.IsRead)
+                                                    {
+                                                        <div class="unread-dot"></div>
+                                                    }
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+                <div class="header-divider"></div>
+
+                <div class="header-user-info">
+                    <span class="header-username">@username</span>
+                    <span class="header-role">Quản trị viên</span>
+                </div>
+                <div class="header-avatar">
                     @firstChar
                 </div>
             </div>
@@ -104,7 +114,11 @@
                 if (int.TryParse(userIdStr, out var id))
                 {
                     userId = id;
-                    await RefreshNotifications();
+                    // Only fetch notifications if the user is a Restaurant Owner (CNH)
+                    if (user.IsInRole("CNH"))
+                    {
+                        await RefreshNotifications();
+                    }
                 }
             }
         }
@@ -152,30 +166,141 @@
 }
 
 <style>
+    /* ── Top Header ── */
+    .top-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding: 0.85rem 1.5rem;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(248, 43, 96, 0.06);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.03), 0 0 0 1px rgba(0,0,0,0.02);
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+    }
+
+    .header-status-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--success);
+        box-shadow: 0 0 8px rgba(46, 213, 115, 0.4);
+        animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @@keyframes pulse-dot {
+        0%, 100% { box-shadow: 0 0 8px rgba(46, 213, 115, 0.4); }
+        50% { box-shadow: 0 0 14px rgba(46, 213, 115, 0.6); }
+    }
+
+    .header-greeting {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+    }
+
+    .header-greeting-text {
+        color: var(--text-main);
+        font-size: 0.88rem;
+        font-weight: 500;
+    }
+
+    .header-greeting-text strong {
+        font-weight: 700;
+    }
+
+    .header-subtitle {
+        color: var(--text-muted);
+        font-size: 0.72rem;
+        font-weight: 500;
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .header-divider {
+        width: 1px;
+        height: 28px;
+        background: linear-gradient(180deg, transparent, rgba(0,0,0,0.08), transparent);
+    }
+
+    .header-user-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 1px;
+    }
+
+    .header-username {
+        color: var(--text-secondary);
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+
+    .header-role {
+        color: var(--text-muted);
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .header-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: var(--radius-md);
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: white;
+        box-shadow: 0 4px 16px rgba(248, 43, 96, 0.25);
+        transition: all 0.3s var(--ease-out);
+    }
+
+    .header-avatar:hover {
+        transform: scale(1.08);
+        box-shadow: 0 6px 20px rgba(248, 43, 96, 0.35);
+    }
+
+    /* ── Notifications ── */
     .notification-wrapper {
         position: relative;
         z-index: 1000;
     }
 
     .bell-container {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
+        width: 38px;
+        height: 38px;
+        border-radius: var(--radius-md);
         background: rgba(0,0,0,0.03);
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
         position: relative;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        color: #777;
-        font-size: 1.2rem;
+        transition: all 0.3s var(--ease-smooth);
+        color: var(--text-muted);
+        font-size: 1.1rem;
     }
 
     .bell-container:hover {
-        background: rgba(255, 45, 133, 0.05);
+        background: rgba(248, 43, 96, 0.06);
         color: var(--primary);
-        transform: translateY(-2px);
+        transform: translateY(-1px);
     }
 
     .bell-container.has-unread i {
@@ -186,9 +311,9 @@
         position: absolute;
         top: -4px;
         right: -4px;
-        background: #FF4757;
+        background: linear-gradient(135deg, #FF4757, #FF6B7A);
         color: white;
-        font-size: 0.65rem;
+        font-size: 0.6rem;
         font-weight: 800;
         min-width: 18px;
         height: 18px;
@@ -205,18 +330,19 @@
         position: absolute;
         top: 50px;
         right: 0;
-        width: 350px;
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(15px);
+        width: 360px;
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
         border: 1px solid rgba(0,0,0,0.05);
-        border-radius: 20px;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+        border-radius: var(--radius-xl);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.12), 0 0 0 1px rgba(248, 43, 96, 0.04);
         overflow: hidden;
     }
 
     .notif-header {
-        padding: 1.25rem;
-        border-bottom: 1px solid rgba(0,0,0,0.03);
+        padding: 1.25rem 1.25rem 1rem;
+        border-bottom: 1px solid rgba(0,0,0,0.04);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -224,8 +350,8 @@
 
     .notif-header h3 {
         margin: 0;
-        font-size: 1rem;
-        font-weight: 900;
+        font-size: 0.95rem;
+        font-weight: 800;
         color: var(--text-main);
     }
 
@@ -233,9 +359,14 @@
         background: transparent;
         border: none;
         color: var(--primary);
-        font-size: 0.75rem;
+        font-size: 0.72rem;
         font-weight: 700;
         cursor: pointer;
+        transition: opacity 0.2s;
+    }
+
+    .mark-all-btn:hover {
+        opacity: 0.7;
     }
 
     .notif-body {
@@ -246,19 +377,19 @@
     .notif-item {
         padding: 1rem 1.25rem;
         display: flex;
-        gap: 1rem;
+        gap: 0.85rem;
         cursor: pointer;
-        transition: all 0.2s;
-        border-bottom: 1px solid rgba(0,0,0,0.01);
+        transition: all 0.2s var(--ease-out);
+        border-bottom: 1px solid rgba(0,0,0,0.02);
         position: relative;
     }
 
     .notif-item:hover {
-        background: rgba(0,0,0,0.02);
+        background: rgba(248, 43, 96, 0.02);
     }
 
     .notif-item.unread {
-        background: rgba(255, 45, 133, 0.02);
+        background: rgba(248, 43, 96, 0.02);
     }
 
     .unread-dot {
@@ -266,20 +397,21 @@
         right: 1.25rem;
         top: 50%;
         transform: translateY(-50%);
-        width: 8px;
-        height: 8px;
+        width: 7px;
+        height: 7px;
         background: var(--primary);
         border-radius: 50%;
+        box-shadow: 0 0 6px rgba(248, 43, 96, 0.4);
     }
 
     .notif-icon {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-sm);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1rem;
+        font-size: 0.95rem;
         flex-shrink: 0;
     }
 
@@ -292,20 +424,20 @@
     }
 
     .notif-title {
-        font-weight: 800;
+        font-weight: 700;
         color: var(--text-main);
-        font-size: 0.85rem;
-        margin-bottom: 0.1rem;
+        font-size: 0.82rem;
+        margin-bottom: 0.15rem;
     }
 
     .notif-message {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
         color: var(--text-muted);
         line-height: 1.4;
     }
 
     .notif-time {
-        font-size: 0.7rem;
+        font-size: 0.68rem;
         color: #bbb;
         margin-top: 0.3rem;
         font-weight: 600;
@@ -314,15 +446,16 @@
     .notif-empty {
         padding: 3rem 1.25rem;
         text-align: center;
-        color: #bbb;
+        color: #ccc;
     }
 
-    .notif-empty i { font-size: 2.5rem; opacity: 0.2; }
+    .notif-empty i { font-size: 2.5rem; opacity: 0.15; }
+    .notif-empty p { font-size: 0.85rem; margin-top: 0.5rem; }
 
     @@keyframes bell-swing {
         0%, 100% { transform: rotate(0); }
-        10%, 30%, 50%, 70%, 90% { transform: rotate(15deg); }
-        20%, 40%, 60%, 80% { transform: rotate(-15deg); }
+        10%, 30%, 50%, 70%, 90% { transform: rotate(12deg); }
+        20%, 40%, 60%, 80% { transform: rotate(-12deg); }
     }
 
     .animate-pop-in {
@@ -330,7 +463,7 @@
     }
 
     @@keyframes pop-in {
-        from { opacity: 0; transform: translateY(10px) scale(0.95); }
+        from { opacity: 0; transform: translateY(8px) scale(0.96); }
         to { opacity: 1; transform: translateY(0) scale(1); }
     }
 </style>

@@ -117,6 +117,20 @@
             z-index: 1000 !important;
             box-shadow: 0 4px 15px rgba(248, 43, 96, 0.4);
         }
+
+        /* Speaker Pulse Effect */
+        .speaker-btn.playing {
+            animation: speaker-pulse 1.2s infinite ease-in-out;
+            background: #F82B60 !important;
+            color: white !important;
+            border-color: #F82B60 !important;
+        }
+
+        @keyframes speaker-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(248, 43, 96, 0.4); transform: scale(1); }
+            50% { box-shadow: 0 0 0 12px rgba(248, 43, 96, 0); transform: scale(1.05); }
+            100% { box-shadow: 0 0 0 0 rgba(248, 43, 96, 0); transform: scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -202,7 +216,7 @@
         let selectedLanguage = 'vi';
         let currentPoiDescription = null;
         let currentBasePoiId = null;
-        const platformApiBase = "https://foodmapappapi.azurewebsites.net/api/Pois";
+        let platformApiBase = "https://foodmapappapi.azurewebsites.net/api/Pois";
 
         // Bottom Sheet Logic
         const sheet = document.getElementById('bottom-sheet');
@@ -306,40 +320,53 @@
             if (isJourneyStarted) {
                 // NAVIGATION MODE: User -> Target
                 if (userLat === null) return;
-                const target = tourPois[currentStopIndex];
-                const waypoints = [`${userLng},${userLat}`, `${target.longitude},${target.latitude}`];
+                const distanceToTarget = calculateDistance(userLat, userLng, target.latitude, target.longitude);
                 
-                const url = `https://router.project-osrm.org/route/v1/walking/${waypoints.join(';')}?overview=full&geometries=geojson`;
-                try {
-                    const res = await fetch(url);
-                    const data = await res.json();
-                    if (data.code === 'Ok') {
-                        const route = data.routes[0];
-                        const mainRouteLayer = L.geoJSON(route.geometry, {
-                            style: { color: '#F82B60', weight: 6, opacity: 0.8, lineJoin: 'round' }
-                        });
+                // If more than 10 meters, use OSRM. Otherwise, draw a direct dashed line to center of POI.
+                if (distanceToTarget > 10) {
+                    const waypoints = [`${userLng},${userLat}`, `${target.longitude},${target.latitude}`];
+                    const url = `https://router.project-osrm.org/route/v1/walking/${waypoints.join(';')}?overview=full&geometries=geojson`;
+                    
+                    try {
+                        const res = await fetch(url);
+                        const data = await res.json();
+                        if (data.code === 'Ok') {
+                            const route = data.routes[0];
+                            const mainRouteLayer = L.geoJSON(route.geometry, {
+                                style: { color: '#F82B60', weight: 6, opacity: 0.8, lineJoin: 'round' }
+                            });
 
-                        // Dashed "off-road" line
-                        const coords = route.geometry.coordinates;
-                        const lastPoint = coords[coords.length - 1];
-                        const walkingLine = L.polyline([
-                            [lastPoint[1], lastPoint[0]],
-                            [target.latitude, target.longitude]
-                        ], {
-                            color: '#F82B60',
-                            weight: 4,
-                            opacity: 0.6,
-                            dashArray: '5, 10'
-                        });
+                            // Dashed "off-road" line to the target's center
+                            const coords = route.geometry.coordinates;
+                            const lastPoint = coords[coords.length - 1];
+                            const walkingLine = L.polyline([
+                                [lastPoint[1], lastPoint[0]],
+                                [target.latitude, target.longitude]
+                            ], {
+                                color: '#F82B60', weight: 4, opacity: 0.6, dashArray: '5, 10'
+                            });
 
-                        routeLayer = L.featureGroup([mainRouteLayer, walkingLine]).addTo(map);
-                        map.fitBounds(routeLayer.getBounds(), { padding: [100, 100] });
+                            routeLayer = L.featureGroup([mainRouteLayer, walkingLine]).addTo(map);
+                            
+                            // Adjust bounds with min padding to keep both visible
+                            const bounds = routeLayer.getBounds();
+                            bounds.extend([userLat, userLng]);
+                            map.fitBounds(bounds, { padding: [120, 120], maxZoom: 18 });
+                        }
+                    } catch (e) {
+                        console.error("OSRM Error:", e);
+                        // Fallback to direct line
+                        routeLayer = L.polyline([[userLat, userLng], [target.latitude, target.longitude]], 
+                            { color: '#F82B60', weight: 5, dashArray: '8, 12', opacity: 0.7 }).addTo(map);
+                        map.fitBounds(routeLayer.getBounds(), { padding: [100, 100], maxZoom: 18 });
                     }
-                } catch (e) {
-                    console.error("OSRM Error:", e);
+                } else {
+                    // VERY CLOSE: Just a direct connecting line
                     routeLayer = L.polyline([[userLat, userLng], [target.latitude, target.longitude]], 
-                        { color: '#F82B60', weight: 4, dashArray: '5, 10' }).addTo(map);
-                    map.fitBounds(routeLayer.getBounds(), { padding: [100, 100] });
+                        { color: '#F82B60', weight: 5, dashArray: '3, 6', opacity: 0.8 }).addTo(map);
+                    
+                    // Don't fit bounds too tight
+                    map.setView([target.latitude, target.longitude], 18, { animate: true });
                 }
             } else {
                 // PREVIEW MODE: Polyline connecting all points
@@ -358,8 +385,8 @@
         };
 
         window.openDetails = async function(poi) {
-            currentPoiIdOpen = poi.poi_id;
-            currentBasePoiId = poi.poi_id; // For language picker
+            currentPoiIdOpen = poi.poi_id || poi.id;
+            currentBasePoiId = poi.poi_id || poi.id; 
             currentPoiDescription = poi.description || "";
             document.getElementById('sheet-title').innerText = poi.name;
             document.getElementById('sheet-address').innerText = poi.address || "Đang cập nhật...";
@@ -367,14 +394,41 @@
             
             const imgContainer = document.getElementById('sheet-images');
             imgContainer.innerHTML = '';
+            
+            // Image fallback and robust URL
+            let imageUrl = poi.image_url || '';
             const img = document.createElement('img');
             img.className = 'sheet-image';
-            img.src = poi.image_url || 'https://via.placeholder.com/200x140?text=No+Image';
+            
+            if (imageUrl) {
+                // Check if it's already a full URL
+                if (imageUrl.startsWith('http')) {
+                    img.src = imageUrl;
+                } else {
+                    // Try to construct assuming it's on the same backend
+                    img.src = `https://foodmapappapi.azurewebsites.net/${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+                }
+            } else {
+                img.src = 'https://via.placeholder.com/300x200?text=FoodMap+Image';
+            }
+            
+            img.onerror = () => { img.src = 'https://via.placeholder.com/300x200?text=Image+Load+Failed'; };
             imgContainer.appendChild(img);
+
+            // Update speaker visibility based on description
+            const speakerBtn = document.getElementById('sheet-speaker-btn');
+            if (speakerBtn) {
+                if (currentPoiDescription && currentPoiDescription.trim().length > 0) {
+                    speakerBtn.classList.remove('hidden');
+                } else {
+                    speakerBtn.classList.add('hidden');
+                }
+            }
 
             // Audio logic: fetch languages to update UI
             try {
-                const res = await fetch(`${platformApiBase}/${currentBasePoiId}/available-languages`);
+                const backendDomain = platformApiBase.split('/api')[0];
+                const res = await fetch(`${backendDomain}/api/Language`);
                 if (res.ok) {
                     const languages = await res.json();
                     const current = languages.find(l => l.language_code === selectedLanguage) || languages.find(l => l.language_code === 'vi') || languages[0];
@@ -398,9 +452,31 @@
 
         window.playCurrentTourPoiAudio = function() {
             if (!currentPoiIdOpen) return;
-            const title = document.getElementById('sheet-title').innerText;
-            const text = `${title}. ${currentPoiDescription}`;
-            window.location.href = `app-tts://speak?id=${currentPoiIdOpen}&text=${encodeURIComponent(text)}&lang=${selectedLanguage}&manual=true`;
+            const speakerBtn = document.getElementById('sheet-speaker-btn');
+            
+            // Toggle visual state
+            if (speakerBtn.classList.contains('playing')) {
+                window.location.href = `app-tts://stop?id=${currentPoiIdOpen}`;
+                speakerBtn.classList.remove('playing');
+            } else {
+                window.location.href = `app-tts://speak?id=${currentPoiIdOpen}&lang=${selectedLanguage}&manual=true`;
+                speakerBtn.classList.add('playing');
+            }
+        };
+
+        // Callbacks from C#
+        window.onTtsFinished = function() {
+            const speakerBtn = document.getElementById('sheet-speaker-btn');
+            if (speakerBtn) speakerBtn.classList.remove('playing');
+        };
+
+        window.onTtsProgress = function(index, total) {
+            // Can be used for progress bars if added later
+        };
+
+        window.stopAudioProfessional = function() {
+            const speakerBtn = document.getElementById('sheet-speaker-btn');
+            if (speakerBtn) speakerBtn.classList.remove('playing');
         };
 
         // --- Language Picker Logic (Mirrored from features.js) ---
@@ -413,7 +489,8 @@
             list.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">Đang tải ngôn ngữ...</div>';
 
             try {
-                const res = await fetch(`${platformApiBase}/${currentBasePoiId}/available-languages`);
+                const backendDomain = platformApiBase.split('/api')[0];
+                const res = await fetch(`${backendDomain}/api/Language`);
                 if (res.ok) {
                     const languages = await res.json();
                     list.innerHTML = '';
@@ -440,11 +517,27 @@
 
         window.setSelectedLang = function(lang, name) {
             closeLanguagePicker();
+            if (lang === selectedLanguage) return;
+            
+            const speakerBtn = document.getElementById('sheet-speaker-btn');
+            if (speakerBtn && speakerBtn.classList.contains('playing')) {
+                window.location.href = `app-request-confirm://lang-switch?lang=${lang}&name=${encodeURIComponent(name || '')}`;
+                return;
+            }
+
             selectedLanguage = lang;
             if (name) document.getElementById('current-lang-name').innerText = name;
-            // For tours, we don't necessarily reload everything, just the audio for the current stop
+            
+            // Ensure local state is consistent before notifying C#
+            currentPoiDescription = ""; // Wait for reload
+            
+            // Notify C# to update session language and stop current audio
+            window.location.href = `app-request-reload://markers?lang=${lang}`;
+            
+            // Auto-play in new language if details are open
             if (currentPoiIdOpen) {
-                playCurrentTourPoiAudio();
+                if (speakerBtn) speakerBtn.classList.remove('playing'); 
+                setTimeout(() => playCurrentTourPoiAudio(), 300);
             }
         };
 
@@ -459,7 +552,7 @@
             if (userMarker) {
                 map.flyTo(userMarker.getLatLng(), 17, { animate: true, duration: 1 });
             } else {
-                alert("Đang xác định vị trí của bạn...");
+                window.location.href = `app-ui://alert?message=${encodeURIComponent("Đang xác định vị trí của bạn...")}`;
             }
         };
     </script>

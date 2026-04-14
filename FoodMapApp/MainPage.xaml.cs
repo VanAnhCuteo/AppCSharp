@@ -1,4 +1,5 @@
 using System.Net.Http;
+using FoodMapApp.Services;
 using System.Text.Json;
 using System.Web;
 using System.Diagnostics;
@@ -75,6 +76,11 @@ namespace FoodMapApp
                     e.Cancel = true;
                     var uri = new Uri(e.Url);
                     var query = HttpUtility.ParseQueryString(uri.Query);
+                    string text = query["text"] ?? "";
+                    string id = query["id"] ?? "";
+                    string lang = query["lang"] ?? "vi-VN";
+                    bool isManual = (query["manual"] == "true" || query["isManual"] == "true");
+
                     if (!string.IsNullOrWhiteSpace(text))
                     {
                         string normalizedText = NormalizeText(text);
@@ -164,7 +170,7 @@ namespace FoodMapApp
                         }
                     }
                 }
-                 else if (e.Url.StartsWith("app-tts://stop"))
+                else if (e.Url.StartsWith("app-tts://stop"))
                 {
                     e.Cancel = true;
                     var uri = new Uri(e.Url);
@@ -178,19 +184,46 @@ namespace FoodMapApp
                     else if (_activeSession != null)
                     {
                         _activeSession.IsPaused = true;
-                        _currentSentenceCts?.Cancel();
+                        StopSpeech(fullReset: false, clearQueue: false);
                         await SyncPlayerUI(_activeSession);
                     }
                 }
-                 else if (e.Url.StartsWith("app-request-reload://markers?"))
+                else if (e.Url.StartsWith("app-ui://alert?"))
+                {
+                    e.Cancel = true;
+                    var uri = new Uri(e.Url);
+                    var query = HttpUtility.ParseQueryString(uri.Query);
+                    string message = query["message"] ?? "";
+                    await DisplayAlert("Thông báo", message, "Đóng");
+                }
+                else if (e.Url.StartsWith("app-request-confirm://lang-switch?"))
+                {
+                    e.Cancel = true;
+                    var uri = new Uri(e.Url);
+                    var query = HttpUtility.ParseQueryString(uri.Query);
+                    string lang = query["lang"] ?? "vi";
+                    string name = query["name"] ?? "";
+                    
+                    bool confirmed = await DisplayAlert("Thông báo", $"Bạn muốn chuyển sang {name}?", "Đồng ý", "Hủy");
+                    if (confirmed)
+                    {
+                        StopSpeech(fullReset: false, clearQueue: false);
+                        _autoSession.Language = lang;
+                        _manualSession.Language = lang;
+                        await Task.Delay(200);
+                        if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+                        LoadFoods(lang);
+                    }
+                }
+                else if (e.Url.StartsWith("app-request-reload://markers?"))
                 {
                     e.Cancel = true;
                     var uri = new Uri(e.Url);
                     var query = HttpUtility.ParseQueryString(uri.Query);
                     string lang = query["lang"] ?? "vi";
                     
-                    StopGlobalAudio();
-                    
+                    // Proceed with reload
+                    StopSpeech(fullReset: false, clearQueue: false); 
                     _autoSession.Language = lang;
                     _manualSession.Language = lang;
 
@@ -414,6 +447,7 @@ namespace FoodMapApp
                     {
                         _autoSession.IsPaused = true;
                         _autoSession.IsActive = true;
+                        _activeSession = _autoSession;
                         await SyncPlayerUI(_autoSession);
                     }
                 }
@@ -421,6 +455,7 @@ namespace FoodMapApp
                 {
                     _autoSession.Reset();
                     _audioQueue.Clear();
+                    _activeSession = null;
                     await SyncPlayerUI(null);
                 }
             }
@@ -460,19 +495,26 @@ namespace FoodMapApp
 
         private void StopSpeech(bool fullReset = false, bool clearQueue = true)
         {
-            _isActuallySpeaking = false;
-            _currentSentenceCts?.Cancel();
-            _ttsCts?.Cancel(); 
-            _pauseTcs?.TrySetResult(false);
-            _audioStopwatch.Stop();
-            
-            if (fullReset)
+            try
             {
-                if (clearQueue) _audioQueue.Clear(); 
-                _autoSession.Reset();
-                _manualSession.Reset();
-                _activeSession = null;
+                _isActuallySpeaking = false;
+                _currentSentenceCts?.Cancel();
+                _ttsCts?.Cancel(); 
+                _pauseTcs?.TrySetResult(false);
+                _audioStopwatch.Stop();
+                
+                // Hard reset the OS TTS engine to clear buffers (especially for non-default voices)
+                _ = TextToSpeech.Default.SpeakAsync("", new SpeechOptions { Volume = 0 });
+
+                if (fullReset)
+                {
+                    if (clearQueue) _audioQueue.Clear(); 
+                    _autoSession.Reset();
+                    _manualSession.Reset();
+                    _activeSession = null;
+                }
             }
+            catch (Exception ex) { Debug.WriteLine($"StopSpeech error: {ex.Message}"); }
         }
 
         private async Task SpeakWithChunksAsync(AudioSession session)
@@ -512,7 +554,11 @@ namespace FoodMapApp
                     
                     _currentSentenceCts = CancellationTokenSource.CreateLinkedTokenSource(_ttsCts.Token);
                     string sentence = sentences[index];
-                    if (!string.IsNullOrWhiteSpace(sentence)) await TextToSpeech.Default.SpeakAsync(sentence, options, _currentSentenceCts.Token);
+                    if (!string.IsNullOrWhiteSpace(sentence)) 
+                    {
+                        // Some TTS engines don't handle cancellation perfectly, so we use the linked token
+                        await TextToSpeech.Default.SpeakAsync(sentence, options, _currentSentenceCts.Token);
+                    }
                     
                     if (_ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || _activeSession != session) break;
                     session.SentenceIndex++;
@@ -569,7 +615,7 @@ namespace FoodMapApp
                 }
             }
         }
-        }
+
         public void HandleSystemInterruption()
         {
             MainThread.BeginInvokeOnMainThread(() =>
@@ -626,7 +672,7 @@ namespace FoodMapApp
             
             if (_isMapLoaded) 
             { 
-                string currentLang = _autoLang?.Split('-')[0] ?? "vi";
+                string currentLang = _autoSession.Language?.Split('-')[0] ?? "vi";
                 _ = LoadFoods(currentLang); 
                 await TryOpenPendingDetail(); 
             }
@@ -674,15 +720,16 @@ namespace FoodMapApp
 
         async Task LoadFoods(string lang = "vi")
         {
-            HttpClient client = new HttpClient();
             try {
-                _foodsJson = await client.GetStringAsync($"{AppConfig.FoodApiUrl}?lang={lang}");
-                if (_isMapLoaded) {
+                // Use HttpService with caching support
+                _foodsJson = await HttpService.GetStringWithCacheAsync($"{AppConfig.FoodApiUrl}?lang={lang}", $"map_foods_{lang}");
+                
+                if (_foodsJson != null && _isMapLoaded) {
                     int userId = Preferences.Default.Get("user_id", 0);
                     await mapView.EvaluateJavaScriptAsync($"loadFoods({_foodsJson}, {userId});");
                     await TryOpenPendingDetail();
                 }
-            } catch (Exception ex) { Console.WriteLine(ex); }
+            } catch (Exception ex) { Console.WriteLine($"LoadFoods Map error: {ex.Message}"); }
         }
 
     }

@@ -99,7 +99,7 @@
                             <BoxView x:Name="wave6" WidthRequest="3" HeightRequest="19" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                         <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="10,0,0,0">
-                            <Label Text="BẠN ĐANG NGHE CHỈ DẪN TOUR" FontSize="8" FontAttributes="Bold" TextColor="White" Opacity="0.8" CharacterSpacing="2" />
+                            <Label x:Name="tourModeLabel" Text="BẠN ĐANG NGHE CHỈ DẪN TOUR" FontSize="8" FontAttributes="Bold" TextColor="White" Opacity="0.8" CharacterSpacing="2" />
                             <Label x:Name="tourShopLabel" Text="..." FontSize="15" FontAttributes="Bold" TextColor="White" LineBreakMode="TailTruncation" />
                         </VerticalStackLayout>
                     </Grid>

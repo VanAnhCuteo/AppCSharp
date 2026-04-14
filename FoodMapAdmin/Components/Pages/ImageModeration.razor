@@ -4,13 +4,15 @@
 @using FoodMapAdmin.Services
 @inject IPoiImagePendingChangeService ImagePendingService
 @inject IJSRuntime JS
+@inject IActivityLogger Logger
+@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Phê duyệt Hình ảnh - FoodMap Admin</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4 mt-2">
     <div>
-        <h2 class="mb-1" style="font-size: 2.22rem; font-weight: 900; background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">Duyệt hình ảnh</h2>
+        <h2 class="page-title">Duyệt hình ảnh</h2>
         <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 500;">Quản lý các yêu cầu Thêm, Sửa, Xóa hình ảnh từ chủ quán</p>
     </div>
 </div>
@@ -187,6 +189,13 @@ else
         {
             if (await ImagePendingService.ApproveChangeAsync(request.ChangeId))
             {
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                int.TryParse(userIdStr, out var currentUserId);
+                
+                await Logger.LogAsync(currentUserId, "Duyệt hình ảnh", request.Poi?.Name ?? "N/A");
+
                 await LoadData();
                 await JS.InvokeVoidAsync("alert", "Đã phê duyệt ảnh thành công!");
             }
@@ -203,6 +212,13 @@ else
         {
             if (await ImagePendingService.RejectChangeAsync(request.ChangeId))
             {
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                int.TryParse(userIdStr, out var currentUserId);
+                
+                await Logger.LogAsync(currentUserId, "Từ chối hình ảnh", request.Poi?.Name ?? "N/A");
+
                 await LoadData();
                 await JS.InvokeVoidAsync("alert", "Đã từ chối đơn!");
             }

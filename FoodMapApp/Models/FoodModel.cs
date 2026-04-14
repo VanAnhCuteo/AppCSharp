@@ -5,6 +5,10 @@ namespace FoodMapApp.Models
     public class FoodModel
     {
         public int id { get; set; }
+        
+        [JsonPropertyName("poi_id")]
+        public int poi_id { get; set; }
+
         public int category_id { get; set; }
         public string name { get; set; }
         public string description { get; set; }

@@ -13,8 +13,8 @@
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
     <div>
-        <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.2rem;">Thư viện Hình ảnh</h2>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Quản lý ảnh cho các quán ăn và địa điểm</p>
+        <h2 class="page-title">Thư viện Hình ảnh</h2>
+        <p class="page-subtitle">Quản lý ảnh cho các quán ăn và địa điểm</p>
     </div>
     <button class="glass-btn" @onclick="AddNew">
         <i class="bi bi-plus-lg"></i> Thêm ảnh mới
@@ -51,12 +51,12 @@
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
-                <tr style="background: rgba(255, 45, 133, 0.03);">
-                    <th style="padding: 1.5rem 1rem 1.5rem 2rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Mã số</th>
-                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Hình ảnh</th>
-                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Quán ăn</th>
-                    <th style="padding: 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">URL / Tên file</th>
-                    <th style="padding: 1.5rem 2rem 1.5rem 1rem; border-bottom: 2px solid rgba(255, 45, 133, 0.05); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Thao tác</th>
+                <tr>
+                    <th style="padding-left: 2rem;">Mã số</th>
+                    <th>Hình ảnh</th>
+                    <th>Quán ăn</th>
+                    <th>URL / Tên file</th>
+                    <th style="text-align: center; padding-right: 2rem;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
