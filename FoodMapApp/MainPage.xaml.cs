@@ -13,14 +13,13 @@ namespace FoodMapApp
         public static int? PendingRouteFoodId { get; set; } = null;
 
         // Unified Audio States
-        private static AudioSession _autoSession = new() { IsManual = false };
         private static AudioSession _manualSession = new() { IsManual = true };
         private static AudioSession? _activeSession = null;
 
         private static bool _isCleaningUp = false; 
         private static bool _isActuallySpeaking = false; 
         private static TaskCompletionSource<bool>? _pauseTcs;
-        private static Queue<AudioSession> _audioQueue = new();
+
 
         public class AudioSession
         {
@@ -102,72 +101,14 @@ namespace FoodMapApp
                             _activeSession = _manualSession;
 
                             _isCleaningUp = true;
-                            await MainThread.InvokeOnMainThreadAsync(() => miniPlayer.IsVisible = false);
+                            await MainThread.InvokeOnMainThreadAsync(() => manualMiniPlayer.IsVisible = false);
                             await SyncPlayerUI(_manualSession);
                             await Task.Delay(100);
                             _isCleaningUp = false;
 
                             _ = SpeakWithChunksAsync(_manualSession);
                         }
-                        else
-                        {
-                            // Automatic GPS entry
-                            if (_manualSession.IsActive)
-                            {
-                                // If manual is playing, queue or hold the auto hit
-                                if (string.IsNullOrEmpty(_autoSession.PoiId))
-                                {
-                                    _autoSession.PoiId = id;
-                                    _autoSession.Language = lang;
-                                    _autoSession.Sentences = sentences;
-                                    _autoSession.SentenceIndex = 0;
-                                    _autoSession.IsPaused = true;
-                                    _autoSession.IsActive = true;
-                                }
-                                else if (_autoSession.PoiId != id)
-                                {
-                                    _audioQueue.Enqueue(new AudioSession { PoiId = id, Language = lang, Sentences = sentences, IsManual = false });
-                                }
-                                return;
-                            }
 
-                            if (string.IsNullOrEmpty(_autoSession.PoiId))
-                            {
-                                _autoSession.PoiId = id;
-                                _autoSession.Language = lang;
-                                _autoSession.Sentences = sentences;
-                                _autoSession.SentenceIndex = 0;
-                                _autoSession.IsPaused = false;
-                                _autoSession.IsActive = true;
-                                _activeSession = _autoSession;
-
-                                await SyncPlayerUI(_autoSession);
-                                _ = SpeakWithChunksAsync(_autoSession);
-                            }
-                            else if (_autoSession.PoiId != id)
-                            {
-                                // Priority interruption: pause current auto, queue it, start new one
-                                _autoSession.IsPaused = true;
-                                _audioQueue.Enqueue(new AudioSession 
-                                { 
-                                    PoiId = _autoSession.PoiId, Language = _autoSession.Language, 
-                                    Sentences = _autoSession.Sentences, SentenceIndex = _autoSession.SentenceIndex, 
-                                    IsManual = false 
-                                });
-
-                                StopSpeech(fullReset: false, clearQueue: false);
-
-                                _autoSession.PoiId = id;
-                                _autoSession.Language = lang;
-                                _autoSession.Sentences = sentences;
-                                _autoSession.SentenceIndex = 0;
-                                _autoSession.IsPaused = false;
-                                _activeSession = _autoSession;
-
-                                await SyncPlayerUI(_autoSession);
-                                _ = SpeakWithChunksAsync(_autoSession);
-                            }
-                        }
                     }
                 }
                 else if (e.Url.StartsWith("app-tts://stop"))
@@ -208,7 +149,6 @@ namespace FoodMapApp
                     if (confirmed)
                     {
                         StopSpeech(fullReset: false, clearQueue: false);
-                        _autoSession.Language = lang;
                         _manualSession.Language = lang;
                         await Task.Delay(200);
                         if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
@@ -224,12 +164,28 @@ namespace FoodMapApp
                     
                     // Proceed with reload
                     StopSpeech(fullReset: false, clearQueue: false); 
-                    _autoSession.Language = lang;
                     _manualSession.Language = lang;
 
                     await Task.Delay(200);
                     if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
                     LoadFoods(lang);
+                }
+                else if (e.Url.StartsWith("app-tour://update?"))
+                {
+                    e.Cancel = true;
+                    var uri = new Uri(e.Url);
+                    var query = HttpUtility.ParseQueryString(uri.Query);
+                    UpdateTourProgressUI(query["duration"] ?? "", query["price"] ?? "", query["progress"] ?? "");
+                }
+                else if (e.Url.StartsWith("app-tour://save?"))
+                {
+                    e.Cancel = true;
+                    var uri = new Uri(e.Url);
+                    var query = HttpUtility.ParseQueryString(uri.Query);
+                    int tid = int.Parse(query["id"] ?? "0");
+                    decimal pct = decimal.Parse(query["pct"] ?? "0");
+                    string st = query["status"] ?? "";
+                    if (tid > 0) _ = SaveTourHistoryLocallyAsync(tid, pct, st);
                 }
             };
 
@@ -237,12 +193,30 @@ namespace FoodMapApp
             StartLocationTracking();
         }
 
+        private async Task SaveTourHistoryLocallyAsync(int tourId, decimal progressPercentage, string status)
+        {
+            try
+            {
+                int userId = Preferences.Default.Get("user_id", 0);
+                if (userId == 0) return;
+
+                var payload = new { UserId = userId, TourId = tourId, ProgressPercentage = progressPercentage, Status = status };
+                using HttpClient client = new HttpClient();
+                var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+                await client.PostAsync($"{AppConfig.BaseUrl}/Tours/history", content);
+            }
+            catch (Exception ex) { Debug.WriteLine($"Tour History Save Error: {ex.Message}"); }
+        }
+
         private void StartLocationTracking()
         {
             _locationTimer = Dispatcher.CreateTimer();
-            _locationTimer.Interval = TimeSpan.FromSeconds(60);
+            _locationTimer.Interval = TimeSpan.FromSeconds(10);
             _locationTimer.Tick += async (s, e) => await ReportCurrentLocationAsync();
             _locationTimer.Start();
+            
+            // Immediate report on start
+            _ = ReportCurrentLocationAsync();
         }
 
         private async Task ReportCurrentLocationAsync()
@@ -250,14 +224,31 @@ namespace FoodMapApp
             try
             {
                 int userId = Preferences.Default.Get("user_id", 0);
-                if (userId <= 0) return;
+                if (userId == 0) return;
 
                 var request = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10));
                 var location = await Geolocation.Default.GetLocationAsync(request);
 
                 if (location != null)
                 {
-                    var payload = new { user_id = userId, latitude = location.Latitude, longitude = location.Longitude };
+                    bool isListening = _isActuallySpeaking && _activeSession != null && !_activeSession.IsPaused;
+                    int? currentPoiId = null;
+                    if (isListening && !string.IsNullOrEmpty(_activeSession?.PoiId))
+                    {
+                        if (int.TryParse(_activeSession.PoiId, out int pid))
+                        {
+                            currentPoiId = pid;
+                        }
+                    }
+
+                    var payload = new { 
+                        user_id = userId, 
+                        latitude = location.Latitude, 
+                        longitude = location.Longitude,
+                        is_listening = isListening,
+                        poi_id = currentPoiId
+                    };
+
                     using HttpClient client = new HttpClient();
                     var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
                     await client.PostAsync($"{AppConfig.AuthApiUrl}/update-location", content);
@@ -273,7 +264,6 @@ namespace FoodMapApp
                 await MainThread.InvokeOnMainThreadAsync(() => {
                     if (session == null || !session.IsActive)
                     {
-                        miniPlayer.IsVisible = false;
                         manualMiniPlayer.IsVisible = false;
                         return;
                     }
@@ -293,11 +283,6 @@ namespace FoodMapApp
                         mPlayIcon.IsVisible = session.IsPaused;
                         mPauseIcon.IsVisible = !session.IsPaused;
                         manualShopLabel.Text = name;
-                    } else {
-                        miniPlayer.IsVisible = true;
-                        playIcon.IsVisible = session.IsPaused;
-                        pauseIcon.IsVisible = !session.IsPaused;
-                        detectedShopLabel.Text = name;
                     }
                 });
             }
@@ -314,10 +299,6 @@ namespace FoodMapApp
                         mWave1.HeightRequest = rnd.Next(8, 20); mWave2.HeightRequest = rnd.Next(10, 25);
                         mWave3.HeightRequest = rnd.Next(5, 15); mWave4.HeightRequest = rnd.Next(12, 28);
                         mWave5.HeightRequest = rnd.Next(8, 22); mWave6.HeightRequest = rnd.Next(10, 24);
-                    } else {
-                        wave1.HeightRequest = rnd.Next(8, 20); wave2.HeightRequest = rnd.Next(10, 25);
-                        wave3.HeightRequest = rnd.Next(5, 15); wave4.HeightRequest = rnd.Next(12, 28);
-                        wave5.HeightRequest = rnd.Next(8, 22); wave6.HeightRequest = rnd.Next(10, 24);
                     }
                 });
                 await Task.Delay(130);
@@ -326,71 +307,11 @@ namespace FoodMapApp
                 if (session.IsManual) {
                     mWave1.HeightRequest = 12; mWave2.HeightRequest = 18; mWave3.HeightRequest = 10;
                     mWave4.HeightRequest = 22; mWave5.HeightRequest = 14; mWave6.HeightRequest = 19;
-                } else {
-                    wave1.HeightRequest = 12; wave2.HeightRequest = 18; wave3.HeightRequest = 10;
-                    wave4.HeightRequest = 22; wave5.HeightRequest = 14; wave6.HeightRequest = 19;
                 }
             });
         }
 
-        private async void OnClosePlayerClicked(object sender, EventArgs e)
-        {
-            StopSpeech(fullReset: false, clearQueue: false);
-            if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
 
-            if (_audioQueue.Count > 0)
-            {
-                bool shouldContinue = await DisplayAlert("Thông báo", "Bạn muốn nghe quán tiếp theo hay hủy bỏ?", "Nghe", "Hủy bỏ");
-                if (shouldContinue && _audioQueue.TryDequeue(out var next))
-                {
-                    await Task.Delay(200);
-                    _autoSession.PoiId = next.PoiId;
-                    _autoSession.Sentences = next.Sentences;
-                    _autoSession.SentenceIndex = 0;
-                    _autoSession.Language = next.Language;
-                    _autoSession.IsPaused = false;
-                    _autoSession.IsActive = true;
-                    _activeSession = _autoSession;
-                    
-                    await SyncPlayerUI(_autoSession);
-                    _ = SpeakWithChunksAsync(_autoSession);
-                    return;
-                }
-            }
-
-            _autoSession.Reset();
-            _audioQueue.Clear();
-            if (_activeSession == _autoSession) StopSpeech(true);
-            await SyncPlayerUI(null);
-        }
-
-        private async void OnPlayAudioClicked(object sender, EventArgs e)
-        {
-            if (string.IsNullOrEmpty(_autoSession.PoiId)) return;
-            _autoSession.IsPaused = !_autoSession.IsPaused;
-            await SyncPlayerUI(_autoSession);
-
-            if (!_autoSession.IsPaused)
-            {
-                if (_manualSession.IsActive) { _manualSession.IsActive = false; StopSpeech(false, false); manualMiniPlayer.IsVisible = false; }
-                _activeSession = _autoSession;
-                if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_autoSession);
-                else _pauseTcs?.TrySetResult(true);
-            }
-            else { _pauseTcs?.TrySetResult(false); }
-        }
-
-        private async void OnReplayAudioClicked(object sender, EventArgs e)
-        {
-            if (string.IsNullOrEmpty(_autoSession.PoiId)) return;
-            _autoSession.SentenceIndex = 0; _autoSession.IsPaused = false;
-            await SyncPlayerUI(_autoSession);
-
-            if (_manualSession.IsActive) { _manualSession.IsActive = false; StopSpeech(false, false); manualMiniPlayer.IsVisible = false; }
-            _activeSession = _autoSession;
-            if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_autoSession);
-            else _pauseTcs?.TrySetResult(true);
-        }
 
         private async void OnManualPlayClicked(object sender, EventArgs e)
         {
@@ -407,6 +328,7 @@ namespace FoodMapApp
                 else _pauseTcs?.TrySetResult(true);
             }
             else { _pauseTcs?.TrySetResult(false); }
+            _ = ReportCurrentLocationAsync();
         }
 
         private async void OnManualReplayClicked(object sender, EventArgs e)
@@ -420,6 +342,7 @@ namespace FoodMapApp
             _activeSession = _manualSession;
             if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_manualSession);
             else _pauseTcs?.TrySetResult(true);
+            _ = ReportCurrentLocationAsync();
         }
 
         private async void OnManualCloseClicked(object sender, EventArgs e)
@@ -428,49 +351,14 @@ namespace FoodMapApp
             StopSpeech(fullReset: false, clearQueue: false);
             await SyncPlayerUI(null);
             if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
-            
-            bool isInterrupted = !string.IsNullOrEmpty(_autoSession.PoiId) && (_autoSession.Sentences != null && _autoSession.SentenceIndex < _autoSession.Sentences.Length);
-            
-            if (isInterrupted || _audioQueue.Count > 0)
-            {
-                if (await DisplayAlert("Thông báo", "Bạn có muốn nghe tiếp audio ở gần không?", "Tiếp tục", "Bỏ qua"))
-                {
-                    if (string.IsNullOrEmpty(_autoSession.PoiId) && _audioQueue.Count > 0 && _audioQueue.TryDequeue(out var next))
-                    {
-                        _autoSession.PoiId = next.PoiId;
-                        _autoSession.Language = next.Language;
-                        _autoSession.Sentences = next.Sentences;
-                        _autoSession.SentenceIndex = 0;
-                    }
-
-                    if (!string.IsNullOrEmpty(_autoSession.PoiId))
-                    {
-                        _autoSession.IsPaused = true;
-                        _autoSession.IsActive = true;
-                        _activeSession = _autoSession;
-                        await SyncPlayerUI(_autoSession);
-                    }
-                }
-                else
-                {
-                    _autoSession.Reset();
-                    _audioQueue.Clear();
-                    _activeSession = null;
-                    await SyncPlayerUI(null);
-                }
-            }
+            _ = ReportCurrentLocationAsync();
         }
 
-        private async void OnDetailClicked(object sender, EventArgs e)
-        {
-            if (!string.IsNullOrEmpty(_autoSession.PoiId))
-                await mapView.EvaluateJavaScriptAsync($"openDetails({_autoSession.PoiId})");
-        }
+
 
         public async void StopGlobalAudio()
         {
             StopSpeech(true);
-            miniPlayer.IsVisible = false;
             manualMiniPlayer.IsVisible = false;
             // Dừng mọi animation và logic phía JS
             if (mapView != null) {
@@ -508,13 +396,12 @@ namespace FoodMapApp
 
                 if (fullReset)
                 {
-                    if (clearQueue) _audioQueue.Clear(); 
-                    _autoSession.Reset();
                     _manualSession.Reset();
                     _activeSession = null;
                 }
             }
             catch (Exception ex) { Debug.WriteLine($"StopSpeech error: {ex.Message}"); }
+            _ = ReportCurrentLocationAsync();
         }
 
         private async Task SpeakWithChunksAsync(AudioSession session)
@@ -532,7 +419,11 @@ namespace FoodMapApp
                 if (_cachedLocales == null) _cachedLocales = await TextToSpeech.Default.GetLocalesAsync();
                 var locale = _cachedLocales?.FirstOrDefault(l => l.Language.Equals(session.Language, StringComparison.OrdinalIgnoreCase)) ??
                              _cachedLocales?.FirstOrDefault(l => l.Language.ToLower().StartsWith(session.Language.Split('-')[0].ToLower()));
-                var options = new SpeechOptions { Locale = locale };
+                var options = new SpeechOptions 
+                { 
+                    Locale = locale,
+                    Pitch = AppConfig.AudioPitch
+                };
 
                 _ = AnimateVisualizer(session);
 
@@ -564,7 +455,7 @@ namespace FoodMapApp
                     session.SentenceIndex++;
                 }
 
-                if (!session.IsManual && session.SentenceIndex >= sentences.Length) _ = SendAudioLogAsync(session.PoiId, (int)_audioStopwatch.Elapsed.TotalSeconds);
+
             }
             catch (OperationCanceledException) { }
             catch (Exception ex) { Debug.WriteLine($"TTS Error: {ex.Message}"); }
@@ -574,6 +465,7 @@ namespace FoodMapApp
                 _ttsSemaphore.Release(); 
                 MainThread.BeginInvokeOnMainThread(async () => {
                     if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+                    _ = ReportCurrentLocationAsync();
                 });
             }
 
@@ -586,32 +478,7 @@ namespace FoodMapApp
                     session.IsActive = false;
                     await MainThread.InvokeOnMainThreadAsync(async () => {
                         await SyncPlayerUI(null);
-                        if (!string.IsNullOrEmpty(_autoSession.PoiId)) {
-                            _autoSession.IsPaused = true;
-                            _autoSession.IsActive = true;
-                            _activeSession = _autoSession;
-                            await SyncPlayerUI(_autoSession);
-                        }
                     });
-                }
-                else
-                {
-                    if (_audioQueue.Count > 0 && _audioQueue.TryDequeue(out var next))
-                    {
-                        _autoSession.PoiId = next.PoiId;
-                        _autoSession.Sentences = next.Sentences;
-                        _autoSession.SentenceIndex = 0;
-                        _autoSession.Language = next.Language;
-                        _autoSession.IsPaused = false;
-                        _activeSession = _autoSession;
-                        await SyncPlayerUI(_autoSession);
-                        _ = SpeakWithChunksAsync(_autoSession);
-                    }
-                    else
-                    {
-                        session.PoiId = ""; 
-                        await SyncPlayerUI(session);
-                    }
                 }
             }
         }
@@ -649,33 +516,19 @@ namespace FoodMapApp
                 _activeSession = _manualSession;
                 _ = SyncPlayerUI(_manualSession);
             }
-            else if (_autoSession.IsActive)
-            {
-                _autoSession.IsPaused = true;
-                _activeSession = _autoSession;
-                _ = SyncPlayerUI(_autoSession);
-            }
-            else if (_audioQueue.Count > 0)
-            {
-                if (_audioQueue.TryPeek(out var next))
-                {
-                    _autoSession.PoiId = next.PoiId;
-                    _autoSession.IsActive = true;
-                    _autoSession.IsPaused = true;
-                    _activeSession = _autoSession;
-                    _ = SyncPlayerUI(_autoSession);
-                }
-            }
 
             // 2. CÁC TÁC VỤ KHÁC (CÓ THỂ GÂY TRỄ)
             _ = Permissions.RequestAsync<Permissions.LocationWhenInUse>(); // Không await để không chặn UI
             
             if (_isMapLoaded) 
             { 
-                string currentLang = _autoSession.Language?.Split('-')[0] ?? "vi";
+                string currentLang = _manualSession.Language?.Split('-')[0] ?? "vi";
                 _ = LoadFoods(currentLang); 
                 await TryOpenPendingDetail(); 
             }
+
+            // Immediately report location when appearing
+            _ = ReportCurrentLocationAsync();
         }
 
         protected override void OnDisappearing()
@@ -732,6 +585,181 @@ namespace FoodMapApp
             } catch (Exception ex) { Console.WriteLine($"LoadFoods Map error: {ex.Message}"); }
         }
 
+        // --- TOUR UI & LOGIC ---
+
+        private List<TourModel>? _tours = null;
+        private TourDetailModel? _currentTour = null;
+
+        private async void OnMenuClicked(object sender, EventArgs e)
+        {
+            tourDrawerOverlay.IsVisible = true;
+            await tourDrawer.TranslateTo(0, 0, 250, Easing.CubicOut);
+            
+            if (_tours == null)
+            {
+                await LoadToursAsync();
+            }
+        }
+
+        private async void OnCloseDrawerClicked(object sender, EventArgs e)
+        {
+            await tourDrawer.TranslateTo(300, 0, 250, Easing.CubicIn);
+            tourDrawerOverlay.IsVisible = false;
+        }
+
+        private async Task LoadToursAsync()
+        {
+            try
+            {
+                tourListContainer.Children.Clear();
+                var loadingLabel = new Label { 
+                    Text = "Đang tải danh sách Tour...", 
+                    TextColor = Colors.Gray, 
+                    FontAttributes = FontAttributes.Italic,
+                    HorizontalOptions = LayoutOptions.Center,
+                    Margin = new Thickness(0, 20)
+                };
+                tourListContainer.Children.Add(loadingLabel);
+
+                var response = await HttpService.Client.GetAsync($"{AppConfig.BaseUrl}/Tours");
+                
+                // Clear again before results
+                tourListContainer.Children.Clear();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    _tours = JsonSerializer.Deserialize<List<TourModel>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    if (_tours == null || !_tours.Any())
+                    {
+                        tourListContainer.Children.Add(new Label { Text = "Không có Tour nào", TextColor = Colors.Gray, HorizontalOptions = LayoutOptions.Center, Margin = 20 });
+                        return;
+                    }
+
+                    foreach (var tour in _tours.OrderByDescending(t => t.Id))
+                    {
+                        var frame = new Border
+                        {
+                            StrokeThickness = 1,
+                            Stroke = Color.FromArgb("#E0E0E0"),
+                            BackgroundColor = Colors.White,
+                            Padding = new Thickness(15),
+                            Margin = new Thickness(0,0,0,10),
+                            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(10) }
+                        };
+                        
+                        var layout = new VerticalStackLayout { Spacing = 5 };
+                        layout.Children.Add(new Label { Text = tour.Name, FontAttributes = FontAttributes.Bold, FontSize = 16, TextColor = Color.FromArgb("#333") });
+                        layout.Children.Add(new Label { Text = (tour.Description?.Length > 60 ? tour.Description.Substring(0, 60) + "..." : tour.Description), FontSize = 13, TextColor = Colors.Gray });
+                        layout.Children.Add(new Button 
+                        { 
+                            Text = "Xem Tour này", 
+                            BackgroundColor = Color.FromArgb("#FF6B81"), 
+                            TextColor = Colors.White, 
+                            HeightRequest = 35, 
+                            Margin = new Thickness(0,10,0,0),
+                            CornerRadius = 8,
+                            Command = new Command(async () => await StartTourModeAsync(tour.Id))
+                        });
+
+                        frame.Content = layout;
+                        tourListContainer.Children.Add(frame);
+                    }
+                }
+                else
+                {
+                    tourListContainer.Children.Add(new Label { Text = $"Lỗi kết nối: {(int)response.StatusCode}", TextColor = Colors.Red, HorizontalOptions = LayoutOptions.Center, Margin = 20 });
+                }
+            }
+            catch (Exception ex)
+            {
+                tourListContainer.Children.Clear();
+                tourListContainer.Children.Add(new Label { Text = "Lỗi đường truyền thiết bị", TextColor = Colors.Red, HorizontalOptions = LayoutOptions.Center, Margin = 20 });
+                Debug.WriteLine($"LoadTours error: {ex.Message}");
+            }
+        }
+
+        private async Task StartTourModeAsync(int tourId)
+        {
+            try
+            {
+                var json = await HttpService.GetStringAsync($"{AppConfig.BaseUrl}/Tours/{tourId}");
+                if (json != null)
+                {
+                    _currentTour = JsonSerializer.Deserialize<TourDetailModel>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    
+                    if (_currentTour != null)
+                    {
+                        // Close drawer
+                        await tourDrawer.TranslateTo(300, 0, 250, Easing.CubicIn);
+                        tourDrawerOverlay.IsVisible = false;
+
+                        // Setup UI
+                        simTourName.Text = _currentTour.Name;
+                        simTotalTime.Text = "Đang tính toán...";
+                        
+                        // Calculate total price string manually or via JS
+                        simTotalPrice.Text = "Đang tính toán...";
+                        simProgress.Text = "Chưa di chuyển";
+
+                        tourSimulationPanel.IsVisible = true;
+                        btnSimulateStart.IsVisible = true;
+                        btnSimulateNext.IsVisible = false;
+
+                        // Pass to JS to draw route and get total time
+                        var jsArray = JsonSerializer.Serialize(_currentTour.TourPois);
+                        await mapView.EvaluateJavaScriptAsync($"window.startTourRoute({jsArray})");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"StartTourMode error: {ex.Message}");
+            }
+        }
+
+        private async void OnSimulateStartClicked(object sender, EventArgs e)
+        {
+            btnSimulateStart.IsVisible = false;
+            btnSimulateNext.IsVisible = true;
+            if (mapView != null)
+            {
+                await mapView.EvaluateJavaScriptAsync("window.simulateTourNextStop()");
+            }
+        }
+
+        private async void OnSimulateNextClicked(object sender, EventArgs e)
+        {
+            if (mapView != null)
+            {
+                await mapView.EvaluateJavaScriptAsync("window.simulateTourNextStop()");
+            }
+        }
+
+        private async void OnEndTourClicked(object sender, EventArgs e)
+        {
+            _currentTour = null;
+            tourSimulationPanel.IsVisible = false;
+
+            if (mapView != null)
+            {
+                await mapView.EvaluateJavaScriptAsync("window.endTour()");
+            }
+        }
+
+        // JS CALLABLE: update UI from JS
+        public void UpdateTourProgressUI(string durationStr, string priceStr, string progressStr)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (!string.IsNullOrEmpty(durationStr)) simTotalTime.Text = durationStr;
+                if (!string.IsNullOrEmpty(priceStr)) simTotalPrice.Text = priceStr;
+                if (!string.IsNullOrEmpty(progressStr)) simProgress.Text = progressStr;
+            });
+        }
+
+
     }
 
     public class FoodItem
@@ -739,4 +767,30 @@ namespace FoodMapApp
         public int id { get; set; }
         public string? name { get; set; }
     }
+
+    public class TourModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+    }
+
+    public class TourDetailModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public List<TourPoiModel> TourPois { get; set; } = new();
+    }
+
+    public class TourPoiModel
+    {
+        public int Id { get; set; }
+        public int PoiId { get; set; }
+        public int StayDurationMinutes { get; set; }
+        public string ApproximatePrice { get; set; } = string.Empty;
+        public int OrderIndex { get; set; }
+    }
 }
+
+

@@ -16,7 +16,7 @@ namespace FoodMapApp.Views
         {
             base.OnAppearing();
             // Set Vietnamese text from code-behind to avoid XAML encoding issues
-            AppTitleLabel.Text = "FoodTour Vĩnh Khánh";
+            AppTitleLabel.Text = "FoodMap Vĩnh Khánh";
             WelcomeLabel.Text = "Chào mừng trở lại! Vui lòng đăng nhập.";
             IdentifierLabel.Text = "Tên đăng nhập hoặc Email";
             IdentifierEntry.Placeholder = "Nhập tên đăng nhập";
@@ -57,6 +57,18 @@ namespace FoodMapApp.Views
         {
             _authService.LoginOffline();
             await Shell.Current.GoToAsync("//HomePage");
+        }
+
+        private async void OnGuestClicked(object sender, EventArgs e)
+        {
+            int guestId = new Random().Next(100000, 999999);
+            _authService.LoginAsGuest(guestId);
+            await Shell.Current.GoToAsync("//HomePage");
+        }
+
+        private async void OnQrScanClicked(object sender, EventArgs e)
+        {
+            await Navigation.PushAsync(new QrScannerPage());
         }
 
         private async void OnRegisterTapped(object sender, EventArgs e)

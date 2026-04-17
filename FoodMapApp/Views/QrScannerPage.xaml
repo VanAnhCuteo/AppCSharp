@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.Maui.Controls"
+             x:Class="FoodMapApp.Views.QrScannerPage"
+             Title="Quét mã QR"
+             BackgroundColor="Black">
+
+    <Grid>
+        <!-- Scanner View -->
+        <zxing:CameraBarcodeReaderView x:Name="barcodeReader"
+                                       BarcodesDetected="OnBarcodesDetected" />
+
+        <!-- Overlay / Camera Frame -->
+        <Grid Padding="0" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
+            <BoxView BackgroundColor="Black" Opacity="0.5" Margin="0,0,0,0" />
+            
+            <Grid ColumnDefinitions="*,300,*" RowDefinitions="*,300,*">
+                <!-- Clear center area -->
+                <BoxView Grid.Row="1" Grid.Column="1" BackgroundColor="Transparent" />
+                
+                <!-- Frame corners -->
+                <Border Grid.Row="1" Grid.Column="1" Stroke="White" StrokeThickness="4" 
+                        WidthRequest="300" HeightRequest="300" BackgroundColor="Transparent">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- UI Controls -->
+        <VerticalStackLayout VerticalOptions="End" Padding="30,50" Spacing="20">
+            <Label Text="Di chuyển camera đến mã QR để quét" 
+                   TextColor="White" FontSize="16" FontAttributes="Bold"
+                   HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="15">
+                <Button Grid.Column="0" Text="Mở Thư Viện" Clicked="OnPickImageClicked"
+                        BackgroundColor="White" TextColor="Black" CornerRadius="20"
+                        HeightRequest="50" FontAttributes="Bold" />
+                
+                <Button Grid.Column="1" Text="Đóng" Clicked="OnCloseClicked"
+                        BackgroundColor="#333333" TextColor="White" CornerRadius="20"
+                        HeightRequest="50" FontAttributes="Bold" />
+            </Grid>
+        </VerticalStackLayout>
+        
+        <!-- Flash indicator / Processing -->
+        <ActivityIndicator x:Name="processingIndicator" IsRunning="False"
+                           Color="White" HorizontalOptions="Center" VerticalOptions="Center"
+                           WidthRequest="60" HeightRequest="60" />
+    </Grid>
+</ContentPage>

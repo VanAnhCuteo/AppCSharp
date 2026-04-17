@@ -19,5 +19,11 @@ namespace FoodMapAdmin.Models
 
         [Column("last_active")]
         public DateTime LastActive { get; set; }
+
+        [Column("is_listening_audio")]
+        public bool IsListeningAudio { get; set; }
+
+        [Column("listening_poi_id")]
+        public int? ListeningPoiId { get; set; }
     }
 }

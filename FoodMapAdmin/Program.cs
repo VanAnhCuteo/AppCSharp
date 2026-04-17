@@ -9,7 +9,12 @@ using FoodMapAdmin.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -37,10 +42,12 @@ builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IActivityLogger, ActivityLogger>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITranslationService, TranslationService>();
-builder.Services.AddScoped<ITourService, TourService>();
+
 builder.Services.AddScoped<ILanguageService, LanguageService>();
 builder.Services.AddScoped<IPoiGuidePendingChangeService, PoiGuidePendingChangeService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<ITourService, TourService>();
+
 
 // CORS
 builder.Services.AddCors(options =>
@@ -138,17 +145,7 @@ using (var scope = app.Services.CreateScope())
             }
         } catch { /* Suppress noisy logs */ }
 
-        try {
-            // Chỉ chạy lệnh DROP nếu cột vẫn còn tồn tại
-            var checkColumn = db.Database.SqlQueryRaw<int>(
-                "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'tours' AND column_name = 'image_url'"
-            ).ToList();
 
-            if (checkColumn.Any() && checkColumn[0] > 0)
-            {
-                db.Database.ExecuteSqlRaw("ALTER TABLE tours DROP COLUMN image_url;");
-            }
-        } catch { /* Suppress noisy logs */ }
 
         // Schema Fix for Languages Table
         try {
@@ -208,6 +205,67 @@ using (var scope = app.Services.CreateScope())
             }
         } catch (Exception ex) { 
             Console.WriteLine($"[Startup] Languages Table Fix Error: {ex.Message}");
+        }
+
+        // Schema Fix for Guest Support: Remove FK on user_locations
+        try {
+            db.Database.ExecuteSqlRaw(@"
+                SET @constraint_name = (SELECT CONSTRAINT_NAME 
+                                       FROM information_schema.KEY_COLUMN_USAGE 
+                                       WHERE TABLE_SCHEMA = DATABASE() 
+                                       AND TABLE_NAME = 'user_locations' 
+                                       AND COLUMN_NAME = 'user_id' 
+                                       AND REFERENCED_TABLE_NAME IS NOT NULL);
+                SET @sql = IF(@constraint_name IS NOT NULL, 
+                              CONCAT('ALTER TABLE user_locations DROP FOREIGN KEY ', @constraint_name), 
+                              'SELECT 1');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
+            ");
+        } catch (Exception ex) {
+            Console.WriteLine($"[Startup] Guest ID Support Fix Error: {ex.Message}");
+        }
+
+        // Schema for Tours
+        try {
+            db.Database.ExecuteSqlRaw(@"
+                CREATE TABLE IF NOT EXISTS `tours` (
+                  `id` INT NOT NULL AUTO_INCREMENT,
+                  `name` VARCHAR(200) NOT NULL,
+                  `description` TEXT,
+                  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+            ");
+
+            db.Database.ExecuteSqlRaw(@"
+                CREATE TABLE IF NOT EXISTS `tour_pois` (
+                  `id` INT NOT NULL AUTO_INCREMENT,
+                  `tour_id` INT NOT NULL,
+                  `poi_id` INT NOT NULL,
+                  `stay_duration_minutes` INT DEFAULT 30,
+                  `approximate_price` VARCHAR(100) DEFAULT NULL,
+                  `order_index` INT DEFAULT 0,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_tour_poi` (`tour_id`, `poi_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ");
+
+            db.Database.ExecuteSqlRaw(@"
+                CREATE TABLE IF NOT EXISTS `tour_histories` (
+                  `id` INT NOT NULL AUTO_INCREMENT,
+                  `user_id` INT NOT NULL,
+                  `tour_id` INT NOT NULL,
+                  `status` VARCHAR(50) DEFAULT 'InProgress',
+                  `progress_percentage` DECIMAL(5,2) DEFAULT 0,
+                  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_user_tour` (`user_id`, `tour_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ");
+        } catch (Exception ex) {
+            Console.WriteLine($"[Startup] Tours Table Fix Error: {ex.Message}");
         }
 
         var user = db.Users.FirstOrDefault(u => u.Username == "vananh");

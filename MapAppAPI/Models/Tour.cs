@@ -1,24 +1,26 @@
+using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FoodMapAPI.Models
 {
     public class Tour
     {
-        public int tour_id { get; set; }
-        public string? name { get; set; }
-        public string? description { get; set; }
-        public int duration_minutes { get; set; }
-        public decimal price { get; set; }
-        public System.DateTime created_at { get; set; }
+        [Key]
+        [Column("id")]
+        public int Id { get; set; }
 
-        // Navigation property for details (optional for basic listing)
-        public List<TourPoiDetail>? pois { get; set; }
-    }
+        [Column("name")]
+        public string Name { get; set; } = string.Empty;
 
-    public class TourPoiDetail : Food
-    {
-        public int sequence_order { get; set; }
-        public int stay_duration { get; set; }
-        public decimal average_price { get; set; }
+        [Column("description")]
+        public string Description { get; set; } = string.Empty;
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        // Relationship
+        public ICollection<TourPoi> TourPois { get; set; } = new List<TourPoi>();
     }
 }

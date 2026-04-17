@@ -3,803 +3,194 @@
 @using FoodMapAdmin.Models
 @using FoodMapAdmin.Services
 @inject ITourService TourService
-@inject NavigationManager Navigation
+@inject NavigationManager Navigator
 @inject IJSRuntime JSRuntime
 @inject IActivityLogger Logger
-@inject AuthenticationStateProvider AuthStateProvider
-@attribute [Authorize(Roles = "admin")]
+@attribute [Authorize(Roles = "admin,CNH")]
 
 <PageTitle>Quản lý Tour - FoodMap Admin</PageTitle>
 
+<!-- Page Header -->
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem;">
     <div>
-        <h2 class="page-title">Quản lý Tour</h2>
-        <p class="page-subtitle">Hệ thống tối ưu hóa và quản lý lộ trình ẩm thực</p>
+        <h2 class="page-title">Quản lý Tour Ẩm Thực</h2>
+        <p class="page-subtitle">Quản lý danh sách các hành trình ẩm thực đặc sắc trên hệ thống</p>
     </div>
-    <button class="glass-btn" @onclick='(() => Navigation.NavigateTo("/tours/create"))'>
-        <i class="bi bi-plus-lg"></i> Tạo Tour mới
+    <button class="glass-btn" @onclick="AddNew">
+        <i class="bi bi-plus-lg"></i> Thêm tour mới
     </button>
 </div>
 
-@* ── Stats Overview ── *@
-<div class="stats-premium-row mb-5 animate-fade-in">
-    <div class="stat-premium-item">
-        <div class="stat-premium-icon bg-primary-soft">
-            <i class="bi bi-map-fill text-primary"></i>
-        </div>
-        <div class="stat-premium-info">
-            <div class="stat-premium-value">@(tours?.Count ?? 0)</div>
-            <div class="stat-premium-label">Tổng số Tour</div>
-        </div>
-    </div>
-    <div class="stat-premium-divider"></div>
-    <div class="stat-premium-item">
-        <div class="stat-premium-icon bg-success-soft">
-            <i class="bi bi-shop text-success"></i>
-        </div>
-        <div class="stat-premium-info">
-            <div class="stat-premium-value">@(tours?.Sum(t => t.Pois?.Count ?? 0) ?? 0)</div>
-            <div class="stat-premium-label">Tổng điểm dừng</div>
-        </div>
-    </div>
-    <div class="stat-premium-divider"></div>
-    <div class="stat-premium-item">
-        <div class="stat-premium-icon bg-warning-soft">
-            <i class="bi bi-currency-exchange text-warning"></i>
-        </div>
-        <div class="stat-premium-info">
-            <div class="stat-premium-value">@FormatPrice(tours?.Where(t => t.Price > 0).Select(t => t.Price).DefaultIfEmpty(0).Average() ?? 0)</div>
-            <div class="stat-premium-label">Giá trung bình</div>
-        </div>
-    </div>
-</div>
-
-@* ── Tour Cards Grid ── *@
-<div class="row g-4 animate-stagger">
-    @if (tours == null)
-    {
-        @for (int i = 0; i < 3; i++)
-        {
-            <div class="col-md-6 col-xl-4">
-                <div class="skeleton-card"></div>
-            </div>
-        }
-    }
-    else if (!tours.Any())
-    {
-        <div class="col-12">
-            <div class="empty-state">
-                <div class="empty-icon"><i class="bi bi-map"></i></div>
-                <h3>Chưa có tour nào</h3>
-                <p>Bắt đầu xây dựng lộ trình ẩm thực đầu tiên của bạn ngay hôm nay!</p>
-                <button class="btn btn-primary rounded-pill px-4" @onclick='(() => Navigation.NavigateTo("/tours/create"))'>Tạo ngay</button>
-            </div>
-        </div>
-    }
-    else
-    {
-        @foreach (var tour in tours)
-        {
-            <div class="col-md-6 col-xl-4">
-                <div class="tour-item-card">
-                    <div class="card-header-row">
-                        <div class="card-status-pill">
-                            <span class="status-dot"></span> Đang hoạt động
-                        </div>
-                        <div class="card-header-actions">
-                            <button class="btn-icon-sm" title="Chỉnh sửa" @onclick="() => OpenEditModal(tour)">
-                                <i class="bi bi-pencil-fill"></i>
-                            </button>
-                            <button class="btn-icon-sm btn-icon-danger" title="Xóa tour" @onclick="() => DeleteTour(tour.TourId)">
-                                <i class="bi bi-trash3"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="card-main-info">
-                        <h4 class="tour-name">@tour.Name</h4>
-                        <p class="tour-desc">@tour.Description</p>
-                    </div>
-
-                    <div class="card-stats">
-                        <div class="stat-chip">
-                            <i class="bi bi-clock text-primary"></i>
-                            <span>@FormatDuration(tour.DurationMinutes)</span>
-                        </div>
-                        <div class="stat-chip">
-                            <i class="bi bi-wallet2 text-success"></i>
-                            <span>@FormatPrice(tour.Price)</span>
-                        </div>
-                        <div class="stat-chip">
-                            <i class="bi bi-geo-alt text-danger"></i>
-                            <span>@(tour.Pois?.Count ?? 0) quán</span>
-                        </div>
-                    </div>
-
-                    @if (tour.Pois != null && tour.Pois.Any())
+<!-- Table Card -->
+<div class="card" style="padding: 0; overflow: hidden;">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th style="padding-left: 1.75rem; width: 70px;">Mã</th>
+                    <th>Tên Tour</th>
+                    <th>Mô tả</th>
+                    <th>Ngày tạo</th>
+                    <th style="text-align: center; width: 120px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (tours == null)
+                {
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 3rem 0;">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Đang tải...</span>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else if (!tours.Any())
+                {
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
+                            <i class="bi bi-map" style="font-size: 2.5rem; opacity: 0.2; display: block; margin-bottom: 0.5rem;"></i>
+                            Chưa có dữ liệu tour nào
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var tour in tours)
                     {
-                        <div class="card-poi-preview">
-                            @foreach (var stop in tour.Pois.OrderBy(p => p.SequenceOrder).Take(4))
-                            {
-                                <div class="poi-mini-badge" title="@stop.Poi?.Name">
-                                    <span class="poi-mini-number">@stop.SequenceOrder</span>
-                                    <span class="poi-mini-name">@stop.Poi?.Name</span>
+                        <tr>
+                            <td style="padding-left: 1.75rem; color: var(--text-muted); font-weight: 600; font-size: 0.85rem;">#@tour.Id</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <div class="tour-avatar">@(tour.Name.Substring(0, 1).ToUpper())</div>
+                                    <div style="font-weight: 700; color: var(--text-main); font-size: 0.92rem;">
+                                        @tour.Name
+                                    </div>
                                 </div>
-                            }
-                            @if (tour.Pois.Count > 4)
-                            {
-                                <div class="poi-mini-badge poi-mini-more">+@(tour.Pois.Count - 4)</div>
-                            }
-                        </div>
+                            </td>
+                            <td>
+                                <div style="color: var(--text-secondary); font-size: 0.85rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@tour.Description">
+                                    @tour.Description
+                                </div>
+                            </td>
+                            <td>
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">@(tour.CreatedAt?.ToString("dd/MM/yyyy HH:mm"))</span>
+                            </td>
+                            <td style="text-align: center;">
+                                <div style="display: flex; justify-content: center; gap: 0.5rem;">
+                                    <button class="act-btn act-edit" title="Chỉnh sửa" @onclick="() => Edit(tour.Id)">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <button class="act-btn act-del" title="Xóa" @onclick="() => Delete(tour.Id)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
                     }
-
-                    <div class="card-actions">
-                        <button class="btn-manage" @onclick='(() => Navigation.NavigateTo($"/tours/{tour.TourId}/manage"))'>
-                            Thiết lập lộ trình <i class="bi bi-arrow-right-short"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        }
-    }
-</div>
-
-@* ── Edit Modal ── *@
-@if (showEditModal && editingTour != null)
-{
-    <div class="modal-overlay" @onclick="CloseEditModal">
-        <div class="modal-glass" @onclick:stopPropagation="true">
-            <div class="modal-glass-header">
-                <h4 class="fw-800 mb-0">Chỉnh sửa Tour</h4>
-                <button class="btn-close-modal" @onclick="CloseEditModal"><i class="bi bi-x-lg"></i></button>
-            </div>
-            <div class="modal-glass-body">
-                <div class="mb-4">
-                    <label class="form-label-custom">Tên Tour</label>
-                    <input type="text" @bind="editingTour.Name" class="form-control glass-input" />
-                </div>
-                <div class="mb-4">
-                    <label class="form-label-custom">Mô tả</label>
-                    <textarea @bind="editingTour.Description" class="form-control glass-input" rows="3"></textarea>
-                </div>
-                <div class="row g-3">
-                    <div class="col-6">
-                        <label class="form-label-custom">Thời lượng (phút)</label>
-                        <input type="number" @bind="editingTour.DurationMinutes" class="form-control glass-input" min="15" step="15" />
-                        <div class="input-hint mt-1">≈ @FormatDuration(editingTour.DurationMinutes)</div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label-custom">Giá Tour (VNĐ)</label>
-                        <input type="number" @bind="editingTour.Price" class="form-control glass-input" min="0" step="10000" />
-                        <div class="input-hint mt-1">≈ @FormatPrice(editingTour.Price)</div>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <label class="form-label-custom">Chọn nhanh thời gian</label>
-                    <div class="preset-chips">
-                        @foreach (var d in new[] { 30, 60, 90, 120, 150, 180 })
-                        {
-                            var minutes = d;
-                            <button class="preset-chip @(editingTour.DurationMinutes == minutes ? "active" : "")" @onclick="() => editingTour.DurationMinutes = minutes">@FormatDuration(minutes)</button>
-                        }
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <label class="form-label-custom">Chọn nhanh giá</label>
-                    <div class="preset-chips">
-                        @foreach (var p in new[] { 50000m, 100000m, 150000m, 200000m, 300000m, 500000m })
-                        {
-                            var price = p;
-                            <button class="preset-chip @(editingTour.Price == price ? "active" : "")" @onclick="() => editingTour.Price = price">@FormatPrice(price)</button>
-                        }
-                    </div>
-                </div>
-            </div>
-            <div class="modal-glass-footer">
-                <button class="btn btn-light rounded-pill px-4 fw-bold" @onclick="CloseEditModal">Hủy</button>
-                <button class="btn btn-dark rounded-pill px-5 fw-bold" @onclick="SaveEdit">
-                    <i class="bi bi-check-lg me-1"></i> Lưu thay đổi
-                </button>
-            </div>
-        </div>
+                }
+            </tbody>
+        </table>
     </div>
-}
-
+</div>
 
 <style>
-    :root {
-        --card-bg: rgba(255, 255, 255, 0.7);
-        --text-main: #1a1a1a;
-        --primary-glow: rgba(13, 110, 253, 0.15);
-    }
-
-    .text-gradient {
-        background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .fw-900 { font-weight: 900; }
-    .fw-800 { font-weight: 800; }
-
-    /* ── Stats Overview ── */
-    .stat-overview-card {
-        background: var(--card-bg);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.4);
-        border-radius: 24px;
-        padding: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 1.2rem;
-        transition: all 0.3s;
-    }
-
-    .stat-overview-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.05);
-    }
-
-    .stat-icon-wrapper {
-        width: 52px;
-        height: 52px;
-        border-radius: 16px;
+    .tour-avatar {
+        width: 38px;
+        height: 38px;
+        background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+        color: white;
+        border-radius: var(--radius-md);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.3rem;
+        font-weight: 700;
+        font-size: 1rem;
         flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
     }
 
-    .bg-primary-soft { background: rgba(13,110,253,0.1); }
-    .bg-success-soft { background: rgba(16,185,129,0.1); }
-    .bg-warning-soft { background: rgba(245,158,11,0.1); }
-
-    .stat-overview-value {
-        font-size: 1.6rem;
-        font-weight: 900;
-        color: var(--text-main);
-        line-height: 1.2;
-    }
-
-    .stat-overview-label {
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #999;
-        letter-spacing: 0.5px;
-    }
-
-    /* ── Premium Stats Row ── */
-    .stats-premium-row {
-        background: var(--card-bg);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.4);
-        border-radius: 30px;
-        padding: 1.8rem 2.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
-    }
-
-    .stat-premium-item {
-        display: flex;
-        align-items: center;
-        gap: 1.2rem;
-        flex: 1;
-        justify-content: center;
-    }
-
-    .stat-premium-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.4rem;
-        flex-shrink: 0;
-    }
-
-    .stat-premium-info {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .stat-premium-value {
-        font-size: 1.8rem;
-        font-weight: 900;
-        color: var(--text-main);
-        line-height: 1.1;
-    }
-
-    .stat-premium-label {
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #999;
-        letter-spacing: 0.8px;
-        margin-top: 2px;
-    }
-
-    .stat-premium-divider {
-        width: 1px;
-        height: 50px;
-        background: linear-gradient(to bottom, transparent, #eee, transparent);
-        margin: 0 1.5rem;
-    }
-
-    /* ── Create Button ── */
-    .btn-create-tour {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-        color: white;
+    .act-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: var(--radius-sm);
         border: none;
-        padding: 0.8rem 1.8rem;
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        cursor: pointer;
-    }
-
-    .btn-create-tour:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 15px 30px var(--primary-glow);
-        filter: brightness(1.1);
-    }
-
-    .icon-plus {
-        background: rgba(255,255,255,0.1);
-        width: 28px;
-        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 8px;
-    }
-
-    /* ── Tour Card ── */
-    .tour-item-card {
-        background: var(--card-bg);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.4);
-        border-radius: 28px;
-        padding: 1.8rem;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        transition: all 0.4s ease;
-        position: relative;
-    }
-
-    .tour-item-card:hover {
-        transform: translateY(-6px);
-        border-color: rgba(13,110,253,0.2);
-        box-shadow: 0 24px 48px rgba(0,0,0,0.06);
-    }
-
-    .card-header-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.2rem;
-    }
-
-    .card-header-actions {
-        display: flex;
-        gap: 6px;
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-
-    .tour-item-card:hover .card-header-actions { opacity: 1; }
-
-    .btn-icon-sm {
-        width: 32px;
-        height: 32px;
-        border: 1px solid #eee;
-        background: white;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #666;
-        transition: all 0.2s;
+        transition: all 0.2s var(--ease-out);
+        font-size: 0.95rem;
         cursor: pointer;
-        font-size: 0.8rem;
     }
 
-    .btn-icon-sm:hover { background: #f5f5f5; color: #333; transform: scale(1.05); }
-    .btn-icon-sm.btn-icon-danger:hover { background: #fef2f2; color: #ef4444; border-color: #fecaca; }
-
-    .card-status-pill {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        color: #10b981;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+    .act-edit {
+        background: var(--primary-subtle);
+        color: var(--primary);
     }
 
-    .status-dot {
-        width: 7px;
-        height: 7px;
-        background: #10b981;
-        border-radius: 50%;
-        box-shadow: 0 0 10px #10b981;
-        animation: pulse-dot 2s infinite;
-    }
-
-    @@keyframes pulse-dot {
-        0%, 100% { box-shadow: 0 0 5px #10b981; }
-        50% { box-shadow: 0 0 15px #10b981; }
-    }
-
-    .tour-name {
-        font-weight: 800;
-        font-size: 1.25rem;
-        color: var(--text-main);
-        margin-bottom: 0.5rem;
-        letter-spacing: -0.5px;
-        line-height: 1.3;
-    }
-
-    .tour-desc {
-        font-size: 0.85rem;
-        color: #888;
-        line-height: 1.6;
-        margin-bottom: 1.2rem;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-
-    .card-stats {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 1.2rem;
-    }
-
-    .stat-chip {
-        background: #f7f8fa;
-        border-radius: 12px;
-        padding: 6px 14px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        color: #444;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .stat-chip i { font-size: 0.75rem; }
-
-    /* ── POI Preview ── */
-    .card-poi-preview {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 1.5rem;
-        margin-top: auto;
-    }
-
-    .poi-mini-badge {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        background: white;
-        border: 1px solid #f0f0f0;
-        border-radius: 10px;
-        padding: 4px 10px;
-        font-size: 0.72rem;
-        font-weight: 600;
-        color: #555;
-        max-width: 160px;
-    }
-
-    .poi-mini-number {
-        width: 18px;
-        height: 18px;
-        background: #1a1a1a;
+    .act-edit:hover {
+        background: var(--primary);
         color: white;
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.6rem;
-        font-weight: 800;
-        flex-shrink: 0;
+        transform: translateY(-1px);
     }
 
-    .poi-mini-name {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+    .act-del {
+        background: rgba(255, 71, 87, 0.06);
+        color: #FF4757;
     }
 
-    .poi-mini-more {
-        background: #f0f2f5;
-        color: #888;
-        font-weight: 800;
-        justify-content: center;
-        border: none;
-        padding: 4px 12px;
-    }
-
-    /* ── Actions ── */
-    .card-actions { margin-top: auto; }
-
-    .btn-manage {
-        width: 100%;
-        background: #f0f2f5;
-        border: none;
-        padding: 0.85rem;
-        border-radius: 16px;
-        font-weight: 700;
-        font-size: 0.88rem;
-        color: #1a1a1a;
-        transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        cursor: pointer;
-    }
-
-    .btn-manage:hover {
-        background: #1a1a1a;
+    .act-del:hover {
+        background: #FF4757;
         color: white;
-        transform: translateY(-2px);
+        transform: translateY(-1px);
     }
 
-    /* ── Empty State ── */
-    .empty-state {
-        text-align: center;
-        padding: 5rem 2rem;
-        background: rgba(255,255,255,0.5);
-        border-radius: 40px;
-        border: 2px dashed #eee;
-    }
-
-    .empty-icon {
-        font-size: 4rem;
-        color: #ddd;
-        margin-bottom: 1.5rem;
-    }
-
-    /* ── Skeleton ── */
-    .skeleton-card {
-        height: 380px;
-        background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
-        background-size: 200% 100%;
-        animation: loading 1.5s infinite;
-        border-radius: 28px;
-    }
-
-    @@keyframes loading {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-    }
-
-    /* ═══ EDIT MODAL ═══ */
-    .modal-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        background: rgba(0,0,0,0.4);
-        backdrop-filter: blur(6px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        animation: fadeIn 0.2s ease;
-    }
-
-    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-    .modal-glass {
-        background: rgba(255,255,255,0.95);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255,255,255,0.6);
-        border-radius: 32px;
-        width: 90%;
-        max-width: 560px;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 40px 80px rgba(0,0,0,0.12);
-        animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    @@keyframes slideUp {
-        from { transform: translateY(30px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-
-    .modal-glass-header {
-        padding: 1.8rem 2rem 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .btn-close-modal {
-        width: 36px;
-        height: 36px;
-        border: none;
-        background: #f0f2f5;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #666;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .btn-close-modal:hover { background: #e0e0e0; }
-
-    .modal-glass-body { padding: 1.5rem 2rem; }
-
-    .modal-glass-footer {
-        padding: 0 2rem 2rem;
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-
-    /* ── Form ── */
-    .form-label-custom {
-        display: block;
-        font-size: 0.7rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        color: #999;
-        margin-bottom: 0.6rem;
-        letter-spacing: 0.5px;
-    }
-
-    .glass-input {
-        background: rgba(240, 242, 245, 0.5);
-        border: 1px solid #eee;
-        border-radius: 16px;
-        padding: 0.8rem 1.2rem;
-        font-weight: 500;
-        transition: all 0.3s;
-    }
-
-    .glass-input:focus {
-        background: white;
-        border-color: #1a1a1a;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.05);
-    }
-
-    .input-hint {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: #10b981;
-    }
-
-    /* ── Preset Chips ── */
-    .preset-chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-
-    .preset-chip {
-        background: #f7f8fa;
-        border: 1px solid #eee;
-        border-radius: 12px;
-        padding: 6px 16px;
-        font-size: 0.78rem;
-        font-weight: 700;
-        color: #555;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .preset-chip:hover { background: #eef; border-color: #cce; }
-
-    .preset-chip.active {
-        background: #1a1a1a;
-        color: white;
-        border-color: #1a1a1a;
+    table {
+        width: 100% !important;
     }
 </style>
 
 @code {
     private List<Tour>? tours;
-    private bool showEditModal = false;
-    private Tour? editingTour;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
-    }
-
-    private async Task LoadData()
-    {
-        tours = await TourService.GetAllToursAsync();
-    }
-
-    private string FormatDuration(int minutes)
-    {
-        if (minutes <= 0) return "N/A";
-        int h = minutes / 60;
-        int m = minutes % 60;
-        if (h > 0 && m > 0) return $"{h}h{m:D2}'";
-        if (h > 0) return $"{h} giờ";
-        return $"{m} phút";
-    }
-
-    private string FormatPrice(decimal price)
-    {
-        if (price <= 0) return "Miễn phí";
-        if (price >= 1000000) return $"{price / 1000000:0.#}tr";
-        if (price >= 1000) return $"{price / 1000:0}k";
-        return $"{price:N0}đ";
-    }
-
-    private void OpenEditModal(Tour tour)
-    {
-        editingTour = new Tour
+        try 
         {
-            TourId = tour.TourId,
-            Name = tour.Name,
-            Description = tour.Description,
-            DurationMinutes = tour.DurationMinutes,
-            Price = tour.Price,
-            CreatedAt = tour.CreatedAt
-        };
-        showEditModal = true;
-    }
-
-    private void CloseEditModal()
-    {
-        showEditModal = false;
-        editingTour = null;
-    }
-
-    private async Task SaveEdit()
-    {
-        if (editingTour == null || string.IsNullOrEmpty(editingTour.Name)) return;
-
-        if (await TourService.UpdateTourAsync(editingTour))
+            tours = await TourService.GetAllToursAsync();
+        }
+        catch (Exception ex)
         {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-            var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            int.TryParse(userIdStr, out var currentUserId);
-
-            await Logger.LogAsync(currentUserId, "Cập nhật hành trình", editingTour.Name);
-            
-            showEditModal = false;
-            editingTour = null;
-            await LoadData();
+            Console.WriteLine($"Error loading Tours: {ex.Message}");
+            tours = new List<Tour>();
         }
     }
 
-    private async Task DeleteTour(int id)
-    {
-        var tourName = tours?.FirstOrDefault(t => t.TourId == id)?.Name ?? "N/A";
-        var ok = await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xóa tour này và toàn bộ lộ trình liên quan?");
-        if (ok)
+    private void AddNew() => Navigator.NavigateTo("/tours/add");
+    private void Edit(int id) => Navigator.NavigateTo($"/tours/edit/{id}");
+    
+    private async Task Delete(int id) {
+        var authState = await AuthStateTask!;
+        var user = authState.User;
+        var tour = tours?.FirstOrDefault(t => t.Id == id);
+        if (tour == null) return;
+
+        string msg = "Bạn có chắc chắn muốn xóa tour này không? Hành động này không thể hoàn tác và sẽ xoá toàn bộ dữ liệu lộ trình bên trong.";
+
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", msg);
+        if (confirmed)
         {
             if (await TourService.DeleteTourAsync(id))
             {
-                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-                var user = authState.User;
                 var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
                 int.TryParse(userIdStr, out var currentUserId);
-
-                await Logger.LogAsync(currentUserId, "Xóa hành trình", tourName);
-                await LoadData();
+                await Logger.LogAsync(currentUserId, "Xóa tour", tour.Name);
+                
+                tours = tours?.Where(t => t.Id != id).ToList();
+                StateHasChanged();
             }
         }
     }

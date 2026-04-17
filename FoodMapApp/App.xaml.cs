@@ -9,32 +9,68 @@ namespace FoodMapApp
             MainPage = new AppShell();
         }
 
+        protected override Window CreateWindow(IActivationState? activationState)
+        {
+            return base.CreateWindow(activationState);
+        }
+
         protected override void OnAppLinkRequestReceived(Uri uri)
         {
             base.OnAppLinkRequestReceived(uri);
 
-            // Expecting: foodmap://poi/{id}
-            if (uri.Scheme == "foodmap" && uri.Host == "poi")
+            MainThread.BeginInvokeOnMainThread(async () =>
             {
-                var idStr = uri.Segments.LastOrDefault();
-                if (int.TryParse(idStr, out int id))
+                // Đợi một chút để Shell ổn định khi khởi động nguội (Cold Start)
+                await Task.Delay(500);
+
+                // Expecting: foodmap://poi/{id} or foodmap://guest
+                if (uri.Scheme == "foodmap")
                 {
-                    // Set static pending ID
-                    FoodMapApp.MainPage.PendingOpenFoodId = id;
-
-                    // Navigate to MainPage (Map) to show the detail
-                    if (Shell.Current != null)
+                    var authService = new FoodMapApp.Services.AuthService();
+                    
+                    if (uri.Host == "poi")
                     {
-                        _ = Shell.Current.GoToAsync("//MainPage");
+                        var idStr = uri.Segments.LastOrDefault();
+                        if (int.TryParse(idStr, out int id))
+                        {
+                            // Tự động đăng nhập khách nếu chưa có tài khoản
+                            if (!authService.IsLoggedIn)
+                            {
+                                int guestId = new Random().Next(100000, 999999);
+                                authService.LoginAsGuest(guestId);
+                            }
+
+                            // Set static pending ID
+                            FoodMapApp.MainPage.PendingOpenFoodId = id;
+
+                            // Điều hướng đến Bản đồ
+                            if (Shell.Current != null)
+                            {
+                                await Shell.Current.GoToAsync("//MainPage");
+                            }
+
+                            // Kích hoạt mở chi tiết quán
+                            if (FoodMapApp.MainPage.Instance != null)
+                            {
+                                await FoodMapApp.MainPage.Instance.TryOpenPendingDetail();
+                            }
+                        }
                     }
-
-                    // If we're already on MainPage instance, trigger it immediately
-                    if (FoodMapApp.MainPage.Instance != null)
+                    else if (uri.Host == "guest")
                     {
-                        _ = FoodMapApp.MainPage.Instance.TryOpenPendingDetail();
+                        if (!authService.IsLoggedIn)
+                        {
+                            int guestId = new Random().Next(100000, 999999);
+                            authService.LoginAsGuest(guestId);
+                        }
+
+                        if (Shell.Current != null)
+                        {
+                            await Shell.Current.GoToAsync("//HomePage");
+                        }
                     }
                 }
-            }
+            });
         }
     }
 }

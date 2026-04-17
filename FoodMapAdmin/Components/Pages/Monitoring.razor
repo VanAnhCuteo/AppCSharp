@@ -1,0 +1,330 @@
+@page "/monitoring"
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@using System.Timers
+@implements IDisposable
+@inject IAnalyticsService AnalyticsService
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
+<PageTitle>Theo dõi thời gian thực - FoodMap Admin</PageTitle>
+
+<div class="monitoring-container">
+    @* --- Header Section --- *@
+    <div class="monitoring-header">
+        <div class="title-group">
+            <div class="pulse-indicator"></div>
+            <h1 class="monitoring-title">Theo dõi thời gian thực</h1>
+        </div>
+        <div class="status-badge">
+            <i class="bi bi-broadcast"></i>
+            <span>Đang hoạt động</span>
+        </div>
+    </div>
+
+    @* --- KPI Cards --- *@
+    <div class="stats-grid">
+        <div class="stat-card stat-users">
+            <div class="stat-icon">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value">@stats.ActiveUsers</div>
+                <div class="stat-label">Số người đang dùng app</div>
+            </div>
+            <div class="stat-progress">
+                <div class="progress-bar" style="width: 100%"></div>
+            </div>
+        </div>
+
+        <div class="stat-card stat-listeners">
+            <div class="stat-icon">
+                <i class="bi bi-headphones"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value">@stats.ActiveListeners</div>
+                <div class="stat-label">Số người đang nghe audio</div>
+            </div>
+            <div class="stat-progress">
+                @{
+                    var listenerPct = stats.ActiveUsers > 0 ? (double)stats.ActiveListeners / stats.ActiveUsers * 100 : 0;
+                }
+                <div class="progress-bar" style="width: @(listenerPct)%"></div>
+            </div>
+        </div>
+    </div>
+
+    @* --- Detailed View --- *@
+    <div class="details-section">
+        <div class="section-card">
+            <div class="card-header">
+                <i class="bi bi-soundwave"></i>
+                <h3>Chi tiết các điểm đang được nghe</h3>
+            </div>
+            <div class="card-body">
+                @if (stats.PoiListeners == null || !stats.PoiListeners.Any())
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="bi bi-music-note-list"></i></div>
+                        <p>Hiện không có ai đang nghe thuyết minh</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="poi-list">
+                        @foreach (var poi in stats.PoiListeners.OrderByDescending(p => p.ListenerCount))
+                        {
+                            <div class="poi-item">
+                                <div class="poi-info">
+                                    <span class="poi-name">@poi.PoiName</span>
+                                    <span class="poi-id">ID: #@poi.PoiId</span>
+                                </div>
+                                <div class="poi-stats">
+                                    <span class="poi-count">@poi.ListenerCount</span>
+                                    <span class="poi-unit">người nghe</span>
+                                </div>
+                                <div class="poi-wave">
+                                    <div class="wave-bar"></div>
+                                    <div class="wave-bar"></div>
+                                    <div class="wave-bar"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .monitoring-container {
+        padding: 1rem;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    /* Header */
+    .monitoring-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2.5rem;
+    }
+
+    .title-group {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .monitoring-title {
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0;
+    }
+
+    .pulse-indicator {
+        width: 14px;
+        height: 14px;
+        background-color: #10b981;
+        border-radius: 50%;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .status-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        padding: 8px 16px;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 24px;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        border: 1px solid rgba(0,0,0,0.03);
+        transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover { transform: translateY(-5px); }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-users .stat-icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+    .stat-listeners .stat-icon { background: rgba(255, 45, 133, 0.1); color: var(--primary); }
+
+    .stat-value {
+        font-size: 3rem;
+        font-weight: 900;
+        margin-bottom: 4px;
+        color: var(--text-main);
+    }
+
+    .stat-label {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #718096;
+    }
+
+    .stat-progress {
+        margin-top: 1.5rem;
+        height: 6px;
+        background: #f1f5f9;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .stat-users .progress-bar { background: #3b82f6; }
+    .stat-listeners .progress-bar { background: var(--primary); transition: width 1s ease; }
+
+    /* Details Section */
+    .section-card {
+        background: white;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        border: 1px solid rgba(0,0,0,0.03);
+    }
+
+    .card-header {
+        padding: 1.5rem 2rem;
+        background: #fcfcfd;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .card-header i { font-size: 1.3rem; color: var(--primary); }
+    .card-header h3 { margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b; }
+
+    .card-body { padding: 2rem; }
+
+    .empty-state {
+        padding: 3rem;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .empty-icon { font-size: 3.5rem; opacity: 0.2; margin-bottom: 1rem; }
+
+    .poi-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1rem;
+    }
+
+    .poi-item {
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 16px;
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        transition: all 0.2s ease;
+    }
+
+    .poi-item:hover {
+        background: #fff;
+        border-color: var(--primary-glow);
+        box-shadow: 0 4px 12px rgba(255, 45, 133, 0.08);
+        transform: scale(1.02);
+    }
+
+    .poi-info { flex: 1; display: flex; flex-direction: column; }
+    .poi-name { font-weight: 700; color: #1e293b; font-size: 1rem; }
+    .poi-id { font-size: 0.75rem; color: #94a3b8; font-weight: 600; margin-top: 2px; }
+
+    .poi-stats { text-align: right; margin-right: 10px; }
+    .poi-count { display: block; font-size: 1.5rem; font-weight: 900; color: var(--primary); line-height: 1; }
+    .poi-unit { font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
+
+    /* Audio Waves */
+    .poi-wave {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        height: 20px;
+    }
+    .wave-bar {
+        width: 3px;
+        height: 12px;
+        background: var(--primary);
+        border-radius: 10px;
+        animation: wave-anim 1s ease-in-out infinite;
+    }
+    .wave-bar:nth-child(2) { animation-delay: 0.2s; height: 18px; }
+    .wave-bar:nth-child(3) { animation-delay: 0.4s; height: 10px; }
+
+    @@keyframes wave-anim {
+        0%, 100% { transform: scaleY(1); }
+        50% { transform: scaleY(1.8); }
+    }
+</style>
+
+@code {
+    private MonitoringStats stats = new();
+    private Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        
+        _timer = new Timer(2000); // 2 seconds refresh
+        _timer.Elapsed += async (s, e) => await InvokeAsync(async () => {
+            await LoadData();
+            StateHasChanged();
+        });
+        _timer.Start();
+    }
+
+    private async Task LoadData()
+    {
+        stats = await AnalyticsService.GetMonitoringStatsAsync();
+    }
+
+    public void Dispose()
+    {
+        _timer?.Stop();
+        _timer?.Dispose();
+    }
+}

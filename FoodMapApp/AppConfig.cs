@@ -18,7 +18,11 @@ namespace FoodMapApp
 
         public static string BaseUrl    => $"http://{BackendIp}:5000/api";
         public static string FoodApiUrl => $"{BaseUrl}/Food";
-        public static string TourApiUrl => $"{BaseUrl}/Tour";
+
         public static string AuthApiUrl => $"{BaseUrl}/Auth";
+
+        // Audio Settings
+        public static float AudioRate => 1.5f; // Faster reading speed (Standard is 1.0)
+        public static float AudioPitch => 1.0f; // Standard pitch
     }
 }

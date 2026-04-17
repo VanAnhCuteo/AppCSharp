@@ -16,7 +16,7 @@ namespace FoodMapApp.Views
         {
             base.OnAppearing();
             // Set Vietnamese text from code-behind to avoid XAML encoding issues
-            TitleLabel.Text = "Tham Gia FoodTour";
+            TitleLabel.Text = "Tham Gia FoodMap";
             SubtitleLabel.Text = "Tạo tài khoản để khám phá ẩm thực Vĩnh Khánh.";
             UsernameLbl.Text = "Tên đăng nhập";
             UsernameEntry.Placeholder = "Chọn tên đăng nhập";
@@ -53,7 +53,7 @@ namespace FoodMapApp.Views
 
             if (result.success)
             {
-                await DisplayAlert("Thành công", "Tài khoản đã tạo! Chào mừng đến FoodTour Vĩnh Khánh.", "OK");
+                await DisplayAlert("Thành công", "Tài khoản đã tạo! Chào mừng đến FoodMap Vĩnh Khánh.", "OK");
                 await Shell.Current.GoToAsync("//HomePage");
             }
             else

@@ -28,5 +28,20 @@
 	</array>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Ứng dụng cần sử dụng camera để quét mã QR.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần truy cập vị trí để hướng dẫn đường đi.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>foodmap</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>com.companyname.foodmapapp</string>
+		</dict>
+	</array>
 </dict>
 </plist>

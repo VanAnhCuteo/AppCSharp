@@ -26,6 +26,7 @@ public partial class QRViewerPage : ContentPage
     private Locale _vietnameseLocale;
     private bool _shouldResumeOnAppearing = false;
     private Stopwatch _audioStopwatch = new Stopwatch();
+    private IDispatcherTimer _statusTimer;
 
     public FoodModel Shop
     {
@@ -40,6 +41,9 @@ public partial class QRViewerPage : ContentPage
 	public QRViewerPage()
 	{
 		InitializeComponent();
+        _statusTimer = Dispatcher.CreateTimer();
+        _statusTimer.Interval = TimeSpan.FromSeconds(10);
+        _statusTimer.Tick += async (s, e) => await ReportLiveStatusAsync(true);
 	}
 
     private void UpdateUI()
@@ -177,6 +181,8 @@ public partial class QRViewerPage : ContentPage
 
             var options = new SpeechOptions { Locale = _vietnameseLocale };
             _ = AnimateVisualizer(); // Start visualizer
+            _statusTimer.Start();
+            _ = ReportLiveStatusAsync(true);
 
             while (_currentChunkIndex < _chunks.Length && !_ttsCts.Token.IsCancellationRequested)
             {
@@ -256,6 +262,8 @@ public partial class QRViewerPage : ContentPage
             playIcon.IsVisible = true;
             pauseIcon.IsVisible = false;
             _audioStopwatch.Stop();
+            _statusTimer.Stop();
+            _ = ReportLiveStatusAsync(false);
             _currentSentenceCts?.Cancel();
         }
         else
@@ -307,6 +315,8 @@ public partial class QRViewerPage : ContentPage
     {
         base.OnDisappearing();
         ReportAndResetAudioStats();
+        _statusTimer?.Stop();
+        _ = ReportLiveStatusAsync(false);
         // Record if it was playing (not paused and pauseIcon is visible)
         _shouldResumeOnAppearing = !_isPaused && pauseIcon.IsVisible;
         _ttsCts?.Cancel();
@@ -336,6 +346,33 @@ public partial class QRViewerPage : ContentPage
         catch (Exception ex)
         {
             Console.WriteLine($"DEBUG: Error sending QR audio log: {ex.Message}");
+        }
+    }
+
+    private async Task ReportLiveStatusAsync(bool isListening)
+    {
+        if (_shop == null) return;
+        try
+        {
+            int userId = Preferences.Default.Get("user_id", 0);
+            if (userId == 0) return;
+
+            var payload = new 
+            { 
+                user_id = userId, 
+                latitude = _shop.latitude, 
+                longitude = _shop.longitude,
+                is_listening = isListening,
+                poi_id = isListening ? _shop.id : (int?)null
+            };
+
+            using HttpClient client = new HttpClient();
+            var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+            await client.PostAsync($"{AppConfig.AuthApiUrl}/update-location", content);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"DEBUG: Error reporting QR live status: {ex.Message}");
         }
     }
 }

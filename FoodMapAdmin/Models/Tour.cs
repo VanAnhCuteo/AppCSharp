@@ -1,30 +1,30 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FoodMapAdmin.Models
 {
+    [Table("tours")]
     public class Tour
     {
-        public int TourId { get; set; }
+        [Key]
+        [Column("id")]
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(200)]
+        [Column("name")]
         public string Name { get; set; } = string.Empty;
+
+        [Column("description")]
         public string? Description { get; set; }
-        public int DurationMinutes { get; set; } = 60;
-        public decimal Price { get; set; } = 0;
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
 
-        public List<TourPoi>? Pois { get; set; }
-    }
+        [Column("created_at")]
+        public DateTime? CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public class TourPoi
-    {
-        public int TourPoiId { get; set; }
-        public int TourId { get; set; }
-        public int PoiId { get; set; }
-        public int SequenceOrder { get; set; }
-        public int StayDuration { get; set; } = 30;
-        public decimal AveragePrice { get; set; }
-
-        // Navigation property for helper
-        public Poi? Poi { get; set; }
+        // Navigation properties
+        public ICollection<TourPoi> TourPois { get; set; } = new List<TourPoi>();
+        public ICollection<TourHistory> TourHistories { get; set; } = new List<TourHistory>();
     }
 }

@@ -94,10 +94,17 @@
                     <Border.Shadow>
                         <Shadow Brush="#FF6B81" Offset="0,8" Opacity="0.10" Radius="18"/>
                     </Border.Shadow>
-
+                    
+                    <VerticalStackLayout Spacing="15">
+                        <Label Text="Lịch Sử Đi Tour Ẩm Thực" FontAttributes="Bold" FontSize="18" TextColor="#333" />
+                        <BoxView HeightRequest="1" Color="#F0F0F0" Margin="0,0,0,5" />
+                        
+                        <VerticalStackLayout x:Name="tourHistoryContainer" Spacing="10">
+                            <!-- Loaded via C# -->
+                            <Label Text="Đang tải lịch sử..." TextColor="#999" FontAttributes="Italic" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
                 </Border>
-
-
 
                 <Button x:Name="LogoutButton" Clicked="OnLogoutClicked" 
                         BackgroundColor="#FFF0F3" TextColor="#FF6B81" 

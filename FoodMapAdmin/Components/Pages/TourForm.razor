@@ -1,0 +1,446 @@
+@page "/tours/add"
+@page "/tours/edit/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using FoodMapAdmin.Models
+@using FoodMapAdmin.Services
+@inject ITourService TourService
+@inject IPoiService PoiService
+@inject NavigationManager Navigator
+@inject IJSRuntime JSRuntime
+@inject IActivityLogger Logger
+@attribute [Authorize(Roles = "admin,CNH")]
+
+<PageTitle>@(isEdit ? "Chỉnh sửa Tour" : "Thêm Tour Mới") - FoodMap Admin</PageTitle>
+
+<div class="row gx-4">
+    <div class="col-12 col-xl-10 mx-auto">
+        <!-- Page Header -->
+        <div class="d-flex align-items-center mb-4">
+            <div class="me-3 p-3 bg-white rounded-circle shadow-sm d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                <i class="bi bi-geo-alt-fill text-primary fs-4"></i>
+            </div>
+            <div>
+                <h4 class="mb-1 fw-bold" style="background: linear-gradient(45deg, #FF6B81, #FF9A76); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    @(isEdit ? "Chỉnh sửa Hành trình" : "Tạo Lộ trình Ẩm thực Mới")
+                </h4>
+                <p class="text-muted mb-0 small">Thiết kế một chuyến đi hoàn hảo qua các địa điểm hấp dẫn</p>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Đang tải...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="@tour" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <div class="row g-4">
+                    <!-- Left Column: Basic Info -->
+                    <div class="col-lg-5">
+                        <div class="card p-4 h-100 border-0 shadow-sm" style="border-radius: 16px; background: rgba(255,255,255,0.85); backdrop-filter: blur(10px);">
+                            <h6 class="fw-bold mb-4 d-flex align-items-center" style="color: #495057;">
+                                <i class="bi bi-info-circle-fill me-2 text-primary"></i> Thông tin cơ bản
+                            </h6>
+
+                            <div class="form-group mb-4">
+                                <label class="form-label" style="font-weight: 600; color: #495057;">Tên lộ trình <span class="text-danger">*</span></label>
+                                <div class="input-group glass-input-group">
+                                    <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-map text-muted"></i></span>
+                                    <InputText @bind-Value="tour.Name" class="form-control border-start-0 ps-0" style="background: transparent;" placeholder="Vd: Food Tour Ăn Sập Quận 4..." />
+                                </div>
+                                <ValidationMessage For="@(() => tour.Name)" class="text-danger small mt-1" />
+                            </div>
+
+                            <div class="form-group mb-3 flex-grow-1 d-flex flex-column">
+                                <label class="form-label" style="font-weight: 600; color: #495057;">Mô tả chi tiết</label>
+                                <InputTextArea @bind-Value="tour.Description" class="form-control glass-input flex-grow-1" style="min-height: 120px;" placeholder="Mô tả hành trình, khu vực, đặc trưng..." />
+                                <ValidationMessage For="@(() => tour.Description)" class="text-danger small mt-1" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Route Builder -->
+                    <div class="col-lg-7">
+                        <div class="card p-4 border-0 shadow-sm h-100" style="border-radius: 16px; background: #fff;">
+                            <h6 class="fw-bold mb-4 d-flex align-items-center" style="color: #495057;">
+                                <i class="bi bi-signpost-split-fill me-2 text-primary"></i> Xây dựng lộ trình
+                            </h6>
+                            
+                            <!-- Search & Add POI -->
+                            <div class="mb-4 p-3 rounded-3" style="background: #f8f9fa; border: 1px dashed #dee2e6;">
+                                <label class="form-label small fw-bold text-muted mb-2">Chọn quán ăn để thêm vào tour</label>
+                                <div class="input-group input-group-lg shadow-sm" style="border-radius: 10px; overflow: hidden;">
+                                    <span class="input-group-text bg-white border-0"><i class="bi bi-shop text-primary"></i></span>
+                                    <select class="form-select border-0 px-2" style="font-size: 0.95rem; cursor: pointer;" @bind="selectedPoiId">
+                                        <option value="0">-- Mời chọn một điểm đến --</option>
+                                        @foreach (var poi in availablePois)
+                                        {
+                                            <option value="@poi.PoiId">@(poi.Name) - @(poi.Address ?? "Chưa rõ")</option>
+                                        }
+                                    </select>
+                                    <button type="button" class="btn btn-primary px-4 fw-bold" style="background: linear-gradient(45deg, #FF6B81, #FF9A76); border: none;" @onclick="AddPoiToTour" disabled="@(selectedPoiId == 0)">
+                                        <i class="bi bi-plus-circle-fill me-1"></i> Thêm
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Selected POIs List -->
+                            <div class="selected-pois-container position-relative">
+                                <!-- Connecting Line (Styling overlay) -->
+                                @if (selectedTourPois.Any()) {
+                                    <div class="route-connecting-line"></div>
+                                }
+
+                                @if (!selectedTourPois.Any())
+                                {
+                                    <div class="text-center py-5 d-flex flex-column align-items-center justify-content-center" style="border: 2px dashed #e9ecef; border-radius: 16px; background: #fdfdfd;">
+                                        <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                                            <i class="bi bi-geo text-muted fs-3"></i>
+                                        </div>
+                                        <h6 class="text-muted fw-bold">Chưa có điểm dừng nào</h6>
+                                        <p class="text-muted small mb-0 w-75">Hãy thêm các nhà hàng từ danh sách phía trên để bắt đầu xây dựng lộ trình chi tiết.</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @foreach (var tp in selectedTourPois.OrderBy(x => x.OrderIndex))
+                                    {
+                                        <div class="poi-card mb-3 p-3 position-relative bg-white">
+                                            <!-- Step Number Badge -->
+                                            <div class="step-badge">
+                                                @(tp.OrderIndex + 1)
+                                            </div>
+
+                                            <div class="ms-4 ps-3">
+                                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                                    <div style="font-weight: 700; color: #2d3436; font-size: 1.05rem;">
+                                                        @tp.Poi?.Name
+                                                        <div class="small fw-normal text-muted mt-1" style="font-size: 0.8rem;">
+                                                            <i class="bi bi-geo-alt"></i> @(tp.Poi?.Address ?? "Không rõ địa chỉ")
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex gap-1">
+                                                        <button type="button" class="btn btn-sm btn-light text-secondary action-btn" @onclick="() => MoveUp(tp)" disabled="@(tp.OrderIndex == 0)">
+                                                            <i class="bi bi-chevron-up"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-light text-secondary action-btn" @onclick="() => MoveDown(tp)" disabled="@(tp.OrderIndex == selectedTourPois.Count - 1)">
+                                                            <i class="bi bi-chevron-down"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-light text-danger action-btn remove-btn ms-1" @onclick="() => RemovePoi(tp)">
+                                                            <i class="bi bi-trash-fill"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3">
+                                                    <div class="col-sm-6">
+                                                        <div class="input-group input-group-sm">
+                                                            <span class="input-group-text bg-light border-end-0 text-muted" title="Thời gian lưu lại"><i class="bi bi-clock-history"></i></span>
+                                                            <input type="number" class="form-control border-start-0" @bind="tp.StayDurationMinutes" min="0" />
+                                                            <span class="input-group-text bg-white text-muted" style="font-size: 0.75rem;">Phút</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-sm-6">
+                                                        <div class="input-group input-group-sm">
+                                                            <span class="input-group-text bg-light border-end-0 text-muted" title="Giá tiền đi kèm"><i class="bi bi-cash-stack"></i></span>
+                                                            <input type="text" class="form-control border-start-0" @bind="tp.ApproximatePrice" placeholder="Giá tham khảo" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="d-flex align-items-center justify-content-end gap-3 mt-4 pt-3 border-top">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger mb-0 py-2 me-auto d-flex align-items-center" style="font-size: 0.9rem;">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+                        </div>
+                    }
+
+                    <button type="button" class="btn btn-light fw-bold px-4" style="height: 48px; border-radius: 12px; color: #6c757d;" @onclick='() => Navigator.NavigateTo("/tours")'>
+                        Hủy bỏ
+                    </button>
+                    <button type="submit" class="btn btn-primary fw-bold px-5 d-flex align-items-center gap-2" 
+                            style="height: 48px; border-radius: 12px; background: linear-gradient(45deg, #FF6B81, #FF9A76); border: none; box-shadow: 0 4px 12px rgba(255, 107, 129, 0.3);" 
+                            disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span>Đang xử lý...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-check-circle-fill"></i> 
+                            <span>@(isEdit ? "Cập nhật Lộ trình" : "Lưu Lộ trình Mới")</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        }
+    </div>
+</div>
+
+<style>
+    .glass-input-group {
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.4);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        transition: all 0.2s;
+    }
+    .glass-input-group:focus-within {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-subtle);
+    }
+    .glass-input-group .form-control:focus {
+        box-shadow: none;
+    }
+    .glass-input {
+        background: rgba(255, 255, 255, 0.4);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+        transition: all 0.2s;
+    }
+    .glass-input:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-subtle);
+    }
+    
+    .selected-pois-container {
+        padding-left: 20px;
+        margin-left: 10px;
+    }
+    .route-connecting-line {
+        position: absolute;
+        top: 30px;
+        bottom: 30px;
+        left: -8px;
+        width: 3px;
+        background: #e9ecef;
+        z-index: 0;
+        border-radius: 3px;
+    }
+    
+    .poi-card {
+        border-radius: 14px;
+        border: 1px solid #f1f3f5;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        transition: all 0.2s ease;
+        z-index: 1;
+    }
+    .poi-card:hover {
+        transform: translateX(5px);
+        border-color: #ffdce1;
+        box-shadow: 0 6px 20px rgba(255, 107, 129, 0.08);
+    }
+    
+    .step-badge {
+        position: absolute;
+        left: -35px;
+        top: 20px;
+        width: 30px;
+        height: 30px;
+        background: linear-gradient(135deg, #FF6B81, #FF9A76);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.9rem;
+        z-index: 2;
+        box-shadow: 0 3px 8px rgba(255, 107, 129, 0.4);
+        border: 2px solid white;
+    }
+    
+    .action-btn {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: #f8f9fa;
+        border: none;
+        transition: all 0.2s;
+    }
+    .action-btn:hover:not(:disabled) {
+        background: #e9ecef;
+    }
+    .action-btn.remove-btn:hover {
+        background: #ffe3e3;
+        color: #fa5252 !important;
+    }
+</style>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    
+    private Tour tour = new Tour();
+    private List<Poi> availablePois = new();
+    private List<TourPoi> selectedTourPois = new();
+    
+    private bool isEdit => Id.HasValue;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string? errorMessage;
+    
+    private int selectedPoiId = 0;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            availablePois = await PoiService.GetAllPoisAsync();
+
+            if (isEdit)
+            {
+                var existing = await TourService.GetTourByIdAsync(Id.Value);
+                if (existing != null)
+                {
+                    tour = existing;
+                    selectedTourPois = existing.TourPois.ToList();
+                }
+                else
+                {
+                    Navigator.NavigateTo("/tours");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi tải dữ liệu: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void AddPoiToTour()
+    {
+        if (selectedPoiId == 0) return;
+        
+        // Prevent exact duplicates
+        if (selectedTourPois.Any(x => x.PoiId == selectedPoiId))
+        {
+            return;
+        }
+
+        var poi = availablePois.FirstOrDefault(p => p.PoiId == selectedPoiId);
+        if (poi != null)
+        {
+            selectedTourPois.Add(new TourPoi
+            {
+                PoiId = poi.PoiId,
+                Poi = poi,
+                StayDurationMinutes = 30, // Default
+                OrderIndex = selectedTourPois.Count
+            });
+            
+            // Reset selection
+            selectedPoiId = 0;
+            StateHasChanged();
+        }
+    }
+
+    private void RemovePoi(TourPoi tp)
+    {
+        selectedTourPois.Remove(tp);
+        ReorderIndices();
+    }
+
+    private void MoveUp(TourPoi tp)
+    {
+        var index = selectedTourPois.IndexOf(tp);
+        if (index > 0)
+        {
+            var temp = selectedTourPois[index - 1];
+            selectedTourPois[index - 1] = tp;
+            selectedTourPois[index] = temp;
+            ReorderIndices();
+        }
+    }
+
+    private void MoveDown(TourPoi tp)
+    {
+        var index = selectedTourPois.IndexOf(tp);
+        if (index < selectedTourPois.Count - 1)
+        {
+            var temp = selectedTourPois[index + 1];
+            selectedTourPois[index + 1] = tp;
+            selectedTourPois[index] = temp;
+            ReorderIndices();
+        }
+    }
+
+    private void ReorderIndices()
+    {
+        for (int i = 0; i < selectedTourPois.Count; i++)
+        {
+            selectedTourPois[i].OrderIndex = i;
+        }
+        StateHasChanged();
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = null;
+
+            if (selectedTourPois.Count < 2)
+            {
+                errorMessage = "Một tour cần ít nhất 2 quán ăn để tạo lộ trình hợp lệ.";
+                isSaving = false;
+                return;
+            }
+
+            var authState = await AuthStateTask!;
+            var user = authState.User;
+            var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            int.TryParse(userIdStr, out var currentUserId);
+
+            ReorderIndices(); // Ensure indices are clean
+
+            if (isEdit)
+            {
+                await TourService.UpdateTourAsync(tour, selectedTourPois);
+                await Logger.LogAsync(currentUserId, "Sửa thông tin tour", tour.Name);
+            }
+            else
+            {
+                await TourService.CreateTourAsync(tour, selectedTourPois);
+                await Logger.LogAsync(currentUserId, "Tạo tour mới", tour.Name);
+            }
+
+            Navigator.NavigateTo("/tours");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi khi lưu data: {ex.Message}";
+            isSaving = false;
+        }
+    }
+}

@@ -1,4 +1,7 @@
 using FoodMapAPI.Services;
+using FoodMapAPI.Data;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors(options =>
@@ -11,9 +14,22 @@ builder.Services.AddCors(options =>
                   .AllowAnyHeader();
         });
 });
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<TranslationService>();
+
+// Register EF Core DbContext
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+
+// Register Tour Service
+builder.Services.AddScoped<ITourService, TourService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -41,5 +57,51 @@ if (!string.IsNullOrEmpty(imagePath) && Directory.Exists(imagePath))
 app.UseAuthorization();
 app.UseCors("AllowAllOriginsPolicy");
 app.MapControllers();
+
+// Database Seeding/Migration for Tours
+using (var scope = app.Services.CreateScope())
+{
+    try 
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        db.Database.ExecuteSqlRaw(@"
+            CREATE TABLE IF NOT EXISTS `tours` (
+                `id` INT NOT NULL AUTO_INCREMENT,
+                `name` VARCHAR(200) NOT NULL,
+                `description` TEXT,
+                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        db.Database.ExecuteSqlRaw(@"
+            CREATE TABLE IF NOT EXISTS `tour_pois` (
+                `id` INT NOT NULL AUTO_INCREMENT,
+                `tour_id` INT NOT NULL,
+                `poi_id` INT NOT NULL,
+                `stay_duration_minutes` INT DEFAULT 30,
+                `approximate_price` VARCHAR(100) DEFAULT NULL,
+                `order_index` INT DEFAULT 0,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        db.Database.ExecuteSqlRaw(@"
+            CREATE TABLE IF NOT EXISTS `tour_histories` (
+                `id` INT NOT NULL AUTO_INCREMENT,
+                `user_id` INT NOT NULL,
+                `tour_id` INT NOT NULL,
+                `status` VARCHAR(50) DEFAULT 'InProgress',
+                `progress_percentage` DECIMAL(5,2) DEFAULT 0,
+                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Startup] Database Migration Error: {ex.Message}");
+    }
+}
 
 app.Run("http://0.0.0.0:5000");

@@ -116,7 +116,6 @@ window.mapViewer = {
 
     updateHeatmap: function (dataPoints) {
         try {
-            this.clearHeatmap();
             if (!this.map || !dataPoints) return;
 
             console.log("[MapViewer] Data received for heatmap:", dataPoints);
@@ -129,12 +128,13 @@ window.mapViewer = {
 
             if (normalizedData.length === 0) {
                 console.warn("[MapViewer] No valid coordinates found for heatmap.");
+                this.clearHeatmap();
                 return;
             }
 
             const cfg = {
-                radius: 0.0005, // Khoảng 50m theo yêu cầu
-                maxOpacity: .9, // Giữ độ đậm
+                radius: 0.0005,
+                maxOpacity: .9,
                 blur: .80,
                 scaleRadius: true,
                 useLocalExtrema: false,
@@ -142,12 +142,12 @@ window.mapViewer = {
                 lngField: 'lng',
                 valueField: 'count',
                 gradient: {
-                    '.1': '#0000FF',   // Blue đậm (Lạnh)
-                    '.25': '#00FFFF',  // Cyan
-                    '.45': '#00FF00',  // Green mẫu chuẩn
-                    '.65': '#FFFF00',  // Yellow
-                    '.85': '#FF8000',  // Orange
-                    '1.0': '#FF0000'   // Red đậm (Hot)
+                    '.1': '#0000FF',
+                    '.25': '#00FFFF',
+                    '.45': '#00FF00',
+                    '.65': '#FFFF00',
+                    '.85': '#FF8000',
+                    '1.0': '#FF0000'
                 }
             };
 
@@ -156,18 +156,22 @@ window.mapViewer = {
                 return;
             }
 
-            this.heatmapLayer = new HeatmapOverlay(cfg);
-            this.map.addLayer(this.heatmapLayer);
+            // Reuse existing layer to avoid flickering
+            if (!this.heatmapLayer) {
+                this.heatmapLayer = new HeatmapOverlay(cfg);
+                this.map.addLayer(this.heatmapLayer);
+            }
             
             this.heatmapLayer.setData({
-                max: 2, // Chỉ cần 2 người là đạt độ "nóng" cao, 1 người sẽ hiện màu Cyan/Green đậm
+                max: 2,
                 data: normalizedData
             });
 
-            const bounds = L.latLngBounds(normalizedData.map(p => [p.lat, p.lng]));
-            if (bounds.isValid()) {
-                this.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
-            }
+            // fitBounds only if requested or on first load (disabled by default for smooth updates)
+            // const bounds = L.latLngBounds(normalizedData.map(p => [p.lat, p.lng]));
+            // if (bounds.isValid()) {
+            //     this.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+            // }
         } catch (e) {
             console.error("Error updating heatmap:", e);
         }

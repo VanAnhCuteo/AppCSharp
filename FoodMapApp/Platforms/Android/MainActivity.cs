@@ -11,6 +11,10 @@ namespace FoodMapApp
                   Categories = new[] { Android.Content.Intent.CategoryDefault, Android.Content.Intent.CategoryBrowsable },
                   DataScheme = "foodmap",
                   DataHost = "poi")]
+    [IntentFilter(new[] { Android.Content.Intent.ActionView },
+                  Categories = new[] { Android.Content.Intent.CategoryDefault, Android.Content.Intent.CategoryBrowsable },
+                  DataScheme = "foodmap",
+                  DataHost = "guest")]
     public class MainActivity : MauiAppCompatActivity, AudioManager.IOnAudioFocusChangeListener
     {
         private AudioManager? _audioManager;
@@ -27,6 +31,15 @@ namespace FoodMapApp
             if (focusChange == AudioFocus.Loss || focusChange == AudioFocus.LossTransient || focusChange == AudioFocus.LossTransientCanDuck)
             {
                 MainPage.Instance?.HandleSystemInterruption();
+            }
+        }
+
+        protected override void OnNewIntent(Intent? intent)
+        {
+            base.OnNewIntent(intent);
+            if (intent != null)
+            {
+                this.Intent = intent;
             }
         }
     }

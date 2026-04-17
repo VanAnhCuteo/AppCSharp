@@ -37,4 +37,18 @@ namespace FoodMapAdmin.Models
         public int TotalListens { get; set; }
         public double AverageDurationSeconds { get; set; }
     }
+
+    public class MonitoringStats
+    {
+        public int ActiveUsers { get; set; }
+        public int ActiveListeners { get; set; }
+        public List<ActivePoiListener> PoiListeners { get; set; } = new();
+    }
+
+    public class ActivePoiListener
+    {
+        public int PoiId { get; set; }
+        public string? PoiName { get; set; }
+        public int ListenerCount { get; set; }
+    }
 }

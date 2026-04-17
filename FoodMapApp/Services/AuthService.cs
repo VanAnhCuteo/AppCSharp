@@ -71,6 +71,14 @@ namespace FoodMapApp.Services
             Preferences.Default.Set("is_logged_in", true);
         }
 
+        public void LoginAsGuest(int id)
+        {
+            Preferences.Default.Set("user_id", -id);
+            Preferences.Default.Set("username", $"Khách {id}");
+            Preferences.Default.Set("role", "guest");
+            Preferences.Default.Set("is_logged_in", true);
+        }
+
         public async Task<bool> UpdateProfileAsync(int userId, string username, string email, string? password = null)
         {
             try
@@ -94,14 +102,31 @@ namespace FoodMapApp.Services
             }
         }
 
-        public void Logout()
+        public async Task LogoutAsync()
         {
-            Preferences.Default.Clear();
+            try
+            {
+                int userId = UserId;
+                if (userId > 0)
+                {
+                    await _httpClient.DeleteAsync($"{BaseUrl}/clear-location/{userId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error clearing location on logout: {ex.Message}");
+            }
+            finally
+            {
+                Preferences.Default.Clear();
+            }
         }
 
         public bool IsLoggedIn => Preferences.Default.Get("is_logged_in", false);
         public bool IsOffline => Preferences.Default.Get("role", string.Empty) == "offline";
         public int UserId => Preferences.Default.Get("user_id", 0);
+        public string Role => Preferences.Default.Get("role", string.Empty);
+        public bool IsGuest => Role == "guest" || Role == "offline";
         public string Username => Preferences.Default.Get("username", string.Empty);
         public string Email => Preferences.Default.Get("email", string.Empty);
 

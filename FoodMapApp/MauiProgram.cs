@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using ZXing.Net.Maui.Controls;
 
 namespace FoodMapApp
 {
@@ -14,6 +15,7 @@ namespace FoodMapApp
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 })
+                .UseBarcodeReader()
                 .ConfigureMauiHandlers(handlers =>
                 {
 #if ANDROID

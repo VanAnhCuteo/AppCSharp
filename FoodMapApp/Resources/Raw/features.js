@@ -242,10 +242,8 @@ const SIMULATE_GPS = false; // Set to false to use real GPS
 let simulatedLat = 10.7672;
 let simulatedLon = 106.6931;
 
-let poiAudioTimers = {};
 let poiHistoryTimers = {};
-let playedAudioPois = new Set();
-let lastGeofenceTime = 0;
+
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371e3;
@@ -275,8 +273,6 @@ function startGeofencing() {
 
 function processLocation(position) {
     const now = Date.now();
-    if (now - lastGeofenceTime < 2000) return;
-    lastGeofenceTime = now;
     const userLat = position.coords.latitude;
     const userLon = position.coords.longitude;
 
@@ -300,22 +296,7 @@ function processLocation(position) {
     // Sắp xếp quán trong phạm vi theo khoảng cách (Gần nhất lên đầu)
     poisInRange.sort((a, b) => a.distance - b.distance);
 
-    if (poisInRange.length > 0) {
-        // TÌM QUÁN CHƯA NGHE GẦN NHẤT ĐỂ KÍCH HOẠT (Tránh trigger đồng thời gây nhiễu hàng đợi)
-        const nextTarget = poisInRange.find(food => !playedAudioPois.has(food.id) && !poiAudioTimers[food.id]);
-        
-        if (nextTarget) {
-            console.log(`DEBUG: Priority target found in range: ${nextTarget.name}`);
-            poiAudioTimers[nextTarget.id] = setTimeout(() => {
-                if (!playedAudioPois.has(nextTarget.id)) {
-                    console.log(`DEBUG: Triggering auto-audio (Priority): ${nextTarget.name}`);
-                    playedAudioPois.add(nextTarget.id);
-                    triggerAutoAudio(nextTarget.id);
-                }
-                delete poiAudioTimers[nextTarget.id];
-            }, 5000);
-        }
-    }
+
 
     allFoodsData.forEach(food => {
         // Đổi màu XANH cho quán gần nhất tuyệt đối
@@ -334,45 +315,11 @@ function processLocation(position) {
             }
         }
 
-        // Nếu người dùng đi ra khỏi phạm vi quán RIÊNG trước khi hết 5 giây -> Hủy bộ đếm
-        const stillInRange = poisInRange.some(p => p.id === food.id);
-        if (!stillInRange) {
-            if (poiAudioTimers[food.id]) {
-                console.log(`DEBUG: User left range of ${food.name}, cancelling countdown`);
-                clearTimeout(poiAudioTimers[food.id]);
-                delete poiAudioTimers[food.id];
-            }
 
-            // MỚI: Reset trạng thái "đã phát" khi người dùng đi xa khỏi quán (+ 30m buffer)
-            const exitBuffer = 2; // Khoảng cách đệm để tránh jitter (2m)
-            const foodDistanceData = allDistances.find(f => f.id === food.id);
-            if (foodDistanceData) {
-                const range = (food.range_meters || 50);
-                if (foodDistanceData.distance > (range + exitBuffer) && playedAudioPois.has(food.id)) {
-                    console.log(`DEBUG: User far enough from ${food.name} (${Math.round(foodDistanceData.distance)}m), resetting play status`);
-                    playedAudioPois.delete(food.id);
-                }
-            }
-        }
     });
 }
 
-async function triggerAutoAudio(poiId) {
-    try {
-        const guideRes = await fetch(`${platformApiBase}/${poiId}/guide?lang=${selectedLanguage}`);
-        if (guideRes.ok) {
-            const guide = await guideRes.json();
-            // AUTO requests do NOT have manual=true
-            playAudioGuide(`${guide.title}. ${guide.description || ''}`, guide.language || selectedLanguage, poiId, false);
-        } else {
-            const detailsRes = await fetch(`${platformApiBase}/${poiId}?lang=${selectedLanguage}`);
-            if (detailsRes.ok) {
-                const data = await detailsRes.json();
-                if (data.description) playAudioGuide(`${data.name}. ${data.description}`, selectedLanguage, poiId, false);
-            }
-        }
-    } catch (e) { console.error("Auto-audio error", e); }
-}
+
 
 // ── AUDIO PLAYER LOGIC ──
 let audioTimerInterval = null;
@@ -453,6 +400,34 @@ if (directionsBtn) {
 async function startNavigation(slat, slon, dlat, dlon) {
     if (routingLayer) map.removeLayer(routingLayer);
 
+    const fallbackToStraightLine = () => {
+        // Vẽ tia thẳng đứt đoạn nếu bộ định tuyến lỗi hoặc đích quá gần
+        const directLine = L.polyline([
+            [slat, slon],
+            [dlat, dlon]
+        ], {
+            color: '#FB6F92',
+            weight: 5,
+            opacity: 0.8,
+            dashArray: '5, 10'
+        });
+        routingLayer = L.featureGroup([directLine]).addTo(map);
+        map.fitBounds(routingLayer.getBounds(), { padding: [50, 50], maxZoom: 17 });
+        
+        const dist = calculateDistance(slat, slon, dlat, dlon);
+        document.getElementById('nav-distance').innerText = `${(dist / 1000).toFixed(2)} km`;
+        document.getElementById('nav-overlay').classList.remove('hidden');
+        navigationActive = true;
+    };
+
+    // Tính khoảng cách đường chim bay trước
+    const straightDist = calculateDistance(slat, slon, dlat, dlon);
+    if (straightDist < 30) {
+        // Nếu mục tiêu quá gần (< 30m), tránh việc API trả về lỗi hoặc tạo path quá nhỏ
+        fallbackToStraightLine();
+        return;
+    }
+
     // Add alternatives=true to get multiple routes and then pick the shortest distance
     const url = `https://router.project-osrm.org/route/v1/driving/${slon},${slat};${dlon},${dlat}?overview=full&geometries=geojson&alternatives=true`;
 
@@ -464,7 +439,7 @@ async function startNavigation(slat, slon, dlat, dlon) {
             // Sort routes by distance (ascending) to get the shortest route
             data.routes.sort((a, b) => a.distance - b.distance);
             const route = data.routes[0];
-            const distance = (route.distance / 1000).toFixed(1); // km
+            const distance = (route.distance / 1000).toFixed(2); // km
 
             const mainRouteLayer = L.geoJSON(route.geometry, {
                 style: {
@@ -487,15 +462,19 @@ async function startNavigation(slat, slon, dlat, dlon) {
             });
 
             routingLayer = L.featureGroup([mainRouteLayer, walkingLine]).addTo(map);
-            map.fitBounds(routingLayer.getBounds(), { padding: [50, 50] });
+            // Giới hạn maxZoom để không bị zoom sát mặt đất (chỉ thấy 1 chấm) khi 2 vị trí quá gần
+            map.fitBounds(routingLayer.getBounds(), { padding: [50, 50], maxZoom: 17 });
 
             document.getElementById('nav-distance').innerText = `${distance} km`;
             document.getElementById('nav-overlay').classList.remove('hidden');
             navigationActive = true;
+        } else {
+            console.warn("OSRM returned non-Ok code:", data.code);
+            fallbackToStraightLine();
         }
     } catch (e) {
         console.error("Routing error", e);
-        window.location.href = `app-ui://alert?message=${encodeURIComponent("Không thể tìm đường đi lúc này.")}`;
+        fallbackToStraightLine();
     }
 }
 
@@ -513,3 +492,144 @@ function cancelNavigation() {
         processLocation({ coords: { latitude: userMarker.getLatLng().lat, longitude: userMarker.getLatLng().lng } });
     }
 }
+
+// --- TOUR LOGIC ---
+let isTourActive = false;
+let currentTourPois = [];
+let tourCurrentIndex = -1;
+let tourRoutingLayer = null;
+let currentTourId = 0;
+
+window.startTourRoute = async function(poisJson) {
+    if (!poisJson || poisJson.length === 0) return;
+    
+    cancelNavigation();
+    if (tourRoutingLayer) map.removeLayer(tourRoutingLayer);
+    
+    currentTourPois = poisJson;
+    isTourActive = true;
+    tourCurrentIndex = -1;
+    currentTourId = poisJson[0].TourId || poisJson[0].tourId;
+
+    // Hide all markers not in tour
+    const tourPoiIds = currentTourPois.map(tp => (tp.PoiId || tp.poiId));
+    mapMarkers.forEach(m => {
+        if (!tourPoiIds.includes(m.food.id)) {
+            m.marker.setOpacity(0); // Hide
+        } else {
+            m.marker.setOpacity(1); // Show
+            m.marker.setIcon(pinkIcon); // Reset color
+        }
+    });
+
+    let totalDurationSeconds = 0;
+    
+    // Draw route from user to POI 1, POI 1 to POI 2...
+    if (!userMarker) {
+        window.location.href = "app-tour://update?duration=Đang+tìm+vị+trí...&price=&progress=";
+        return;
+    }
+
+    const userLat = userMarker.getLatLng().lat;
+    const userLon = userMarker.getLatLng().lng;
+
+    // Calculate OSRM route for all points (User -> P1 -> P2...)
+    let coordsString = `${userLon},${userLat};`;
+    
+    for (let i = 0; i < currentTourPois.length; i++) {
+        let p = currentTourPois[i].Poi || currentTourPois[i].poi;
+        coordsString += `${p.Longitude || p.longitude},${p.Latitude || p.latitude}`;
+        if (i < currentTourPois.length - 1) coordsString += ";";
+    }
+
+    const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.code === 'Ok') {
+            const route = data.routes[0];
+            totalDurationSeconds += route.duration;
+            
+            tourRoutingLayer = L.geoJSON(route.geometry, {
+                style: { color: '#FF9A76', weight: 6, opacity: 0.8, lineJoin: 'round' }
+            }).addTo(map);
+
+            map.fitBounds(tourRoutingLayer.getBounds(), { padding: [50, 50] });
+        }
+    } catch (e) { console.error("Tour Routing Error", e); }
+
+    // Add stay durations
+    currentTourPois.forEach(tp => {
+        let mins = tp.StayDurationMinutes || tp.stayDurationMinutes || 0;
+        totalDurationSeconds += (mins * 60);
+    });
+
+    // Format total time
+    let hours = Math.floor(totalDurationSeconds / 3600);
+    let mins = Math.floor((totalDurationSeconds % 3600) / 60);
+    let timeStr = hours > 0 ? `${hours}h ${mins}p` : `${mins} phút`;
+
+    // Calculate approx price
+    let totalPriceStrs = currentTourPois.map(tp => tp.ApproximatePrice || tp.approximatePrice || "").filter(p => p !== "");
+    let priceStr = totalPriceStrs.join(" + ");
+    if (priceStr.length > 20) priceStr = priceStr.substring(0, 20) + "...";
+    if (priceStr === "") priceStr = "Chưa rõ";
+
+    window.location.href = `app-tour://update?duration=${encodeURIComponent(timeStr)}&price=${encodeURIComponent(priceStr)}&progress=Chưa di chuyển`;
+};
+
+window.simulateTourNextStop = function() {
+    if (!isTourActive || currentTourPois.length === 0) return;
+    
+    tourCurrentIndex++;
+    if (tourCurrentIndex >= currentTourPois.length) {
+        window.location.href = "app-ui://alert?message=" + encodeURIComponent("Đã kết thúc hành trình tour!");
+        window.location.href = `app-tour://save?id=${currentTourId}&pct=100&status=Completed_100`;
+        return;
+    }
+
+    let tp = currentTourPois[tourCurrentIndex];
+    let p = tp.Poi || tp.poi;
+    
+    // Move userMarker
+    if (userMarker) {
+        userMarker.setLatLng([p.Latitude || p.latitude, p.Longitude || p.longitude]);
+        map.flyTo([p.Latitude || p.latitude, p.Longitude || p.longitude], 17);
+    }
+
+    // Trigger details
+    openDetails(p.Id || p.id, selectedLanguage);
+
+    // Show Alert Box for Tour POI
+    let stayMins = tp.StayDurationMinutes || tp.stayDurationMinutes || 0;
+    let price = tp.ApproximatePrice || tp.approximatePrice || "Chưa rõ";
+    window.location.href = `app-ui://alert?message=${encodeURIComponent(`Thời gian ở lại quán: ${stayMins} phút\nGiá tiền ~ ${price}`)}`;
+
+    // Update Progress
+    let pct = Math.round(((tourCurrentIndex + 1) / currentTourPois.length) * 100);
+    window.location.href = `app-tour://update?progress=${encodeURIComponent(`${pct}% (Quán ${tourCurrentIndex + 1}/${currentTourPois.length})`)}&duration=&price=`;
+
+    // Save Progress if reached 50%
+    if (pct >= 50 && pct < 100 && tourCurrentIndex === Math.floor(currentTourPois.length / 2)) {
+        window.location.href = `app-tour://save?id=${currentTourId}&pct=${pct}&status=Completed_50`;
+    }
+};
+
+window.endTour = function() {
+    isTourActive = false;
+    currentTourPois = [];
+    tourCurrentIndex = -1;
+    if (tourRoutingLayer) {
+        map.removeLayer(tourRoutingLayer);
+        tourRoutingLayer = null;
+    }
+    // Show all markers again
+    mapMarkers.forEach(m => {
+        m.marker.setOpacity(1);
+    });
+    if (userMarker) {
+        processLocation({ coords: { latitude: userMarker.getLatLng().lat, longitude: userMarker.getLatLng().lng } });
+    }
+    closeDetails();
+};

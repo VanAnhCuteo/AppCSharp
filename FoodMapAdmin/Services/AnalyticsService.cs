@@ -8,6 +8,7 @@ namespace FoodMapAdmin.Services
     {
         Task<List<PoiAudioStat>> GetTopAudioStatsAsync(int count = 5);
         Task<List<UserHeatPoint>> GetActiveUserLocationsAsync();
+        Task<MonitoringStats> GetMonitoringStatsAsync();
     }
 
     public class AnalyticsService : IAnalyticsService
@@ -42,10 +43,10 @@ namespace FoodMapAdmin.Services
 
         public async Task<List<UserHeatPoint>> GetActiveUserLocationsAsync()
         {
-            var tenMinutesAgo = DateTime.Now.AddMinutes(-10);
+            var activeThreshold = DateTime.Now.AddSeconds(-21);
             return await _context.UserLocations
                 .AsNoTracking()
-                .Where(u => u.LastActive > tenMinutesAgo)
+                .Where(u => u.LastActive > activeThreshold)
                 .Select(u => new UserHeatPoint
                 {
                     Lat = (double)u.Latitude,
@@ -53,6 +54,33 @@ namespace FoodMapAdmin.Services
                     Count = 1
                 })
                 .ToListAsync();
+        }
+
+        public async Task<MonitoringStats> GetMonitoringStatsAsync()
+        {
+            var activeThreshold = DateTime.Now.AddSeconds(-21);
+            var activeRecords = await _context.UserLocations
+                .AsNoTracking()
+                .Where(u => u.LastActive > activeThreshold)
+                .ToListAsync();
+
+            var stats = new MonitoringStats
+            {
+                ActiveUsers = activeRecords.Count,
+                ActiveListeners = activeRecords.Count(r => r.IsListeningAudio),
+                PoiListeners = activeRecords
+                    .Where(r => r.IsListeningAudio && r.ListeningPoiId.HasValue)
+                    .GroupBy(r => r.ListeningPoiId.Value)
+                    .Select(g => new ActivePoiListener
+                    {
+                        PoiId = g.Key,
+                        ListenerCount = g.Count(),
+                        PoiName = _context.Pois.FirstOrDefault(p => p.PoiId == g.Key)?.Name ?? $"POI #{g.Key}"
+                    })
+                    .ToList()
+            };
+
+            return stats;
         }
     }
 }

@@ -9,10 +9,99 @@
     <Grid>
         <WebView x:Name="mapView" />
 
+        <!-- Top Right Menu Icon (Elegant Tour Button) -->
+        <Border HorizontalOptions="End" VerticalOptions="Start" Margin="0,110,15,0" WidthRequest="50" HeightRequest="50" Padding="0" StrokeThickness="0">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#FF6B81" Offset="0.0" />
+                    <GradientStop Color="#FF9A76" Offset="1.0" />
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="25" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="#FF6B81" Offset="0,6" Radius="15" Opacity="0.3" />
+            </Border.Shadow>
+            <Grid>
+                <!-- Compass / Journey icon -->
+                <Path Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 Z M13.93,16.19 L7.93,14.08 C7.62,13.97 7.5,13.66 7.61,13.35 L9.72,7.35 C9.83,7.04 10.14,6.84 10.45,6.84 C10.55,6.84 10.66,6.86 10.76,6.9 L16.76,9.01 C17.07,9.12 17.27,9.43 17.27,9.74 C17.27,9.84 17.25,9.95 17.21,10.05 L15.1,16.05 C14.95,16.47 14.46,16.68 14.04,16.54 L13.93,16.19 Z M12,10.9 C11.39,10.9 10.9,11.39 10.9,12 C10.9,12.61 11.39,13.1 12,13.1 C12.61,13.1 13.1,12.61 13.1,12 C13.1,11.39 12.61,10.9 12,10.9 Z" 
+                      Fill="White" WidthRequest="26" HeightRequest="26" HorizontalOptions="Center" VerticalOptions="Center"/>
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnMenuClicked" />
+                </Grid.GestureRecognizers>
+            </Grid>
+        </Border>
+
+        <!-- Tour Selection Drawer Overlay -->
+        <Grid x:Name="tourDrawerOverlay" IsVisible="False" BackgroundColor="#66000000" ZIndex="100">
+            <!-- Full screen tap to close -->
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnCloseDrawerClicked" />
+            </Grid.GestureRecognizers>
+
+            <ContentView x:Name="tourDrawer" BackgroundColor="#F8F9FA" HorizontalOptions="End" VerticalOptions="Fill" WidthRequest="300" TranslationX="300">
+                <!-- Consume taps so they don't reach the overlay -->
+                <ContentView.GestureRecognizers>
+                    <TapGestureRecognizer />
+                </ContentView.GestureRecognizers>
+
+                <Grid RowDefinitions="Auto, *">
+                    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Padding="20">
+                        <Label Text="Danh Sách Tour" FontSize="18" FontAttributes="Bold" TextColor="#333" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="✕" FontSize="20" TextColor="#888" VerticalOptions="Center">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnCloseDrawerClicked" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
+                    <ScrollView Grid.Row="1" Padding="15,0">
+                        <VerticalStackLayout x:Name="tourListContainer" Spacing="15">
+                            <!-- Loaded via C# -->
+                        </VerticalStackLayout>
+                    </ScrollView>
+                </Grid>
+            </ContentView>
+        </Grid>
+
+        <!-- Tour Simulation Panel -->
+        <Border x:Name="tourSimulationPanel" IsVisible="False" HorizontalOptions="Center" VerticalOptions="Start" Margin="0,110,0,0" Padding="15" WidthRequest="320" BackgroundColor="#FFFFFF" StrokeThickness="0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="12" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+                <Shadow Brush="Black" Offset="0,6" Radius="15" Opacity="0.2" />
+            </Border.Shadow>
+            <VerticalStackLayout Spacing="8">
+                <Label x:Name="simTourName" Text="Tên Tour" FontSize="16" FontAttributes="Bold" TextColor="#333" HorizontalOptions="Center" />
+                <BoxView HeightRequest="1" Color="#EEEEEE" Margin="0,5" />
+                
+                <Grid ColumnDefinitions="Auto, *">
+                    <Label Grid.Column="0" Text="⏳ Thời gian:" TextColor="#666" FontSize="13" FontAttributes="Bold" />
+                    <Label Grid.Column="1" x:Name="simTotalTime" Text="Đang tính toán..." TextColor="#333" FontSize="13" HorizontalOptions="End" />
+                </Grid>
+                <Grid ColumnDefinitions="Auto, *">
+                    <Label Grid.Column="0" Text="💰 Giá xấp xỉ:" TextColor="#666" FontSize="13" FontAttributes="Bold" />
+                    <Label Grid.Column="1" x:Name="simTotalPrice" Text="..." TextColor="#333" FontSize="13" HorizontalOptions="End" />
+                </Grid>
+                <Grid ColumnDefinitions="Auto, *">
+                    <Label Grid.Column="0" Text="📍 Trạng thái:" TextColor="#666" FontSize="13" FontAttributes="Bold" />
+                    <Label Grid.Column="1" x:Name="simProgress" Text="0%" TextColor="#FF6B81" FontSize="13" FontAttributes="Bold" HorizontalOptions="End" />
+                </Grid>
+
+                <Button x:Name="btnSimulateStart" Text="▶ BẮT ĐẦU TOUR" Margin="0,10,0,0" BackgroundColor="#FF6B81" TextColor="White" CornerRadius="8" FontAttributes="Bold" HeightRequest="45" Clicked="OnSimulateStartClicked" />
+                
+                <Button x:Name="btnSimulateNext" Text="Tới điểm tiếp theo ⏭" IsVisible="False" Margin="0,5,0,0" BackgroundColor="#4CAF50" TextColor="White" CornerRadius="8" FontAttributes="Bold" HeightRequest="45" Clicked="OnSimulateNextClicked" />
+                
+                <Button x:Name="btnEndTour" Text="Kết thúc Tour" Margin="0,5,0,0" BackgroundColor="#F5F5F5" TextColor="#888" CornerRadius="8" HeightRequest="40" Clicked="OnEndTourClicked" />
+            </VerticalStackLayout>
+        </Border>
+
         <VerticalStackLayout VerticalOptions="End" 
                              Margin="12,0,12,30" 
                              Spacing="10"
                              InputTransparent="False">
+
             
             <!-- 1. Manual Mini-player (Thanh Thủ công - Nằm trên) -->
             <Border x:Name="manualMiniPlayer"
@@ -78,79 +167,7 @@
                 </Grid>
             </Border>
 
-            <!-- 2. Auto Mini-player (Thanh Tự động - Nằm dưới) -->
-            <Border x:Name="miniPlayer"
-                    IsVisible="False"
-                    Padding="12,10"
-                    StrokeThickness="0">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#FF3D78" Offset="0.0"/>
-                        <GradientStop Color="#FF6B81" Offset="0.5"/>
-                        <GradientStop Color="#FF9A76" Offset="1.0"/>
-                    </LinearGradientBrush>
-                </Border.Background>
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="47.5" />
-                </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#FF3D78" Offset="0,6" Radius="18" Opacity="0.30" />
-                </Border.Shadow>
-                <Grid ColumnDefinitions="*, Auto">
-                    <!-- Vùng 1: Thông tin + Sóng âm -->
-                    <Grid Grid.Column="0" ColumnDefinitions="Auto, *" VerticalOptions="Center" Margin="10,0,10,0">
-                        <HorizontalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="2.5" HeightRequest="30">
-                            <BoxView x:Name="wave1" WidthRequest="3" HeightRequest="12" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
-                            <BoxView x:Name="wave2" WidthRequest="3" HeightRequest="18" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
-                            <BoxView x:Name="wave3" WidthRequest="3" HeightRequest="10" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
-                            <BoxView x:Name="wave4" WidthRequest="3" HeightRequest="22" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
-                            <BoxView x:Name="wave5" WidthRequest="3" HeightRequest="14" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
-                            <BoxView x:Name="wave6" WidthRequest="3" HeightRequest="19" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
-                        </HorizontalStackLayout>
-                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="10,0,0,0">
-                            <Label x:Name="audioModeLabel" Text="BẠN ĐANG Ở GẦN QUÁN NÀY" FontSize="8" FontAttributes="Bold" TextColor="White" Opacity="0.8" CharacterSpacing="2" />
-                            <Label x:Name="detectedShopLabel" Text="Đang tìm quán..." FontSize="15" FontAttributes="Bold" TextColor="White" LineBreakMode="TailTruncation" />
-                        </VerticalStackLayout>
-                    </Grid>
-                    
-                    <!-- Vùng 2: Nhóm nút bấm điều khiển -->
-                    <HorizontalStackLayout Grid.Column="1" Spacing="12" VerticalOptions="Center" Margin="0,0,10,0">
-                        <Grid WidthRequest="46" HeightRequest="46">
-                            <Border Padding="0" BackgroundColor="#22FFFFFF" Stroke="White" StrokeThickness="1.5">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
-                                <Grid HorizontalOptions="Center" VerticalOptions="Center">
-                                    <Path x:Name="playIcon" Data="M 0,0 L 12,8 L 0,16 Z" Fill="White" TranslationX="2" IsVisible="False" />
-                                    <HorizontalStackLayout x:Name="pauseIcon" Spacing="4" IsVisible="True" HorizontalOptions="Center">
-                                        <BoxView WidthRequest="4" HeightRequest="14" Color="White" CornerRadius="1" /><BoxView WidthRequest="4" HeightRequest="14" Color="White" CornerRadius="1" />
-                                    </HorizontalStackLayout>
-                                </Grid>
-                            </Border>
-                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnPlayAudioClicked" /></Grid.GestureRecognizers>
-                        </Grid>
-                        <Grid WidthRequest="46" HeightRequest="46">
-                            <Border Padding="0" BackgroundColor="#22FFFFFF" Stroke="White" StrokeThickness="1.5">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
-                                <Path Data="M17.65,6.35 C16.2,4.9 14.21,4 12,4 c-4.42,0-7.99,3.58-7.99,8 s3.57,8 7.99,8 c3.73,0 6.84,-2.55 7.73,-6 h-2.08 c-0.82,2.33 -3.04,4 -5.65,4 c-3.31,0 -6,-2.69 -6,-6 s2.69,-6 6,-6 c1.66,0 3.14,0.69 4.22,1.78 L13,11 h7 V4 L17.65,6.35 z" Fill="White" HorizontalOptions="Center" VerticalOptions="Center" WidthRequest="22" HeightRequest="22" />
-                            </Border>
-                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnReplayAudioClicked" /></Grid.GestureRecognizers>
-                        </Grid>
-                        <Grid WidthRequest="46" HeightRequest="46">
-                            <Border Padding="0" BackgroundColor="#22FFFFFF" Stroke="White" StrokeThickness="1.5">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="23" /></Border.StrokeShape>
-                                <Path Data="M 0,0 L 7,7 L 0,14" Stroke="White" StrokeThickness="2.5" StrokeLineCap="Round" StrokeLineJoin="Round" HorizontalOptions="Center" VerticalOptions="Center" TranslationX="1" />
-                            </Border>
-                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnDetailClicked" /></Grid.GestureRecognizers>
-                        </Grid>
-                        <Grid WidthRequest="34" HeightRequest="34">
-                            <Border Padding="0" BackgroundColor="#22FFFFFF" StrokeThickness="0">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="17" /></Border.StrokeShape>
-                                <Label Text="✕" TextColor="White" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                            <Grid.GestureRecognizers><TapGestureRecognizer Tapped="OnClosePlayerClicked" /></Grid.GestureRecognizers>
-                        </Grid>
-                    </HorizontalStackLayout>
-                </Grid>
-            </Border>
+
         </VerticalStackLayout>
     </Grid>
 
