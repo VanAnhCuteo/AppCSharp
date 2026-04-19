@@ -12,6 +12,7 @@ namespace FoodMapAdmin.Services
         Task<bool> CreateCategoryAsync(Category category);
         Task<bool> UpdateCategoryAsync(Category category);
         Task<bool> DeleteCategoryAsync(int id);
+        Task<bool> RestoreCategoryAsync(int id);
         Task<Category?> GetCategoryByIdAsync(int id);
     }
 
@@ -72,16 +73,48 @@ namespace FoodMapAdmin.Services
 
         public async Task<bool> DeleteCategoryAsync(int id)
         {
-            var category = await _context.Categories.FindAsync(id);
+            var category = await _context.Categories
+                .Include(c => c.Pois)
+                .FirstOrDefaultAsync(c => c.CategoryId == id);
+                
             if (category == null) return false;
             
             var name = category.CategoryName;
-            _context.Categories.Remove(category);
+            bool isHardDelete = !category.Pois.Any();
+            
+            if (isHardDelete)
+            {
+                _context.Categories.Remove(category);
+            }
+            else
+            {
+                category.IsHidden = true;
+                _context.Categories.Update(category);
+            }
+            
             var result = await _context.SaveChangesAsync() > 0;
             if (result)
             {
                 var userId = await GetCurrentUserIdAsync();
-                await _logger.LogAsync(userId, "Xóa danh mục", name, $"Đã xóa danh mục {name}");
+                string action = isHardDelete ? "Xóa danh mục" : "Ẩn danh mục";
+                await _logger.LogAsync(userId, action, name, $"Đã {(isHardDelete ? "xóa" : "ẩn")} danh mục {name}");
+            }
+            return result;
+        }
+
+        public async Task<bool> RestoreCategoryAsync(int id)
+        {
+            var category = await _context.Categories.FindAsync(id);
+            if (category == null) return false;
+
+            category.IsHidden = false;
+            _context.Categories.Update(category);
+            
+            var result = await _context.SaveChangesAsync() > 0;
+            if (result)
+            {
+                var userId = await GetCurrentUserIdAsync();
+                await _logger.LogAsync(userId, "Bỏ ẩn danh mục", category.CategoryName, $"Đã phục hồi danh mục {category.CategoryName}");
             }
             return result;
         }

@@ -107,7 +107,7 @@ namespace FoodMapApp.Services
             try
             {
                 int userId = UserId;
-                if (userId > 0)
+                if (userId != 0)
                 {
                     await _httpClient.DeleteAsync($"{BaseUrl}/clear-location/{userId}");
                 }

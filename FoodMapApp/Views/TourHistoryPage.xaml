@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="FoodMapApp.Views.TourHistoryPage"
+             Title="Lịch Sử Đi Tour"
+             BackgroundColor="#FFF7F8">
+
+    <Grid RowDefinitions="Auto, *">
+        <!-- Header -->
+        <Grid Grid.Row="0" HeightRequest="60" Padding="15,0">
+            <Label x:Name="PageTitleLabel"
+                   Text="Lịch sử đi Tour" 
+                   TextColor="#FF6B81" 
+                   FontSize="20" 
+                   FontAttributes="Bold" 
+                   VerticalOptions="Center" 
+                   HorizontalOptions="Center" />
+            
+            <ImageButton Source="back_icon.png" 
+                         HeightRequest="24" 
+                         WidthRequest="24" 
+                         HorizontalOptions="Start" 
+                         VerticalOptions="Center"
+                         Clicked="OnBackClicked">
+                <ImageButton.Behaviors>
+                    <!-- Simple workaround if back_icon is missing: use a label instead or just a tinted button -->
+                </ImageButton.Behaviors>
+            </ImageButton>
+        </Grid>
+
+        <RefreshView Grid.Row="1" x:Name="refreshView" RefreshColor="#FF6B81">
+            <ScrollView Padding="15">
+                <VerticalStackLayout x:Name="HistoryContainer" Spacing="15">
+                    <!-- Loaded via C# -->
+                    <VerticalStackLayout x:Name="EmptyView" IsVisible="False" VerticalOptions="Center" HorizontalOptions="Center" Margin="0,100,0,0" Spacing="15">
+                        <Label Text="📍" FontSize="50" HorizontalOptions="Center" />
+                        <Label x:Name="EmptyLabel" Text="Bạn chưa tham gia tour nào" TextColor="#999" FontSize="16" HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </ScrollView>
+        </RefreshView>
+
+        <!-- Loading Overlay -->
+        <Grid Grid.Row="1" x:Name="LoadingOverlay" BackgroundColor="#80FFFFFF" IsVisible="False">
+            <ActivityIndicator IsRunning="True" Color="#FF6B81" VerticalOptions="Center" HorizontalOptions="Center" />
+        </Grid>
+    </Grid>
+</ContentPage>

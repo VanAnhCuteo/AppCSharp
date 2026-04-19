@@ -25,6 +25,9 @@ namespace FoodMapAPI.Models
         [Column("range_meters")]
         public int RangeMeters { get; set; } = 50;
 
+        [Column("is_hidden")]
+        public bool IsHidden { get; set; } = false;
+
         public ICollection<PoiImage> Images { get; set; } = new List<PoiImage>();
     }
 }

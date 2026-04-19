@@ -52,6 +52,14 @@ const greenIcon = L.divIcon({
     popupAnchor: [0, -46]
 });
 
+const grayIcon = L.divIcon({
+    className: 'custom-gray-marker',
+    html: '<div class="marker-inner">' + getMarkerSvg('#95a5a6', 'grad_gray') + '</div>',
+    iconSize: [46, 52],
+    iconAnchor: [23, 50],
+    popupAnchor: [0, -46]
+});
+
 const blueLocationIcon = L.divIcon({
     className: 'user-location-marker',
     html: '<div class="user-pulse"></div><div class="user-dot"></div>',

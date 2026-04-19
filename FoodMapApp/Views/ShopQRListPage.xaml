@@ -22,10 +22,12 @@
                 <Ellipse.Fill><SolidColorBrush Color="White"/></Ellipse.Fill>
             </Ellipse>
             <VerticalStackLayout Spacing="5">
-                <Label Text="Chọn quán để xem mã QR" 
+                <Label x:Name="InstructionsTitleLabel"
+                       Text="Chọn quán để xem mã QR" 
                        FontSize="20" FontAttributes="Bold" 
                        TextColor="White" CharacterSpacing="0.3"/>
-                <Label Text="Mã QR giúp bạn nhận diện quán nhanh chóng" 
+                <Label x:Name="InstructionsSubTitleLabel"
+                       Text="Mã QR giúp bạn nhận diện quán nhanh chóng" 
                        FontSize="13" TextColor="White" Opacity="0.9"/>
             </VerticalStackLayout>
         </Grid>

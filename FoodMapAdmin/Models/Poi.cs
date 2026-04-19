@@ -52,6 +52,9 @@ namespace FoodMapAdmin.Models
 
         
         public PoiQr? QrCode { get; set; }
+        
+        [Column("is_hidden")]
+        public bool IsHidden { get; set; } = false;
 
         [NotMapped]
         public string? QrCodeUrl { get; set; }

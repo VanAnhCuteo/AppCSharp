@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FoodMapAdmin.Models
@@ -17,6 +17,9 @@ namespace FoodMapAdmin.Models
 
         [Column("description")]
         public string? Description { get; set; }
+
+        [Column("is_hidden")]
+        public bool IsHidden { get; set; } = false;
 
         public ICollection<Poi> Pois { get; set; } = new List<Poi>();
     }

@@ -122,48 +122,106 @@ body, html {
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
-    width: 90%;
-    max-width: 400px;
-    background: rgba(37, 37, 64, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-radius: 18px;
-    padding: 14px 18px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: var(--shadow-lg);
-    border: 1px solid rgba(255, 106, 136, 0.2);
-    transition: all 0.3s ease;
+    width: 92%;
+    max-width: 420px;
+    background: rgba(30, 30, 50, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 22px;
+    padding: 12px 16px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
     .nav-overlay.hidden {
         opacity: 0;
         pointer-events: none;
-        top: 60px;
+        transform: translate(-50%, -20px) scale(0.95);
     }
 
-.nav-info {
+.nav-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.nav-stats {
+    flex: 1;
     color: white;
     font-weight: 700;
     font-size: 16px;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
 }
 
-.nav-cancel-btn {
-    background: linear-gradient(135deg, #FF4D4D, #CC2222);
-    color: white;
+#nav-dist-val { color: var(--primary-pink); margin-right: 4px; }
+#nav-time-val { color: #A29BFE; margin-left: 4px; }
+
+.nav-modes {
+    display: flex;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 5px;
+    border-radius: 14px;
+    gap: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mode-btn {
+    background: transparent;
     border: none;
-    padding: 8px 16px;
+    width: 42px;
+    height: 42px;
     border-radius: 10px;
-    font-size: 13px;
-    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.4);
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+    .mode-btn svg { 
+        width: 22px; 
+        height: 22px; 
+    }
+
+    .mode-btn.active {
+        background: linear-gradient(135deg, #FFFFFF 0%, #F0F0F0 100%);
+        color: var(--pink-dark);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        transform: scale(1.05);
+    }
+
+    .mode-btn:not(.active):hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+.nav-cancel-btn {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
     .nav-cancel-btn:active {
-        opacity: 0.8;
+        background: #FF4D4D;
+        border-color: #FF4D4D;
+        transform: scale(0.9);
+        box-shadow: 0 0 15px rgba(255, 77, 77, 0.4);
     }
+
+    .nav-cancel-btn svg { width: 18px; height: 18px; }
 
 /* Search Dropdown & Clear Button */
 .search-clear-btn {

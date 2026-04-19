@@ -50,11 +50,12 @@ namespace FoodMapAPI.Controllers
                                    FROM pois p 
                                    LEFT JOIN poi_guides g ON p.poi_id = g.poi_id AND g.language = @lang
                                    LEFT JOIN poi_guides gv ON p.poi_id = gv.poi_id AND gv.language = 'vi'
-                                   LEFT JOIN poi_qrs pq ON p.poi_id = pq.poi_id";
+                                   LEFT JOIN poi_qrs pq ON p.poi_id = pq.poi_id
+                                   WHERE p.is_hidden = 0";
 
                     if (category_id.HasValue && category_id.Value > 0)
                     {
-                        query += " WHERE p.category_id = @catId";
+                        query += " AND p.category_id = @catId";
                     }
 
                     MySqlCommand cmd = new MySqlCommand(query, conn);
@@ -132,7 +133,7 @@ namespace FoodMapAPI.Controllers
                                          LEFT JOIN poi_guides g ON p.poi_id = g.poi_id AND g.language = @lang 
                                          LEFT JOIN poi_guides gv ON p.poi_id = gv.poi_id AND gv.language = 'vi'
                                          LEFT JOIN poi_qrs pq ON p.poi_id = pq.poi_id
-                                         WHERE p.poi_id = @id";
+                                         WHERE p.poi_id = @id AND p.is_hidden = 0";
 
                     using (MySqlCommand cmd = new MySqlCommand(detailQuery, conn))
                     {
@@ -210,7 +211,7 @@ namespace FoodMapAPI.Controllers
                 using (MySqlConnection conn = new MySqlConnection(connStr))
                 {
                     await conn.OpenAsync();
-                    using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM categories", conn))
+                    using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM categories WHERE is_hidden = 0", conn))
                     {
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
@@ -429,5 +430,72 @@ namespace FoodMapAPI.Controllers
             }
             return Ok(languages);
         }
+        [HttpGet("audio-history/{userId}")]
+        public async Task<IActionResult> GetAudioHistory(int userId)
+        {
+            List<PoiAudioLogDTO> history = new List<PoiAudioLogDTO>();
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+            try
+            {
+                using (MySqlConnection conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+                    string query = @"
+                        SELECT l.log_id, l.poi_id, p.name as poi_name, l.duration_seconds, l.created_at,
+                               (SELECT pi.image_url FROM poi_images pi WHERE pi.poi_id = p.poi_id ORDER BY pi.image_id ASC LIMIT 1) as image_url
+                        FROM poi_audio_logs l
+                        INNER JOIN pois p ON l.poi_id = p.poi_id
+                        WHERE l.user_id = @userId
+                        ORDER BY l.created_at DESC";
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@userId", userId);
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                history.Add(new PoiAudioLogDTO
+                                {
+                                    log_id = Convert.ToInt32(reader["log_id"]),
+                                    poi_id = Convert.ToInt32(reader["poi_id"]),
+                                    poi_name = reader["poi_name"].ToString() ?? "",
+                                    poi_image_url = reader["image_url"] != DBNull.Value ? GetFullUrl(reader["image_url"].ToString()) : null,
+                                    duration_seconds = Convert.ToInt32(reader["duration_seconds"]),
+                                    created_at = Convert.ToDateTime(reader["created_at"])
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            return Ok(history);
+        }
+
+        [HttpPost("translate-ui")]
+        public async Task<IActionResult> TranslateUI([FromBody] TranslateUIRequest request)
+        {
+            if (request == null || request.Strings == null || string.IsNullOrEmpty(request.TargetLang))
+                return BadRequest("Invalid request");
+
+            var results = new Dictionary<string, string>();
+            foreach (var item in request.Strings)
+            {
+                // Key is the local ID/key, Value is the source Vietnamese text
+                results[item.Key] = await _translator.TranslateAsync(item.Value, request.TargetLang);
+            }
+
+            return Ok(results);
+        }
+    }
+
+    public class TranslateUIRequest
+    {
+        public string TargetLang { get; set; } = "vi";
+        public Dictionary<string, string> Strings { get; set; } = new();
     }
 }

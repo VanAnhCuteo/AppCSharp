@@ -1,4 +1,5 @@
 using FoodMapApp.Models;
+using FoodMapApp.Services;
 using System.Threading;
 using System.Diagnostics;
 using System.Net.Http;
@@ -26,7 +27,6 @@ public partial class QRViewerPage : ContentPage
     private Locale _vietnameseLocale;
     private bool _shouldResumeOnAppearing = false;
     private Stopwatch _audioStopwatch = new Stopwatch();
-    private IDispatcherTimer _statusTimer;
 
     public FoodModel Shop
     {
@@ -41,9 +41,6 @@ public partial class QRViewerPage : ContentPage
 	public QRViewerPage()
 	{
 		InitializeComponent();
-        _statusTimer = Dispatcher.CreateTimer();
-        _statusTimer.Interval = TimeSpan.FromSeconds(10);
-        _statusTimer.Tick += async (s, e) => await ReportLiveStatusAsync(true);
 	}
 
     private void UpdateUI()
@@ -89,6 +86,13 @@ public partial class QRViewerPage : ContentPage
         magicLens.TranslationY = 0;
 
         AnimateLaser();
+    }
+
+    private void UpdateScanButtonText()
+    {
+        string key = _isScanning ? "qr_scan_btn_off" : "qr_scan_btn_on";
+        string fallback = _isScanning ? "Tắt Kính Quét" : "Bật Kính Quét";
+        scanButton.Text = LocalizationService.Instance.Get(key, fallback);
     }
 
     private async Task PrepareScannerAsync()
@@ -175,14 +179,16 @@ public partial class QRViewerPage : ContentPage
             _ttsCts = new CancellationTokenSource();
             _isPaused = false;
             
+            // Sync to Global Tracking
+            TrackingService.IsListening = true;
+            TrackingService.UpdateStatus(true, _shop?.id);
+
             // Toggle icons
             playIcon.IsVisible = false;
             pauseIcon.IsVisible = true;
 
             var options = new SpeechOptions { Locale = _vietnameseLocale };
             _ = AnimateVisualizer(); // Start visualizer
-            _statusTimer.Start();
-            _ = ReportLiveStatusAsync(true);
 
             while (_currentChunkIndex < _chunks.Length && !_ttsCts.Token.IsCancellationRequested)
             {
@@ -262,9 +268,9 @@ public partial class QRViewerPage : ContentPage
             playIcon.IsVisible = true;
             pauseIcon.IsVisible = false;
             _audioStopwatch.Stop();
-            _statusTimer.Stop();
-            _ = ReportLiveStatusAsync(false);
             _currentSentenceCts?.Cancel();
+            _ttsCts?.Cancel();
+            TrackingService.Stop();
         }
         else
         {
@@ -302,21 +308,41 @@ public partial class QRViewerPage : ContentPage
         Shell.Current.GoToAsync("//MainPage");
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
+        await LocalizeUI();
         if (_shouldResumeOnAppearing && _shop != null && _chunks.Length > 0)
         {
             _ = PlayAudioWithChunksAsync();
         }
     }
 
+    private async Task LocalizeUI()
+    {
+        var source = new Dictionary<string, string>
+        {
+            ["qr_viewer_title"] = "Mã QR của quán",
+            ["qr_viewer_drag_instr"] = "Kéo kính quét bên dưới đè lên ảnh QR để xem",
+            ["qr_scan_btn_on"] = "Bật Kính Quét",
+            ["qr_scan_btn_off"] = "Tắt Kính Quét",
+            ["audio_guide_header"] = "AUDIO GUIDE",
+            ["err_find_shop"] = "Không thể tìm thấy thông tin quán.",
+            ["err_camera_denied"] = "Ứng dụng cần quyền truy cập camera để quét mã QR."
+        };
+
+        await LocalizationService.Instance.InitializeAsync(Preferences.Default.Get("app_lang", "vi"), source);
+
+        this.Title = LocalizationService.Instance.Get("qr_viewer_title");
+        DragInstructionsLabel.Text = LocalizationService.Instance.Get("qr_viewer_drag_instr");
+        AudioGuideHeaderLabel.Text = LocalizationService.Instance.Get("audio_guide_header");
+        UpdateScanButtonText();
+    }
+
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
         ReportAndResetAudioStats();
-        _statusTimer?.Stop();
-        _ = ReportLiveStatusAsync(false);
         // Record if it was playing (not paused and pauseIcon is visible)
         _shouldResumeOnAppearing = !_isPaused && pauseIcon.IsVisible;
         _ttsCts?.Cancel();
@@ -330,6 +356,7 @@ public partial class QRViewerPage : ContentPage
             _ = SendAudioLogAsync(_shop.id, (int)_audioStopwatch.Elapsed.TotalSeconds);
         }
         _audioStopwatch.Reset();
+        TrackingService.Stop();
     }
 
     private async Task SendAudioLogAsync(int poiId, int duration)
@@ -346,33 +373,6 @@ public partial class QRViewerPage : ContentPage
         catch (Exception ex)
         {
             Console.WriteLine($"DEBUG: Error sending QR audio log: {ex.Message}");
-        }
-    }
-
-    private async Task ReportLiveStatusAsync(bool isListening)
-    {
-        if (_shop == null) return;
-        try
-        {
-            int userId = Preferences.Default.Get("user_id", 0);
-            if (userId == 0) return;
-
-            var payload = new 
-            { 
-                user_id = userId, 
-                latitude = _shop.latitude, 
-                longitude = _shop.longitude,
-                is_listening = isListening,
-                poi_id = isListening ? _shop.id : (int?)null
-            };
-
-            using HttpClient client = new HttpClient();
-            var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
-            await client.PostAsync($"{AppConfig.AuthApiUrl}/update-location", content);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"DEBUG: Error reporting QR live status: {ex.Message}");
         }
     }
 }

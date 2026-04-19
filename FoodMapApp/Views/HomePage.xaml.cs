@@ -22,20 +22,49 @@ namespace FoodMapApp.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
-
-            // Set Vietnamese text from code-behind
-            var username = AuthService.CurrentUsername;
-            UsernameLabel.Text = string.IsNullOrEmpty(username) ? "Khách" : username;
-
-            var hour = DateTime.Now.Hour;
-            GreetingLabel.Text = hour < 12 ? "Chào buổi sáng," :
-                                 hour < 18 ? "Chào buổi chiều," : "Chào buổi tối,";
-
-            SearchEntry.Placeholder = "Tìm món ăn, quán...";
-
-            CategoryTitleLabel.Text = "Khám Phá";
+            await LocalizeUI();
+            
             await LoadCategories();
             await LoadRestaurants();
+        }
+
+        private async Task LocalizeUI()
+        {
+             var source = new Dictionary<string, string>
+            {
+                ["home_guest"] = "Khách",
+                ["home_morning"] = "Chào buổi sáng,",
+                ["home_afternoon"] = "Chào buổi chiều,",
+                ["home_evening"] = "Chào buổi tối,",
+                ["home_search_ph"] = "Tìm món ăn, quán...",
+                ["home_explore"] = "Khám Phá",
+                ["home_top_resto"] = "Quán nổi bật",
+                ["home_recommended"] = "Quán bạn có thể biết",
+                ["home_no_results"] = "Không tìm thấy quán phù hợp",
+                ["home_events"] = "Sự Kiện Đặc Biệt",
+                ["home_event_gold"] = "Khung giờ vàng",
+                ["home_event_gold_desc"] = "Tặng 1 món ăn kèm từ 17:00 - 19:00",
+                ["home_event_gold_sub"] = "Áp dụng với hóa đơn 50k"
+            };
+
+            await LocalizationService.Instance.InitializeAsync(Preferences.Default.Get("app_lang", "vi"), source);
+
+            var username = AuthService.CurrentUsername;
+            UsernameLabel.Text = string.IsNullOrEmpty(username) ? LocalizationService.Instance.Get("home_guest") : username;
+
+            var hour = DateTime.Now.Hour;
+            GreetingLabel.Text = hour < 12 ? LocalizationService.Instance.Get("home_morning") :
+                                 hour < 18 ? LocalizationService.Instance.Get("home_afternoon") : LocalizationService.Instance.Get("home_evening");
+
+            SearchEntry.Placeholder = LocalizationService.Instance.Get("home_search_ph");
+            CategoryTitleLabel.Text = LocalizationService.Instance.Get("home_explore");
+            TopRestaurantLabel.Text = LocalizationService.Instance.Get("home_top_resto");
+            RecommendedLabel.Text = LocalizationService.Instance.Get("home_recommended");
+            NoResultsLabel.Text = LocalizationService.Instance.Get("home_no_results");
+            EventTitleLabel.Text = LocalizationService.Instance.Get("home_events");
+            Event1Title.Text = LocalizationService.Instance.Get("home_event_gold");
+            Event1Desc.Text = LocalizationService.Instance.Get("home_event_gold_desc");
+            Event1Sub.Text = LocalizationService.Instance.Get("home_event_gold_sub");
         }
 
         private async Task LoadCategories()

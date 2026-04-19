@@ -26,7 +26,8 @@
                        HeightRequest="250" WidthRequest="250" />
             </Border>
 
-            <Label Text="Kéo kính quét bên dưới đè lên ảnh QR để xem" 
+            <Label x:Name="DragInstructionsLabel"
+                   Text="Kéo kính quét bên dưới đè lên ảnh QR để xem" 
                    FontSize="14" HorizontalTextAlignment="Center" 
                    TextColor="#6C6C80"
                    Margin="0,30,0,0" />
@@ -113,7 +114,7 @@
                     </HorizontalStackLayout>
                     
                     <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="10,0,0,0">
-                        <Label Text="AUDIO GUIDE" FontSize="8" FontAttributes="Bold" TextColor="White" Opacity="0.8" CharacterSpacing="2" />
+                        <Label x:Name="AudioGuideHeaderLabel" Text="AUDIO GUIDE" FontSize="8" FontAttributes="Bold" TextColor="White" Opacity="0.8" CharacterSpacing="2" />
                         <Label x:Name="detectedShopLabel" 
                                Text="Tên quán" 
                                FontSize="15" 

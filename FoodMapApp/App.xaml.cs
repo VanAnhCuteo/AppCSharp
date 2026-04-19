@@ -9,68 +9,45 @@ namespace FoodMapApp
             MainPage = new AppShell();
         }
 
-        protected override Window CreateWindow(IActivationState? activationState)
-        {
-            return base.CreateWindow(activationState);
-        }
+        public static bool PendingGuestLogin { get; set; } = false;
 
-        protected override void OnAppLinkRequestReceived(Uri uri)
+        protected override async void OnAppLinkRequestReceived(Uri uri)
         {
             base.OnAppLinkRequestReceived(uri);
+            System.Diagnostics.Debug.WriteLine($"App Link Received: {uri}");
 
-            MainThread.BeginInvokeOnMainThread(async () =>
+            var authService = new FoodMapApp.Services.AuthService();
+            bool notLoggedIn = !authService.IsLoggedIn;
+
+            // 1. Handle POI Deep Link (foodmap://poi/{id})
+            if (uri.Scheme == "foodmap" && uri.Host == "poi")
             {
-                // Đợi một chút để Shell ổn định khi khởi động nguội (Cold Start)
-                await Task.Delay(500);
-
-                // Expecting: foodmap://poi/{id} or foodmap://guest
-                if (uri.Scheme == "foodmap")
+                var idStr = uri.Segments.LastOrDefault();
+                if (int.TryParse(idStr, out int id))
                 {
-                    var authService = new FoodMapApp.Services.AuthService();
+                    FoodMapApp.MainPage.PendingOpenFoodId = id;
                     
-                    if (uri.Host == "poi")
+                    if (notLoggedIn)
                     {
-                        var idStr = uri.Segments.LastOrDefault();
-                        if (int.TryParse(idStr, out int id))
-                        {
-                            // Tự động đăng nhập khách nếu chưa có tài khoản
-                            if (!authService.IsLoggedIn)
-                            {
-                                int guestId = new Random().Next(100000, 999999);
-                                authService.LoginAsGuest(guestId);
-                            }
-
-                            // Set static pending ID
-                            FoodMapApp.MainPage.PendingOpenFoodId = id;
-
-                            // Điều hướng đến Bản đồ
-                            if (Shell.Current != null)
-                            {
-                                await Shell.Current.GoToAsync("//MainPage");
-                            }
-
-                            // Kích hoạt mở chi tiết quán
-                            if (FoodMapApp.MainPage.Instance != null)
-                            {
-                                await FoodMapApp.MainPage.Instance.TryOpenPendingDetail();
-                            }
-                        }
+                        PendingGuestLogin = true;
                     }
-                    else if (uri.Host == "guest")
+                    else
                     {
-                        if (!authService.IsLoggedIn)
-                        {
-                            int guestId = new Random().Next(100000, 999999);
-                            authService.LoginAsGuest(guestId);
-                        }
-
-                        if (Shell.Current != null)
-                        {
-                            await Shell.Current.GoToAsync("//HomePage");
-                        }
+                        if (Shell.Current != null) await Shell.Current.GoToAsync("//MainPage");
+                        if (FoodMapApp.MainPage.Instance != null) _ = FoodMapApp.MainPage.Instance.TryOpenPendingDetail();
                     }
                 }
-            });
+            }
+            // 2. Handle Guest Login Deep Link (foodmap://guest or https://foodmap.app/guest)
+            else if (uri.OriginalString.ToLower().Contains("guest"))
+            {
+                int guestId = new Random().Next(100000, 999999);
+                authService.LoginAsGuest(guestId);
+                if (Shell.Current != null) await Shell.Current.GoToAsync("//MainTabs");
+                return;
+            }
+
+
         }
     }
 }

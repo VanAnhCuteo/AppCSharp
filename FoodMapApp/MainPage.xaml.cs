@@ -3,6 +3,8 @@ using FoodMapApp.Services;
 using System.Text.Json;
 using System.Web;
 using System.Diagnostics;
+using System.Net.Http.Json;
+using FoodMapApp.Models;
 
 namespace FoodMapApp
 {
@@ -39,6 +41,73 @@ namespace FoodMapApp
             }
         }
 
+        private static readonly Dictionary<string, Dictionary<string, string>> _uiCache = new();
+
+        private async Task<Dictionary<string, string>> GetUISetAsync(string lang)
+        {
+            string shortLang = lang.Split('-')[0].ToLower();
+            
+            var sourceStrings = new Dictionary<string, string>
+            {
+                ["title"] = "Thông báo",
+                ["msg"] = "Bạn muốn đổi ngôn ngữ?",
+                ["msg_audio"] = "Bạn muốn đổi ngôn ngữ? Âm thanh sẽ phát lại từ đầu.",
+                ["ok"] = "Đồng ý",
+                ["cancel"] = "Hủy",
+                ["explore"] = "Khám phá",
+                ["directions"] = "Chỉ đường đến quán",
+                ["search_ph"] = "Tìm quán ăn, địa chỉ...",
+                ["cancel_nav"] = "Hủy dẫn đường",
+                ["navigating_to"] = "Đang đến:",
+                ["select_lang"] = "Chọn ngôn ngữ",
+                ["done"] = "Xong",
+                ["loading_lang"] = "Đang tải ngôn ngữ...",
+                ["hours_not_available"] = "Không có giờ mở cửa",
+                ["unknown_loc"] = "Vị trí chưa xác định",
+                ["no_addr"] = "Không có địa chỉ",
+                ["hour_short"] = "h",
+                ["min_short"] = "phút"
+            };
+
+            await LocalizationService.Instance.InitializeAsync(shortLang, sourceStrings);
+            return sourceStrings.ToDictionary(kv => kv.Key, kv => LocalizationService.Instance.Get(kv.Key));
+        }
+
+        private async Task LocalizeUI()
+        {
+            var source = new Dictionary<string, string>
+            {
+                ["main_tour_title"] = "Danh Sách Tour",
+                ["main_tour_loading"] = "Đang tải danh sách Tour...",
+                ["main_tour_empty"] = "Không có Tour nào",
+                ["main_tour_view_btn"] = "Xem Tour này",
+                ["main_tour_time"] = "⏳ Thời gian:",
+                ["main_tour_price"] = "💰 Giá xấp xỉ:",
+                ["main_tour_status"] = "📍 Trạng thái:",
+                ["main_tour_start"] = "▶ BẮT ĐẦU TOUR",
+                ["main_tour_next"] = "Tới điểm tiếp theo ⏭",
+                ["main_tour_end"] = "Kết thúc Tour",
+                ["main_tour_not_moved"] = "Chưa di chuyển",
+                ["main_tour_error"] = "Lỗi kết nối",
+                ["main_tour_io_error"] = "Lỗi đường truyền thiết bị",
+                ["main_audio_listening"] = "BẠN ĐANG NGHE CHỈ DẪN",
+                ["main_locating"] = "Đang xác định vị trí của bạn...",
+                ["main_calculating"] = "Đang tính toán..."
+            };
+
+            await LocalizationService.Instance.InitializeAsync(Preferences.Default.Get("app_lang", "vi"), source);
+
+            // Update static Labels
+            tourDrawerTitleLabel.Text = LocalizationService.Instance.Get("main_tour_title");
+            simTimeLabelPrefix.Text = LocalizationService.Instance.Get("main_tour_time");
+            simPriceLabelPrefix.Text = LocalizationService.Instance.Get("main_tour_price");
+            simStatusLabelPrefix.Text = LocalizationService.Instance.Get("main_tour_status");
+            btnSimulateStart.Text = LocalizationService.Instance.Get("main_tour_start");
+            btnSimulateNext.Text = LocalizationService.Instance.Get("main_tour_next");
+            btnEndTour.Text = LocalizationService.Instance.Get("main_tour_end");
+            manualModeLabel.Text = LocalizationService.Instance.Get("main_audio_listening");
+        }
+
         private string NormalizeText(string text)
         {
             if (string.IsNullOrWhiteSpace(text)) return "";
@@ -60,9 +129,29 @@ namespace FoodMapApp
                 if (_foodsJson != null)
                 {
                     int userId = Preferences.Default.Get("user_id", 0);
+                    var uiSet = await GetUISetAsync(LocalizationService.Instance.CurrentLanguage);
+                    string uiJson = JsonSerializer.Serialize(uiSet);
+                    await mapView.EvaluateJavaScriptAsync($"if(window.setUiTranslations) window.setUiTranslations({uiJson});");
+
+                    // Sync initial language state to JS
+                    string currentCode = LocalizationService.Instance.CurrentLanguage;
+                    string currentName = LocalizationService.Instance.GetLanguageName(currentCode);
+                    await mapView.EvaluateJavaScriptAsync($"if(window.updateAppLanguage) window.updateAppLanguage('{currentCode}', '{currentName?.Replace("'", "\\'")}');");
+
                     await mapView.EvaluateJavaScriptAsync($"loadFoods({_foodsJson}, {userId});");
                     await TryOpenPendingDetail();
                     await TryStartPendingRoute();
+
+                    // Initial Sync with AutoAudioService
+                    AutoAudioService.Instance.OnStateChanged += (current, queue) => {
+                        MainThread.BeginInvokeOnMainThread(async () => {
+                            if (mapView != null) {
+                                string queueIdsJson = JsonSerializer.Serialize(queue.Select(q => q.Poi.id).ToList());
+                                int currentId = current?.Poi.id ?? 0;
+                                await mapView.EvaluateJavaScriptAsync($"if(window.syncAudioQueue) window.syncAudioQueue({queueIdsJson}, {currentId});");
+                            }
+                        });
+                    };
                 }
             };
 
@@ -83,7 +172,7 @@ namespace FoodMapApp
                     if (!string.IsNullOrWhiteSpace(text))
                     {
                         string normalizedText = NormalizeText(text);
-                        var sentences = normalizedText.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                        var sentences = normalizedText.Split(new[] { '.', '!', '?', ';', ',', '\n', '\r', '\t', '。', '、', '，', '！', '？' }, StringSplitOptions.RemoveEmptyEntries)
                                                       .Select(s => s.Trim())
                                                       .Where(s => s.Length > 0)
                                                       .ToArray();
@@ -135,7 +224,7 @@ namespace FoodMapApp
                     var uri = new Uri(e.Url);
                     var query = HttpUtility.ParseQueryString(uri.Query);
                     string message = query["message"] ?? "";
-                    await DisplayAlert("Thông báo", message, "Đóng");
+                    await DisplayAlert(LocalizationService.Instance.Get("title", "Thông báo"), message, "OK");
                 }
                 else if (e.Url.StartsWith("app-request-confirm://lang-switch?"))
                 {
@@ -144,15 +233,37 @@ namespace FoodMapApp
                     var query = HttpUtility.ParseQueryString(uri.Query);
                     string lang = query["lang"] ?? "vi";
                     string name = query["name"] ?? "";
-                    
-                    bool confirmed = await DisplayAlert("Thông báo", $"Bạn muốn chuyển sang {name}?", "Đồng ý", "Hủy");
+
+                    string currentLang = _manualSession.Language ?? "vi";
+                    bool isAudioActive = _manualSession.IsActive || (_activeSession != null && !_activeSession.IsPaused);
+
+                    var uiSet = await GetUISetAsync(currentLang);
+                    string title = uiSet["title"];
+                    string ok = uiSet["ok"];
+                    string cancel = uiSet["cancel"];
+                    string message = isAudioActive ? uiSet["msg_audio"] : uiSet["msg"];
+
+                    bool confirmed = await DisplayAlert(title, message, ok, cancel);
                     if (confirmed)
                     {
-                        StopSpeech(fullReset: false, clearQueue: false);
+                        // FULL RESET correctly stops current audio and clears sentences
+                        StopSpeech(fullReset: true);
                         _manualSession.Language = lang;
+                        LocalizationService.Instance.CurrentLanguage = lang;
+                        await LocalizeUI();
+
                         await Task.Delay(200);
-                        if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
-                        LoadFoods(lang);
+                        if (mapView != null)
+                        {
+                            var newUiSet = await GetUISetAsync(lang);
+                            string uiJson = JsonSerializer.Serialize(newUiSet);
+                            await mapView.EvaluateJavaScriptAsync($"if(window.setUiTranslations) window.setUiTranslations({uiJson});");
+                            
+                            await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+                            // Sync state to JS
+                            await mapView.EvaluateJavaScriptAsync($"if(window.updateAppLanguage) window.updateAppLanguage('{lang}', '{name?.Replace("'", "\\'")}');");
+                        }
+                        LoadFoods("vi"); // Always load markers in Vietnamese
                     }
                 }
                 else if (e.Url.StartsWith("app-request-reload://markers?"))
@@ -162,13 +273,23 @@ namespace FoodMapApp
                     var query = HttpUtility.ParseQueryString(uri.Query);
                     string lang = query["lang"] ?? "vi";
                     
+                    // Attempt to find the descriptive name for the UI update
+                    var locale = _cachedLocales?.FirstOrDefault(l => l.Language.Equals(lang, StringComparison.OrdinalIgnoreCase)) ??
+                                 _cachedLocales?.FirstOrDefault(l => l.Language.ToLower().StartsWith(lang.Split('-')[0].ToLower()));
+                    string name = locale?.Name ?? "";
+
                     // Proceed with reload
-                    StopSpeech(fullReset: false, clearQueue: false); 
+                    StopSpeech(fullReset: true); 
                     _manualSession.Language = lang;
 
                     await Task.Delay(200);
-                    if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
-                    LoadFoods(lang);
+                    if (mapView != null)
+                    {
+                        await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
+                        // Sync state to JS with the name for immediate UI update
+                        await mapView.EvaluateJavaScriptAsync($"if(window.updateAppLanguage) window.updateAppLanguage('{lang}', '{name?.Replace("'", "\\'")}');");
+                    }
+                    LoadFoods("vi"); // Always load markers in Vietnamese
                 }
                 else if (e.Url.StartsWith("app-tour://update?"))
                 {
@@ -211,13 +332,15 @@ namespace FoodMapApp
         private void StartLocationTracking()
         {
             _locationTimer = Dispatcher.CreateTimer();
-            _locationTimer.Interval = TimeSpan.FromSeconds(10);
+            _locationTimer.Interval = TimeSpan.FromSeconds(8);
             _locationTimer.Tick += async (s, e) => await ReportCurrentLocationAsync();
             _locationTimer.Start();
             
             // Immediate report on start
             _ = ReportCurrentLocationAsync();
         }
+
+        private Location? _lastGpsLocation;
 
         private async Task ReportCurrentLocationAsync()
         {
@@ -231,15 +354,34 @@ namespace FoodMapApp
 
                 if (location != null)
                 {
-                    bool isListening = _isActuallySpeaking && _activeSession != null && !_activeSession.IsPaused;
-                    int? currentPoiId = null;
-                    if (isListening && !string.IsNullOrEmpty(_activeSession?.PoiId))
+                    // Update GPS Interval based on movement
+                    if (_lastGpsLocation != null && _locationTimer != null)
                     {
-                        if (int.TryParse(_activeSession.PoiId, out int pid))
+                        double dist = _lastGpsLocation.CalculateDistance(location, DistanceUnits.Kilometers) * 1000;
+                        if (dist < 10) // Moved less than 10m
                         {
-                            currentPoiId = pid;
+                            _locationTimer.Interval = TimeSpan.FromSeconds(15);
+                        }
+                        else
+                        {
+                            _locationTimer.Interval = TimeSpan.FromSeconds(8);
                         }
                     }
+                    _lastGpsLocation = location;
+
+                    // 1. Update AutoAudioService Queue
+                    if (_foodsJson != null)
+                    {
+                        var foods = JsonSerializer.Deserialize<List<FoodModel>>(_foodsJson);
+                        if (foods != null)
+                        {
+                            AutoAudioService.Instance.UpdateQueue(location, foods, LocalizationService.Instance.CurrentLanguage);
+                        }
+                    }
+
+                    // 2. Report to Server
+                    bool isListening = TrackingService.IsListening;
+                    int? currentPoiId = TrackingService.CurrentPoiId;
 
                     var payload = new { 
                         user_id = userId, 
@@ -262,7 +404,16 @@ namespace FoodMapApp
             try
             {
                 await MainThread.InvokeOnMainThreadAsync(() => {
-                    if (session == null || !session.IsActive)
+                    bool isActive = session != null && session.IsActive;
+                    bool isPlaying = isActive && _isActuallySpeaking && !session.IsPaused;
+                    bool isPaused = isActive && session.IsPaused;
+
+                    if (mapView != null) 
+                    {
+                        _ = mapView.EvaluateJavaScriptAsync($"if(window.updateAudioState) window.updateAudioState({isPlaying.ToString().ToLower()}, {isPaused.ToString().ToLower()}, {isActive.ToString().ToLower()});");
+                    }
+
+                    if (!isActive)
                     {
                         manualMiniPlayer.IsVisible = false;
                         return;
@@ -271,10 +422,10 @@ namespace FoodMapApp
                     string name = "Quán ăn";
                     if (_foodsJson != null) {
                         try {
-                            var foods = JsonSerializer.Deserialize<List<JsonElement>>(_foodsJson);
-                            var food = foods?.FirstOrDefault(f => f.GetProperty("id").GetInt32().ToString() == session.PoiId);
-                            if (food.HasValue && food.Value.ValueKind != JsonValueKind.Undefined)
-                                name = food.Value.GetProperty("name").GetString() ?? "Quán ăn";
+                            var foods = JsonSerializer.Deserialize<List<FoodModel>>(_foodsJson);
+                            var food = foods?.FirstOrDefault(f => f.id.ToString() == session.PoiId);
+                            if (food != null)
+                                name = food.name ?? "Quán ăn";
                         } catch { }
                     }
 
@@ -325,7 +476,11 @@ namespace FoodMapApp
                 _manualSession.IsActive = true;
                 _activeSession = _manualSession;
                 if (!_isActuallySpeaking) _ = SpeakWithChunksAsync(_manualSession);
-                else _pauseTcs?.TrySetResult(true);
+                else 
+                {
+                    _pauseTcs?.TrySetResult(true);
+                    _ = AnimateVisualizer(_manualSession); // Start animation again on resume
+                }
             }
             else { _pauseTcs?.TrySetResult(false); }
             _ = ReportCurrentLocationAsync();
@@ -363,7 +518,6 @@ namespace FoodMapApp
             // Dừng mọi animation và logic phía JS
             if (mapView != null) {
                 await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
-                await mapView.EvaluateJavaScriptAsync("if(window.stopAudioProfessional) window.stopAudioProfessional();");
             }
         }
 
@@ -401,6 +555,8 @@ namespace FoodMapApp
                 }
             }
             catch (Exception ex) { Debug.WriteLine($"StopSpeech error: {ex.Message}"); }
+            
+            TrackingService.Stop();
             _ = ReportCurrentLocationAsync();
         }
 
@@ -410,6 +566,14 @@ namespace FoodMapApp
             _isActuallySpeaking = true;
             _ttsCts = new CancellationTokenSource();
             _audioStopwatch.Restart();
+
+            // Update Global Tracking
+            if (int.TryParse(session.PoiId, out int pid))
+                TrackingService.UpdateStatus(true, pid);
+            else
+                TrackingService.UpdateStatus(true);
+            
+            _ = ReportCurrentLocationAsync(); // Immediate update
 
             try
             {
@@ -429,19 +593,23 @@ namespace FoodMapApp
 
                 while (session.SentenceIndex < sentences.Length)
                 {
-                    if (_ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || _activeSession != session) break;
+                    // Check if cancelled, stopped, or if this session is no longer the active/current one
+                    if (_ttsCts == null || _ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || !session.IsActive || _activeSession != session) break;
 
                     int index = session.SentenceIndex;
                     if (session.IsManual) await mapView.EvaluateJavaScriptAsync($"if(window.onTtsProgress) window.onTtsProgress({index}, {sentences.Length});");
+                    else if (AutoAudioService.Instance.CurrentItem != null) {
+                        AutoAudioService.Instance.CurrentItem.CurrentSentenceIndex = index;
+                    }
 
                     if (_isActuallySpeaking && session.IsPaused)
                     {
                         _pauseTcs = new TaskCompletionSource<bool>();
                         bool resume = await _pauseTcs.Task;
-                        if (!resume || _ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || _activeSession != session) break;
+                        if (!resume || _ttsCts == null || _ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || !session.IsActive || _activeSession != session) break;
                     }
 
-                    if (_ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || _activeSession != session) break;
+                    if (_ttsCts == null || _ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || !session.IsActive || _activeSession != session) break;
                     
                     _currentSentenceCts = CancellationTokenSource.CreateLinkedTokenSource(_ttsCts.Token);
                     string sentence = sentences[index];
@@ -451,7 +619,7 @@ namespace FoodMapApp
                         await TextToSpeech.Default.SpeakAsync(sentence, options, _currentSentenceCts.Token);
                     }
                     
-                    if (_ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || _activeSession != session) break;
+                    if (_ttsCts == null || _ttsCts.Token.IsCancellationRequested || !_isActuallySpeaking || !session.IsActive || _activeSession != session) break;
                     session.SentenceIndex++;
                 }
 
@@ -462,6 +630,7 @@ namespace FoodMapApp
             finally 
             { 
                 _isActuallySpeaking = false; 
+                _ttsCts = null;
                 _ttsSemaphore.Release(); 
                 MainThread.BeginInvokeOnMainThread(async () => {
                     if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
@@ -478,9 +647,78 @@ namespace FoodMapApp
                     session.IsActive = false;
                     await MainThread.InvokeOnMainThreadAsync(async () => {
                         await SyncPlayerUI(null);
+                        
+                        // User requirement: After manual audio ends, ask to continue auto queue
+                        bool continueAuto = await DisplayAlert("Thông báo", "Tiếp tục nghe các quán gần đây?", "Đồng ý", "Bỏ qua");
+                        if (continueAuto) {
+                            AutoAudioService.Instance.SetPaused(false);
+                        } else {
+                            // Queue stays paused for 5 seconds then keeps paused status as requested?
+                            // Logic: "Nếu user bỏ qua hoặc không bấm trong 5 giây thì queue vẫn giữ nguyên ở trạng thái pause"
+                            // DisplayAlert blocks, so we might need a custom Toast for the 5s auto-ignore logic.
+                            // For now, DisplayAlert is used.
+                        }
                     });
                 }
+                else
+                {
+                    // Auto Session finished
+                    AutoAudioService.Instance.MarkAsHeard(int.Parse(session.PoiId));
+                }
             }
+        }
+
+        public async Task TriggerAutoAudioAsync(AutoAudioService.AudioQueueItem item)
+        {
+            // Fetch guide or description
+            try {
+                using HttpClient client = new HttpClient();
+                var res = await client.GetAsync($"{AppConfig.FoodApiUrl}/{item.Poi.id}/guide?lang={item.Language}");
+                string text = "";
+                if (res.IsSuccessStatusCode) {
+                    var guide = await res.Content.ReadFromJsonAsync<dynamic>();
+                    text = $"{guide?.GetProperty("title").GetString()}. {guide?.GetProperty("description").GetString()}";
+                } else {
+                    text = $"{item.Poi.name}. {item.Poi.description}";
+                }
+
+                if (!string.IsNullOrWhiteSpace(text)) {
+                    string normalizedText = NormalizeText(text);
+                    var sentences = normalizedText.Split(new[] { '.', '!', '?', ';', ',', '。', '！', '？' }, StringSplitOptions.RemoveEmptyEntries)
+                                                  .Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
+
+                    item.TotalSentences = sentences.Length;
+                    
+                    var session = new AudioSession {
+                        PoiId = item.Poi.id.ToString(),
+                        Name = item.Poi.name,
+                        Sentences = sentences,
+                        SentenceIndex = 0,
+                        Language = item.Language,
+                        IsPaused = false,
+                        IsManual = false,
+                        IsActive = true
+                    };
+
+                    _activeSession = session;
+                    _ = SpeakWithChunksAsync(session);
+                }
+            } catch (Exception ex) { Debug.WriteLine($"Auto playback error: {ex.Message}"); }
+        }
+
+        public void ResumeAudio()
+        {
+            if (_activeSession != null) {
+                _activeSession.IsPaused = false;
+                _pauseTcs?.TrySetResult(true);
+            }
+        }
+
+        public void StopAudioWithFade()
+        {
+            // Simulate fade out by stopping immediately (TTS limitation)
+            // In a more advanced implementation, we could decrease volume property if supported.
+            StopSpeech(fullReset: false, clearQueue: false);
         }
 
         public void HandleSystemInterruption()
@@ -529,6 +767,7 @@ namespace FoodMapApp
 
             // Immediately report location when appearing
             _ = ReportCurrentLocationAsync();
+            await LocalizeUI();
         }
 
         protected override void OnDisappearing()
@@ -613,7 +852,7 @@ namespace FoodMapApp
             {
                 tourListContainer.Children.Clear();
                 var loadingLabel = new Label { 
-                    Text = "Đang tải danh sách Tour...", 
+                    Text = LocalizationService.Instance.Get("main_tour_loading"), 
                     TextColor = Colors.Gray, 
                     FontAttributes = FontAttributes.Italic,
                     HorizontalOptions = LayoutOptions.Center,
@@ -633,7 +872,7 @@ namespace FoodMapApp
 
                     if (_tours == null || !_tours.Any())
                     {
-                        tourListContainer.Children.Add(new Label { Text = "Không có Tour nào", TextColor = Colors.Gray, HorizontalOptions = LayoutOptions.Center, Margin = 20 });
+                        tourListContainer.Children.Add(new Label { Text = LocalizationService.Instance.Get("main_tour_empty"), TextColor = Colors.Gray, HorizontalOptions = LayoutOptions.Center, Margin = 20 });
                         return;
                     }
 
@@ -654,7 +893,7 @@ namespace FoodMapApp
                         layout.Children.Add(new Label { Text = (tour.Description?.Length > 60 ? tour.Description.Substring(0, 60) + "..." : tour.Description), FontSize = 13, TextColor = Colors.Gray });
                         layout.Children.Add(new Button 
                         { 
-                            Text = "Xem Tour này", 
+                            Text = LocalizationService.Instance.Get("main_tour_view_btn"), 
                             BackgroundColor = Color.FromArgb("#FF6B81"), 
                             TextColor = Colors.White, 
                             HeightRequest = 35, 
@@ -669,13 +908,13 @@ namespace FoodMapApp
                 }
                 else
                 {
-                    tourListContainer.Children.Add(new Label { Text = $"Lỗi kết nối: {(int)response.StatusCode}", TextColor = Colors.Red, HorizontalOptions = LayoutOptions.Center, Margin = 20 });
+                    tourListContainer.Children.Add(new Label { Text = $"{LocalizationService.Instance.Get("main_tour_error")}: {(int)response.StatusCode}", TextColor = Colors.Red, HorizontalOptions = LayoutOptions.Center, Margin = 20 });
                 }
             }
             catch (Exception ex)
             {
                 tourListContainer.Children.Clear();
-                tourListContainer.Children.Add(new Label { Text = "Lỗi đường truyền thiết bị", TextColor = Colors.Red, HorizontalOptions = LayoutOptions.Center, Margin = 20 });
+                tourListContainer.Children.Add(new Label { Text = LocalizationService.Instance.Get("main_tour_io_error"), TextColor = Colors.Red, HorizontalOptions = LayoutOptions.Center, Margin = 20 });
                 Debug.WriteLine($"LoadTours error: {ex.Message}");
             }
         }
@@ -697,11 +936,11 @@ namespace FoodMapApp
 
                         // Setup UI
                         simTourName.Text = _currentTour.Name;
-                        simTotalTime.Text = "Đang tính toán...";
+                        simTotalTime.Text = LocalizationService.Instance.Get("main_calculating");
                         
                         // Calculate total price string manually or via JS
-                        simTotalPrice.Text = "Đang tính toán...";
-                        simProgress.Text = "Chưa di chuyển";
+                        simTotalPrice.Text = LocalizationService.Instance.Get("main_calculating");
+                        simProgress.Text = LocalizationService.Instance.Get("main_tour_not_moved");
 
                         tourSimulationPanel.IsVisible = true;
                         btnSimulateStart.IsVisible = true;
@@ -760,36 +999,6 @@ namespace FoodMapApp
         }
 
 
-    }
-
-    public class FoodItem
-    {
-        public int id { get; set; }
-        public string? name { get; set; }
-    }
-
-    public class TourModel
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-    }
-
-    public class TourDetailModel
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public List<TourPoiModel> TourPois { get; set; } = new();
-    }
-
-    public class TourPoiModel
-    {
-        public int Id { get; set; }
-        public int PoiId { get; set; }
-        public int StayDurationMinutes { get; set; }
-        public string ApproximatePrice { get; set; } = string.Empty;
-        public int OrderIndex { get; set; }
     }
 }
 

@@ -13,6 +13,7 @@ namespace FoodMapAdmin.Services
         Task<Poi?> GetPoiByIdAsync(int id);
         Task<bool> UpdatePoiAsync(Poi poi);
         Task<bool> DeletePoiAsync(int id);
+        Task<bool> RestorePoiAsync(int id);
         Task<bool> CreatePoiAsync(Poi poi);
     }
 
@@ -132,24 +133,62 @@ namespace FoodMapAdmin.Services
             if (poi == null) return false;
             
             var name = poi.Name;
-
-            // Xóa ảnh của quán và tệp vật lý trước khi xóa quán
-            await _imageService.DeleteImagesByPoiIdAsync(id);
-
-            // Xóa mã QR liên quan và tệp vật lý
-            var qr = await _context.PoiQrs.FirstOrDefaultAsync(q => q.PoiId == id);
-            if (qr != null) 
+            
+            // Kiểm tra xem POI có thuộc tour nào không
+            bool isInTour = await _context.TourPois.AnyAsync(tp => tp.PoiId == id);
+            
+            if (isInTour)
             {
-                DeletePhysicalQrFile(qr.QrCodeUrl);
-                _context.PoiQrs.Remove(qr);
+                // Soft delete: Chỉ ẩn đi
+                poi.IsHidden = true;
+                _context.Pois.Update(poi);
+                
+                var res = await _context.SaveChangesAsync() > 0;
+                if (res)
+                {
+                    var userId = await GetCurrentUserIdAsync();
+                    await _logger.LogAsync(userId, "Ẩn quán ăn", name, $"Đã ẩn {name} vì quán đang nằm trong Tour");
+                }
+                return res;
             }
+            else
+            {
+                // Hard delete: Xóa hoàn toàn
+                // Xóa ảnh của quán và tệp vật lý trước khi xóa quán
+                await _imageService.DeleteImagesByPoiIdAsync(id);
 
-            _context.Pois.Remove(poi);
+                // Xóa mã QR liên quan và tệp vật lý
+                var qr = await _context.PoiQrs.FirstOrDefaultAsync(q => q.PoiId == id);
+                if (qr != null) 
+                {
+                    DeletePhysicalQrFile(qr.QrCodeUrl);
+                    _context.PoiQrs.Remove(qr);
+                }
+
+                _context.Pois.Remove(poi);
+                var result = await _context.SaveChangesAsync() > 0;
+                if (result)
+                {
+                    var userId = await GetCurrentUserIdAsync();
+                    await _logger.LogAsync(userId, "Xóa quán ăn", name, $"Đã xóa {name} khỏi hệ thống");
+                }
+                return result;
+            }
+        }
+
+        public async Task<bool> RestorePoiAsync(int id)
+        {
+            var poi = await _context.Pois.FindAsync(id);
+            if (poi == null) return false;
+
+            poi.IsHidden = false;
+            _context.Pois.Update(poi);
+            
             var result = await _context.SaveChangesAsync() > 0;
             if (result)
             {
                 var userId = await GetCurrentUserIdAsync();
-                await _logger.LogAsync(userId, "Xóa quán ăn", name, $"Đã xóa {name} khỏi hệ thống");
+                await _logger.LogAsync(userId, "Bỏ ẩn quán ăn", poi.Name, $"Đã hủy ẩn cho quán {poi.Name}");
             }
             return result;
         }

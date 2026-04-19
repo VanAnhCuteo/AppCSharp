@@ -68,6 +68,10 @@
                                     <div>
                                         <div style="font-weight: 700; color: var(--text-main); font-size: 0.92rem;">
                                             @poi.Name
+                                            @if (poi.IsHidden)
+                                            {
+                                                <span class="badge-hidden ms-2">ĐANG ẨN</span>
+                                            }
                                             @{
                                                 var pending = pendingChangesList.FirstOrDefault(pc => pc.PoiId == poi.PoiId);
                                                 if (!isAdmin && pending != null)
@@ -102,7 +106,14 @@
                             </td>
                             <td style="text-align: center;">
                                 <div style="display: flex; justify-content: center; gap: 0.5rem;">
-                                    @{
+                                    @if (poi.IsHidden)
+                                    {
+                                        <button class="act-btn act-restore" title="Bỏ ẩn" @onclick="() => Restore(poi.PoiId)">
+                                            <i class="bi bi-eye-fill"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
                                         var hasPending = pendingChangesList.Any(pc => pc.PoiId == poi.PoiId);
                                         if (isAdmin || !hasPending)
                                         {
@@ -231,6 +242,19 @@
         color: white;
         transform: translateY(-1px);
     }
+    
+    .act-restore {
+        background: rgba(52, 168, 83, 0.06);
+        color: #34a853;
+    }
+
+    .act-restore:hover {
+        background: #34a853;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .badge-hidden { background: rgba(255, 159, 67, 0.1); color: #FF9F43; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.65rem; font-weight: 800; }
     .badge-pending-warning { background: rgba(255, 159, 67, 0.1); color: #FF9F43; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.65rem; font-weight: 800; }
     .badge-pending-danger { background: rgba(255, 71, 87, 0.1); color: #FF4757; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.65rem; font-weight: 800; }
     .badge-pending-primary { background: rgba(52, 152, 219, 0.1); color: #3498db; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.65rem; font-weight: 800; }
@@ -299,13 +323,15 @@
         {
             if (user.IsInRole("admin"))
             {
+                // Check if in tour first to show message
+                // Actually DeletePoiAsync already handles this logic, 
+                // but we can be more explicit in the UI if we want.
                 if (await PoiService.DeletePoiAsync(id))
                 {
-                    var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                    int.TryParse(userIdStr, out var currentUserId);
-                    await Logger.LogAsync(currentUserId, "Xóa quán ăn", poi.Name);
-                    
-                    pois = pois?.Where(p => p.PoiId != id).ToList();
+                    // Refresh data
+                    pois = isAdmin 
+                        ? await PoiService.GetAllPoisAsync() 
+                        : await PoiService.GetPoisByOwnerAsync(int.Parse(user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value!));
                     StateHasChanged();
                 }
             }
@@ -324,6 +350,17 @@
                     }
                 }
             }
+        }
+    }
+
+    private async Task Restore(int id)
+    {
+        if (await PoiService.RestorePoiAsync(id))
+        {
+            pois = isAdmin 
+                ? await PoiService.GetAllPoisAsync() 
+                : await PoiService.GetPoisByOwnerAsync(int.Parse((await AuthStateTask!).User.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value!));
+            StateHasChanged();
         }
     }
 }

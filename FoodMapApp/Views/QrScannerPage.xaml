@@ -31,16 +31,16 @@
 
         <!-- UI Controls -->
         <VerticalStackLayout VerticalOptions="End" Padding="30,50" Spacing="20">
-            <Label Text="Di chuyển camera đến mã QR để quét" 
+            <Label x:Name="InstructionLabel" Text="Di chuyển camera đến mã QR để quét" 
                    TextColor="White" FontSize="16" FontAttributes="Bold"
                    HorizontalOptions="Center" HorizontalTextAlignment="Center" />
 
             <Grid ColumnDefinitions="*,*" ColumnSpacing="15">
-                <Button Grid.Column="0" Text="Mở Thư Viện" Clicked="OnPickImageClicked"
+                <Button x:Name="PickImageBtn" Grid.Column="0" Text="Mở Thư Viện" Clicked="OnPickImageClicked"
                         BackgroundColor="White" TextColor="Black" CornerRadius="20"
                         HeightRequest="50" FontAttributes="Bold" />
                 
-                <Button Grid.Column="1" Text="Đóng" Clicked="OnCloseClicked"
+                <Button x:Name="CloseBtn" Grid.Column="1" Text="Đóng" Clicked="OnCloseClicked"
                         BackgroundColor="#333333" TextColor="White" CornerRadius="20"
                         HeightRequest="50" FontAttributes="Bold" />
             </Grid>

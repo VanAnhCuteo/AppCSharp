@@ -303,7 +303,7 @@
     {
         if (autoRefreshTimer == null)
         {
-            autoRefreshTimer = new Timer(20000); // 20 seconds
+            autoRefreshTimer = new Timer(4000); // 4 seconds
             autoRefreshTimer.Elapsed += async (sender, e) => await InvokeAsync(async () => {
                 if (activeMode == "heatmap" && !isLoading)
                 {

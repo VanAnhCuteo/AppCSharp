@@ -38,13 +38,15 @@
 		<!-- Optimization for Android Build Speed and Performance -->
 		<AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
 		<RunAOTCompilation>false</RunAOTCompilation>
-		<PublishTrimmed Condition="'$(Configuration)' == 'Release'">true</PublishTrimmed>
+		<PublishTrimmed Condition="'$(Configuration)' == 'Release'">false</PublishTrimmed>
 		<TrimMode>partial</TrimMode>
 		<AndroidLinkResources>true</AndroidLinkResources>
 
 		<!-- Debug Optimizations -->
 		<EmbedAssembliesIntoApk Condition="'$(Configuration)' == 'Debug'">true</EmbedAssembliesIntoApk>
 		<AndroidUseInterpreter Condition="'$(Configuration)' == 'Debug'">true</AndroidUseInterpreter>
+		<AndroidEnableMultiDex>true</AndroidEnableMultiDex>
+		<AndroidPackageFormat>apk</AndroidPackageFormat>
 	</PropertyGroup>
 
 	<ItemGroup>

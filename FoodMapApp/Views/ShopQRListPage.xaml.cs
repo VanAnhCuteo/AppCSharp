@@ -15,7 +15,25 @@ public partial class ShopQRListPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        await LocalizeUI();
         await LoadShopsAsync();
+    }
+
+    private async Task LocalizeUI()
+    {
+        var source = new Dictionary<string, string>
+        {
+            ["qr_list_title"] = "Danh sách quán ăn",
+            ["qr_list_instruction"] = "Chọn quán để xem mã QR",
+            ["qr_list_sub"] = "Mã QR giúp bạn nhận diện quán nhanh chóng",
+            ["err_load_shops"] = "Không thể tải danh sách quán"
+        };
+
+        await LocalizationService.Instance.InitializeAsync(Preferences.Default.Get("app_lang", "vi"), source);
+
+        this.Title = LocalizationService.Instance.Get("qr_list_title");
+        InstructionsTitleLabel.Text = LocalizationService.Instance.Get("qr_list_instruction");
+        InstructionsSubTitleLabel.Text = LocalizationService.Instance.Get("qr_list_sub");
     }
 
     private async Task LoadShopsAsync()
@@ -30,7 +48,7 @@ public partial class ShopQRListPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Lỗi", "Không thể tải danh sách quán: " + ex.Message, "OK");
+            await DisplayAlert(LocalizationService.Instance.Get("err_title", "Lỗi"), LocalizationService.Instance.Get("err_load_shops") + ": " + ex.Message, "OK");
         }
         finally
         {

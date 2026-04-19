@@ -39,81 +39,41 @@ namespace FoodMapApp.Views
 
         private async Task HandleQrCode(string qrContent)
         {
-            if (string.IsNullOrWhiteSpace(qrContent)) return;
-            
-            // Làm sạch nội dung mã QR
-            string cleanQr = qrContent.Trim();
-            string qrLower = cleanQr.ToLower();
-            Debug.WriteLine($"QR Cleaned: {cleanQr}");
+            Debug.WriteLine($"QR Detected: {qrContent}");
 
-            // 1. Xử lý đăng nhập khách (Link guest)
-            if (qrLower.Contains("foodmap_guest") || qrLower.Contains("foodmap://guest") || qrLower.Contains("foodmap.app/guest"))
+            if (qrContent.ToUpper() == "FOODMAP_GUEST" || qrContent.StartsWith("FOODMAP_GUEST_") || qrContent.ToLower() == "foodmap://guest" || qrContent.ToLower() == "https://foodmap.app/guest")
             {
-                await DisplayAlert("Thành công", "Đang đăng nhập chế độ khách...", "Tiếp tục");
+                // Instant Feedback via processing indicator or just straight nav
                 
-                int guestId = new Random().Next(100000, 999999);
-                if (cleanQr.Contains("_")) {
-                    string idPart = cleanQr.Split('_').Last();
-                    int pid;
-                    if (int.TryParse(idPart, out pid)) guestId = pid;
+                // Generate a random ID (or extract from string if provided)
+                int guestId;
+                if (qrContent.Contains("_")) {
+                    string idPart = qrContent.Split('_').Last();
+                    if (!int.TryParse(idPart, out guestId)) guestId = new Random().Next(100000, 999999);
+                } else {
+                    guestId = new Random().Next(100000, 999999);
                 }
 
+                // Simulate login
                 _authService.LoginAsGuest(guestId);
-                await Shell.Current.GoToAsync("//HomePage");
-            }
-            // 2. Xử lý quét mã Quán ăn (Link POI / Audio)
-            else if (qrLower.Contains("foodmap://poi/") || qrLower.Contains("foodmap.app/poi/") || qrLower.Contains("foodmap_poi_"))
-            {
-                // Trích xuất ID từ bất kỳ định dạng nào (url hoặc vắn tắt)
-                string idStr = "";
-                if (qrLower.Contains("/")) idStr = qrLower.Split('/').Last();
-                else if (qrLower.Contains("_")) idStr = qrLower.Split('_').Last();
-
-                if (int.TryParse(idStr, out int id))
+                
+                try
                 {
-                    // Tự động đăng nhập khách nếu chưa có tài khoản
-                    if (!_authService.IsLoggedIn)
-                    {
-                        int guestId = new Random().Next(100000, 999999);
-                        _authService.LoginAsGuest(guestId);
-                    }
-
-                    // Chuyển hướng đến bản đồ và mở chi tiết quán
-                    FoodMapApp.MainPage.PendingOpenFoodId = id;
-                    
-                    // Nếu đang ở trang login, dùng //MainPage. Nếu đang ở trong app, Navigation.PopAsync() hoặc GoToAsync.
-                    if (Shell.Current.CurrentPage is LoginPage) {
-                        await Shell.Current.GoToAsync("//MainPage");
-                    } else {
-                        await Navigation.PopToRootAsync();
-                        await Shell.Current.GoToAsync("//MainPage");
-                    }
-                    
-                    if (FoodMapApp.MainPage.Instance != null)
-                    {
-                        await FoodMapApp.MainPage.Instance.TryOpenPendingDetail();
-                    }
+                    await Shell.Current.GoToAsync("//MainTabs");
                 }
-                else
+                catch (Exception ex)
                 {
-                    await DisplayAlert("Lỗi", "Mã quán ăn không hợp lệ.", "Thử lại");
-                    _isProcessing = false;
+                    await DisplayAlert("Lỗi điều hướng", ex.Message, "OK");
+                    await Shell.Current.GoToAsync("//HomePage"); // Fallback
                 }
             }
             else
             {
-                await DisplayAlert("Thông báo", $"Mã QR không hợp lệ: {cleanQr}", "Thử lại");
+                await DisplayAlert(LocalizationService.Instance.Get("title", "Thông báo"), LocalizationService.Instance.Get("qr_scanner_invalid"), "OK");
                 _isProcessing = false;
             }
         }
 
-        private void SetGuestSession(int guestId)
-        {
-            Preferences.Default.Set("user_id", -guestId);
-            Preferences.Default.Set("username", $"Khách {guestId}");
-            Preferences.Default.Set("role", "guest");
-            Preferences.Default.Set("is_logged_in", true);
-        }
 
         private async void OnPickImageClicked(object sender, EventArgs e)
         {
@@ -158,6 +118,7 @@ namespace FoodMapApp.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+            await LocalizeUI();
             
             var status = await Permissions.CheckStatusAsync<Permissions.Camera>();
             if (status != PermissionStatus.Granted)
@@ -167,13 +128,37 @@ namespace FoodMapApp.Views
 
             if (status == PermissionStatus.Granted)
             {
+                // Small delay to ensure native underlying views are ready on physical hardware
+                await Task.Delay(250);
                 barcodeReader.IsDetecting = true;
             }
             else
             {
-                await DisplayAlert("Quyền truy cập camera", "Ứng dụng cần quyền truy cập camera để quét mã QR. Vui lòng cấp quyền trong cài đặt.", "Đóng");
+                string msg = LocalizationService.Instance.Get("err_camera_denied", "Ứng dụng cần quyền truy cập camera để quét mã QR. Vui lòng cấp quyền trong cài đặt.");
+                string close = LocalizationService.Instance.Get("cancel", "Đóng");
+                await DisplayAlert(LocalizationService.Instance.Get("title", "Thông báo"), msg, close);
                 await Navigation.PopAsync();
             }
+        }
+
+        private async Task LocalizeUI()
+        {
+            var source = new Dictionary<string, string>
+            {
+                ["qr_scanner_title"] = "Quét mã QR",
+                ["qr_scanner_instr"] = "Di chuyển camera đến mã QR để quét",
+                ["qr_scanner_pick_btn"] = "Mở Thư Viện",
+                ["qr_scanner_close_btn"] = "Đóng",
+                ["qr_scanner_invalid"] = "Mã QR không hợp lệ cho ứng dụng này.",
+                ["qr_scanner_guest_msg"] = "Đang đăng nhập chế độ khách..."
+            };
+
+            await LocalizationService.Instance.InitializeAsync(Preferences.Default.Get("app_lang", "vi"), source);
+
+            this.Title = LocalizationService.Instance.Get("qr_scanner_title");
+            InstructionLabel.Text = LocalizationService.Instance.Get("qr_scanner_instr");
+            PickImageBtn.Text = LocalizationService.Instance.Get("qr_scanner_pick_btn");
+            CloseBtn.Text = LocalizationService.Instance.Get("qr_scanner_close_btn");
         }
 
         protected override void OnDisappearing()

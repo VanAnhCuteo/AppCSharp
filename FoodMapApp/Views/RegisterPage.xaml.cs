@@ -12,20 +12,46 @@ namespace FoodMapApp.Views
             _authService = new AuthService();
         }
 
-        protected override void OnAppearing()
+        protected override async void OnAppearing()
         {
             base.OnAppearing();
-            // Set Vietnamese text from code-behind to avoid XAML encoding issues
-            TitleLabel.Text = "Tham Gia FoodMap";
-            SubtitleLabel.Text = "Tạo tài khoản để khám phá ẩm thực Vĩnh Khánh.";
-            UsernameLbl.Text = "Tên đăng nhập";
-            UsernameEntry.Placeholder = "Chọn tên đăng nhập";
-            EmailLbl.Text = "Địa chỉ Email";
-            PasswordLbl.Text = "Mật khẩu";
-            ConfirmPasswordLbl.Text = "Xác nhận mật khẩu";
-            RegisterButton.Text = "ĐĂNG KÝ";
-            HaveAccountLabel.Text = "Đã có tài khoản?";
-            LoginNowLabel.Text = "Đăng nhập";
+            await LocalizeUI();
+        }
+
+        private async Task LocalizeUI()
+        {
+            var source = new Dictionary<string, string>
+            {
+                ["reg_title"] = "Tham Gia FoodMap",
+                ["reg_subtitle"] = "Tạo tài khoản để khám phá ẩm thực Vĩnh Khánh.",
+                ["reg_user_lbl"] = "Tên đăng nhập",
+                ["reg_user_ph"] = "Chọn tên đăng nhập",
+                ["reg_email_lbl"] = "Địa chỉ Email",
+                ["reg_pwd_lbl"] = "Mật khẩu",
+                ["reg_confirm_pwd_lbl"] = "Xác nhận mật khẩu",
+                ["reg_btn"] = "ĐĂNG KÝ",
+                ["reg_have_acc"] = "Đã có tài khoản?",
+                ["reg_login_link"] = "Đăng nhập",
+                ["reg_err"] = "Lỗi",
+                ["reg_missing_fields"] = "Vui lòng điền đầy đủ thông tin.",
+                ["reg_pwd_mismatch"] = "Mật khẩu xác nhận không khớp.",
+                ["reg_success"] = "Thành công",
+                ["reg_welcome"] = "Tài khoản đã tạo! Chào mừng đến FoodMap Vĩnh Khánh.",
+                ["reg_fail_title"] = "Đăng ký thất bại"
+            };
+
+            await LocalizationService.Instance.InitializeAsync(Preferences.Default.Get("app_lang", "vi"), source);
+
+            TitleLabel.Text = LocalizationService.Instance.Get("reg_title");
+            SubtitleLabel.Text = LocalizationService.Instance.Get("reg_subtitle");
+            UsernameLbl.Text = LocalizationService.Instance.Get("reg_user_lbl");
+            UsernameEntry.Placeholder = LocalizationService.Instance.Get("reg_user_ph");
+            EmailLbl.Text = LocalizationService.Instance.Get("reg_email_lbl");
+            PasswordLbl.Text = LocalizationService.Instance.Get("reg_pwd_lbl");
+            ConfirmPasswordLbl.Text = LocalizationService.Instance.Get("reg_confirm_pwd_lbl");
+            RegisterButton.Text = LocalizationService.Instance.Get("reg_btn");
+            HaveAccountLabel.Text = LocalizationService.Instance.Get("reg_have_acc");
+            LoginNowLabel.Text = LocalizationService.Instance.Get("reg_login_link");
         }
 
         private async void OnRegisterClicked(object sender, EventArgs e)
@@ -37,13 +63,13 @@ namespace FoodMapApp.Views
 
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
             {
-                await DisplayAlert("Lỗi", "Vui lòng điền đầy đủ thông tin.", "OK");
+                await DisplayAlert(LocalizationService.Instance.Get("reg_err"), LocalizationService.Instance.Get("reg_missing_fields"), "OK");
                 return;
             }
 
             if (password != confirmPassword)
             {
-                await DisplayAlert("Lỗi", "Mật khẩu xác nhận không khớp.", "OK");
+                await DisplayAlert(LocalizationService.Instance.Get("reg_err"), LocalizationService.Instance.Get("reg_pwd_mismatch"), "OK");
                 return;
             }
 
@@ -53,12 +79,12 @@ namespace FoodMapApp.Views
 
             if (result.success)
             {
-                await DisplayAlert("Thành công", "Tài khoản đã tạo! Chào mừng đến FoodMap Vĩnh Khánh.", "OK");
+                await DisplayAlert(LocalizationService.Instance.Get("reg_success"), LocalizationService.Instance.Get("reg_welcome"), "OK");
                 await Shell.Current.GoToAsync("//HomePage");
             }
             else
             {
-                await DisplayAlert("Đăng ký thất bại", result.message, "OK");
+                await DisplayAlert(LocalizationService.Instance.Get("reg_fail_title"), result.message, "OK");
             }
         }
 

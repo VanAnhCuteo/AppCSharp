@@ -1,9 +1,10 @@
-﻿namespace FoodMapAPI.Models
+namespace FoodMapAPI.Models
 {
     public class Category
     {
         public int category_id { get; set; }
         public string category_name { get; set; }
         public string description { get; set; }
+        public bool is_hidden { get; set; }
     }
 }

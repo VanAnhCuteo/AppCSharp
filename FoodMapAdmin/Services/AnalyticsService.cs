@@ -43,10 +43,10 @@ namespace FoodMapAdmin.Services
 
         public async Task<List<UserHeatPoint>> GetActiveUserLocationsAsync()
         {
-            var activeThreshold = DateTime.Now.AddSeconds(-21);
+            var fifteenSecondsAgo = DateTime.Now.AddSeconds(-15);
             return await _context.UserLocations
                 .AsNoTracking()
-                .Where(u => u.LastActive > activeThreshold)
+                .Where(u => u.LastActive > fifteenSecondsAgo)
                 .Select(u => new UserHeatPoint
                 {
                     Lat = (double)u.Latitude,
@@ -58,10 +58,10 @@ namespace FoodMapAdmin.Services
 
         public async Task<MonitoringStats> GetMonitoringStatsAsync()
         {
-            var activeThreshold = DateTime.Now.AddSeconds(-21);
+            var fifteenSecondsAgo = DateTime.Now.AddSeconds(-15);
             var activeRecords = await _context.UserLocations
                 .AsNoTracking()
-                .Where(u => u.LastActive > activeThreshold)
+                .Where(u => u.LastActive > fifteenSecondsAgo)
                 .ToListAsync();
 
             var stats = new MonitoringStats

@@ -1,5 +1,7 @@
 using FoodMapApp.Services;
+using FoodMapApp.Models;
 using System.Net.Http.Json;
+using System.Net.Http;
 using Microsoft.Maui.Storage;
 using System.Linq;
 
@@ -15,15 +17,48 @@ namespace FoodMapApp.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
-
-            // Set all Vietnamese text from code-behind (Fixes "missing text" issue)
-
-
-            LogoutButton.Text = "Đăng Xuất";
-            EditProfileButton.Text = "Chỉnh sửa";
-
+            await LocalizeUI();
+            
             LoadProfileFromSession();
             await LoadTourHistoryAsync();
+        }
+
+        private async Task LocalizeUI()
+        {
+            var source = new Dictionary<string, string>
+            {
+                ["prof_edit_btn"] = "Chỉnh sửa",
+                ["prof_logout_btn"] = "Đăng xuất",
+                ["prof_guest"] = "Khách",
+                ["prof_not_provided"] = "Chưa cung cấp",
+                ["prof_guest_acc"] = "Tài khoản Khách",
+                ["prof_owner"] = "Chủ Nhà Hàng",
+                ["prof_history_title"] = "Lịch Sử Đi Tour Ẩm Thực",
+                ["prof_history_guest"] = "Lịch sử tour chỉ dành cho thành viên.",
+                ["prof_loading"] = "Đang tải...",
+                ["prof_no_history"] = "Chưa có lịch sử đi tour nào.",
+                ["prof_status"] = "Trạng thái",
+                ["prof_completed"] = "Đã hoàn thành",
+                ["prof_partial"] = "Hoàn thành 50%",
+                ["prof_date"] = "Ngày đi",
+                ["prof_error_load"] = "Lỗi khi tải lịch sử.",
+                ["prof_logout_confirm_title"] = "Đăng xuất",
+                ["prof_logout_confirm_msg"] = "Bạn có chắc muốn đăng xuất?",
+                ["prof_yes"] = "Có",
+                ["prof_cancel"] = "Hủy",
+                ["prof_audio_history"] = "Lịch sử nghe audio",
+                ["prof_save_err"] = "Lỗi",
+                ["prof_missing_info"] = "Vui lòng nhập đầy đủ tên và email.",
+                ["prof_success"] = "Thành công",
+                ["prof_updated"] = "Thông tin đã được cập nhật.",
+                ["prof_update_fail"] = "Không thể cập nhật thông tin. Vui lòng thử lại."
+            };
+
+            await LocalizationService.Instance.InitializeAsync(Preferences.Default.Get("app_lang", "vi"), source);
+
+            LogoutButton.Text = LocalizationService.Instance.Get("prof_logout_btn");
+            EditProfileButton.Text = LocalizationService.Instance.Get("prof_edit_btn");
+            HistoryHeaderLabel.Text = LocalizationService.Instance.Get("prof_history_title");
         }
 
         private void LoadProfileFromSession()
@@ -36,8 +71,13 @@ namespace FoodMapApp.Views
             string email = Preferences.Default.Get("email", "");
 
             ProfileUsernameLabel.Text = username;
-            ProfileEmailLabel.Text = isGuest ? "Chưa cung cấp" : email;
-            ProfileRoleLabel.Text = role == "CNH" ? "Chủ Nhà Hàng" : (isGuest ? "Tài khoản Khách" : role);
+            ProfileEmailLabel.Text = isGuest ? LocalizationService.Instance.Get("prof_not_provided") : email;
+            
+            string roleDisplay = role;
+            if (role == "CNH") roleDisplay = LocalizationService.Instance.Get("prof_owner");
+            else if (isGuest) roleDisplay = LocalizationService.Instance.Get("prof_guest_acc");
+            
+            ProfileRoleLabel.Text = roleDisplay;
             
             // Hide edit button for guests
             EditProfileButton.IsVisible = !isGuest;
@@ -68,7 +108,7 @@ namespace FoodMapApp.Views
 
             if (string.IsNullOrEmpty(newUsername) || string.IsNullOrEmpty(newEmail))
             {
-                await DisplayAlert("Lỗi", "Vui lòng nhập đầy đủ tên và email.", "OK");
+                await DisplayAlert(LocalizationService.Instance.Get("prof_save_err"), LocalizationService.Instance.Get("prof_missing_info"), "OK");
                 return;
             }
 
@@ -80,14 +120,14 @@ namespace FoodMapApp.Views
 
             if (success)
             {
-                await DisplayAlert("Thành công", "Thông tin đã được cập nhật.", "OK");
+                await DisplayAlert(LocalizationService.Instance.Get("prof_success"), LocalizationService.Instance.Get("prof_updated"), "OK");
                 DisplayModeLayout.IsVisible = true;
                 EditModeLayout.IsVisible = false;
                 LoadProfileFromSession();
             }
             else
             {
-                await DisplayAlert("Lỗi", "Không thể cập nhật thông tin. Vui lòng thử lại.", "OK");
+                await DisplayAlert(LocalizationService.Instance.Get("prof_save_err"), LocalizationService.Instance.Get("prof_update_fail"), "OK");
             }
         }
 
@@ -104,7 +144,7 @@ namespace FoodMapApp.Views
                 {
                     tourHistoryContainer.Children.Clear();
                     tourHistoryContainer.Children.Add(new Label { 
-                        Text = "Lịch sử tour chỉ dành cho thành viên.", 
+                        Text = LocalizationService.Instance.Get("prof_history_guest"), 
                         TextColor = Colors.Gray, 
                         HorizontalOptions = LayoutOptions.Center,
                         Margin = new Thickness(0, 20)
@@ -115,7 +155,7 @@ namespace FoodMapApp.Views
                 if (userId == 0)
 
                 tourHistoryContainer.Children.Clear();
-                tourHistoryContainer.Children.Add(new Label { Text = "Đang tải...", TextColor = Colors.Gray, FontAttributes = FontAttributes.Italic, HorizontalOptions = LayoutOptions.Center });
+                tourHistoryContainer.Children.Add(new Label { Text = LocalizationService.Instance.Get("prof_loading"), TextColor = Colors.Gray, FontAttributes = FontAttributes.Italic, HorizontalOptions = LayoutOptions.Center });
 
                 using HttpClient client = new HttpClient();
                 var response = await client.GetAsync($"{AppConfig.BaseUrl}/Tours/history/{userId}");
@@ -129,7 +169,7 @@ namespace FoodMapApp.Views
 
                     if (histories == null || !histories.Any())
                     {
-                        tourHistoryContainer.Children.Add(new Label { Text = "Chưa có lịch sử đi tour nào.", TextColor = Colors.Gray, HorizontalOptions = LayoutOptions.Center });
+                        tourHistoryContainer.Children.Add(new Label { Text = LocalizationService.Instance.Get("prof_no_history"), TextColor = Colors.Gray, HorizontalOptions = LayoutOptions.Center });
                         return;
                     }
 
@@ -137,19 +177,43 @@ namespace FoodMapApp.Views
                     {
                         var frame = new Border
                         {
-                            StrokeThickness = 1,
-                            Stroke = Color.FromArgb("#FF6B81"),
-                            BackgroundColor = Color.FromArgb("#FFF0F3"),
-                            Padding = new Thickness(15),
-                            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(12) }
+                            StrokeThickness = 0,
+                            BackgroundColor = Colors.White,
+                            Padding = new Thickness(12),
+                            Margin = new Thickness(0, 0, 0, 15),
+                            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(20) }
                         };
+                        frame.Shadow = new Shadow { Brush = Color.FromArgb("#FF6B81"), Offset = new Point(0, 4), Opacity = 0.08f, Radius = 10 };
                         
-                        var layout = new VerticalStackLayout { Spacing = 5 };
-                        layout.Children.Add(new Label { Text = h.TourName, FontAttributes = FontAttributes.Bold, FontSize = 15, TextColor = Color.FromArgb("#333") });
-                        layout.Children.Add(new Label { Text = $"Trạng thái: {(h.Status.Contains("100") ? "Đã hoàn thành" : "Hoàn thành 50%")}", FontSize = 13, TextColor = h.Status.Contains("100") ? Colors.Green : Color.FromArgb("#FF9F43") });
-                        layout.Children.Add(new Label { Text = $"Ngày đi: {h.CreatedAt:dd/MM/yyyy}", FontSize = 12, TextColor = Colors.Gray });
+                        var grid = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) }, ColumnSpacing = 15 };
 
-                        frame.Content = layout;
+                        // Icon Column
+                        var iconBorder = new Border { BackgroundColor = Color.FromArgb("#FFF0F3"), WidthRequest = 44, HeightRequest = 44, StrokeThickness = 0 };
+                        iconBorder.StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(14) };
+                        iconBorder.Content = new Microsoft.Maui.Controls.Shapes.Path { 
+                            Data = (Microsoft.Maui.Controls.Shapes.Geometry)new Microsoft.Maui.Controls.Shapes.PathGeometryConverter().ConvertFromInvariantString("M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"),
+                            Fill = Color.FromArgb("#FF6B81"), Aspect = Stretch.Uniform, WidthRequest = 22, HeightRequest = 22, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center 
+                        };
+                        grid.Children.Add(iconBorder);
+
+                        // Info Column
+                        var infoStack = new VerticalStackLayout { VerticalOptions = LayoutOptions.Center, Spacing = 2 };
+                        infoStack.Children.Add(new Label { Text = h.TourName, FontAttributes = FontAttributes.Bold, FontSize = 16, TextColor = Color.FromArgb("#333") });
+                        infoStack.Children.Add(new Label { Text = h.CreatedAt?.ToString("dd/MM/yyyy") ?? "", FontSize = 12, TextColor = Colors.Gray });
+                        grid.Add(infoStack, 1, 0);
+
+                        // Status Column
+                        bool isCompleted = h.Status?.Contains("100") == true;
+                        var statusBorder = new Border { BackgroundColor = Color.FromArgb("#FFF0F3"), Padding = new Thickness(10, 4), VerticalOptions = LayoutOptions.Center, StrokeThickness = 0 };
+                        statusBorder.StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(10) };
+                        statusBorder.Content = new Label { 
+                            Text = isCompleted ? LocalizationService.Instance.Get("prof_completed") : $"{(int)h.ProgressPercentage}%", 
+                            TextColor = isCompleted ? Colors.Green : Color.FromArgb("#FF6B81"), 
+                            FontSize = 11, FontAttributes = FontAttributes.Bold 
+                        };
+                        grid.Add(statusBorder, 2, 0);
+
+                        frame.Content = grid;
                         tourHistoryContainer.Children.Add(frame);
                     }
                 }
@@ -157,30 +221,33 @@ namespace FoodMapApp.Views
             catch (Exception ex)
             {
                 tourHistoryContainer.Children.Clear();
-                tourHistoryContainer.Children.Add(new Label { Text = "Lỗi khi tải lịch sử.", TextColor = Colors.Red, HorizontalOptions = LayoutOptions.Center });
+                tourHistoryContainer.Children.Add(new Label { Text = LocalizationService.Instance.Get("prof_error_load"), TextColor = Colors.Red, HorizontalOptions = LayoutOptions.Center });
                 System.Diagnostics.Debug.WriteLine($"LoadHistory error: {ex.Message}");
             }
         }
 
         private async void OnLogoutClicked(object sender, EventArgs e)
         {
-            bool confirm = await DisplayAlert("Đăng xuất", "Bạn có chắc muốn đăng xuất?", "Có", "Hủy");
+            bool confirm = await DisplayAlert(
+                LocalizationService.Instance.Get("prof_logout_confirm_title"), 
+                LocalizationService.Instance.Get("prof_logout_confirm_msg"), 
+                LocalizationService.Instance.Get("prof_yes"), 
+                LocalizationService.Instance.Get("prof_cancel"));
             if (!confirm) return;
 
             var authService = new AuthService();
             await authService.LogoutAsync();
             await Shell.Current.GoToAsync("//LoginPage");
         }
-    }
 
-    public class TourHistoryModel
-    {
-        public int Id { get; set; }
-        public int UserId { get; set; }
-        public int TourId { get; set; }
-        public string Status { get; set; } = string.Empty;
-        public decimal ProgressPercentage { get; set; }
-        public DateTime? CreatedAt { get; set; }
-        public string TourName { get; set; } = string.Empty;
+        private async void OnAudioHistoryClicked(object sender, EventArgs e)
+        {
+            await Navigation.PushAsync(new AudioHistoryPage());
+        }
+
+        private async void OnHistoryHeaderClicked(object sender, EventArgs e)
+        {
+            await Navigation.PushAsync(new TourHistoryPage());
+        }
     }
 }

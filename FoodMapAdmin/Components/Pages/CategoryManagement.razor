@@ -55,7 +55,13 @@
                                     <div class="cat-icon me-3">
                                         <i class="bi bi-bookmark-star-fill"></i>
                                     </div>
-                                    <span style="font-weight: 800; color: var(--text-main); font-size: 1.05rem;">@cat.CategoryName</span>
+                                    <div>
+                                        <span style="font-weight: 800; color: var(--text-main); font-size: 1.05rem;">@cat.CategoryName</span>
+                                        @if (cat.IsHidden)
+                                        {
+                                            <span class="badge-hidden ms-2">ĐANG ẨN</span>
+                                        }
+                                    </div>
                                 </div>
                             </td>
                             <td>
@@ -63,12 +69,21 @@
                             </td>
                             <td style="text-align: center; padding-right: 2rem; white-space: nowrap;">
                                 <div style="display: flex !important; flex-direction: row !important; justify-content: center; align-items: center; gap: 0.75rem;">
-                                    <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick='() => Navigator.NavigateTo($"/categories/edit/{cat.CategoryId}")'>
-                                        <i class="bi bi-pencil-square"></i>
-                                    </button>
-                                    <button class="action-btn btn-delete" title="Xóa" @onclick="() => Delete(cat.CategoryId)">
-                                        <i class="bi bi-trash-fill"></i>
-                                    </button>
+                                    @if (cat.IsHidden)
+                                    {
+                                        <button class="action-btn btn-restore" title="Bỏ ẩn" @onclick="() => Restore(cat.CategoryId)">
+                                            <i class="bi bi-eye-fill"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="action-btn btn-edit" title="Chỉnh sửa" @onclick='() => Navigator.NavigateTo($"/categories/edit/{cat.CategoryId}")'>
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <button class="action-btn btn-delete" title="Xóa" @onclick="() => Delete(cat.CategoryId)">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -137,6 +152,19 @@
     .btn-delete { background: rgba(255, 0, 0, 0.05); color: #ff4d4f; }
     .btn-delete:hover { background: #ff4d4f; color: white; }
     
+    .btn-restore { background: rgba(52, 168, 83, 0.05); color: #34a853; }
+    .btn-restore:hover { background: #34a853; color: white; }
+
+    .badge-hidden {
+        background: rgba(255, 159, 67, 0.1);
+        color: #FF9F43;
+        font-size: 0.65rem;
+        font-weight: 800;
+        padding: 0.2rem 0.5rem;
+        border-radius: 6px;
+        letter-spacing: 0.5px;
+    }
+    
     tr:hover { background: rgba(255, 45, 133, 0.01) !important; }
 
     table {
@@ -157,15 +185,24 @@
     private async Task Delete(int id)
     {
         var category = categories?.FirstOrDefault(c => c.CategoryId == id);
-        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Bạn có chắc muốn xóa danh mục này?");
+        if (category == null) return;
+
+        bool hasPois = category.Pois?.Any() == true;
+        string msg = hasPois 
+            ? $"Danh mục '{category.CategoryName}' đang có quán ăn liên kết. Hệ thống sẽ CHỈ ẨN danh mục này bên App. Bạn có chắc chắn?"
+            : $"Bạn có chắc muốn XÓA VĨNH VIỄN danh mục '{category.CategoryName}'?";
+
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", msg);
         if (confirmed && await CategoryService.DeleteCategoryAsync(id))
         {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-            var userIdStr = user.FindFirst(c => c.Type == "sub" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            int.TryParse(userIdStr, out var currentUserId);
-            
-            await Logger.LogAsync(currentUserId, "Xóa danh mục", category?.CategoryName ?? "N/A");
+            await LoadData();
+        }
+    }
+
+    private async Task Restore(int id)
+    {
+        if (await CategoryService.RestoreCategoryAsync(id))
+        {
             await LoadData();
         }
     }

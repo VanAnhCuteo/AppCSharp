@@ -28,6 +28,50 @@ function updateMarkerScale() {
 map.on('zoom', updateMarkerScale);
 updateMarkerScale();
 
+// Global Translations Cache
+window.uiTranslations = {
+    explore: "Khám phá",
+    directions: "Chỉ đường đến quán",
+    search_ph: "Tìm quán ăn, địa chỉ...",
+    cancel: "Hủy",
+    navigating_to: "Đang đến:",
+    select_lang: "Chọn ngôn ngữ",
+    done: "Xong",
+    loading_lang: "Đang tải ngôn ngữ...",
+    hours_not_available: "Không có giờ mở cửa",
+    unknown_loc: "Vị trí chưa xác định",
+    no_addr: "Không có địa chỉ",
+    locating: "Đang xác định vị trí của bạn, vui lòng đợi chốc lát..."
+};
+
+window.setUiTranslations = function(json) {
+    if (typeof json === 'string') json = JSON.parse(json);
+    window.uiTranslations = { ...window.uiTranslations, ...json };
+    updateStaticUI();
+};
+
+function updateStaticUI() {
+    const searchInput = document.getElementById('map-search-input');
+    if (searchInput) searchInput.placeholder = window.uiTranslations.search_ph;
+
+    const navLabel = document.querySelector('.nav-info');
+    if (navLabel) {
+        const dist = document.getElementById('nav-distance')?.innerText || "0.0 km";
+        navLabel.innerHTML = `${window.uiTranslations.navigating_to} <span id="nav-distance">${dist}</span>`;
+    }
+
+    const navCancel = document.querySelector('.nav-cancel-btn');
+    if (navCancel) navCancel.innerText = window.uiTranslations.cancel;
+
+    const pickerTitle = document.querySelector('.lang-picker-header h3');
+    if (pickerTitle) pickerTitle.innerText = window.uiTranslations.select_lang;
+
+    const pickerClose = document.querySelector('.lang-picker-header button');
+    if (pickerClose) pickerClose.innerText = window.uiTranslations.done;
+
+    const directionsBtn = document.getElementById('get-directions-btn');
+    if (directionsBtn) directionsBtn.innerText = window.uiTranslations.directions;
+}
 
 // Main Entry Point from C#
 async function loadFoods(foods, userId = 0) {
@@ -66,8 +110,8 @@ async function loadFoods(foods, userId = 0) {
             imgSection = `<div class="resto-placeholder">${iconCamera}</div>`;
         }
 
-        const displayTime = food.open_time || "Hours Not Available";
-        const displayAddress = food.address || "Unknown Location";
+        const displayTime = food.open_time || window.uiTranslations.hours_not_available;
+        const displayAddress = food.address || window.uiTranslations.unknown_loc;
 
         const popupContent = `
             <div class="resto-card">
@@ -84,7 +128,7 @@ async function loadFoods(foods, userId = 0) {
                         ${iconClock}
                         <span>${displayTime}</span>
                     </div>
-                    <button class="resto-btn" onclick="openDetails(${food.id})">Explore</button>
+                    <button class="resto-btn" onclick="openDetails(${food.id})">${window.uiTranslations.explore}</button>
                 </div>
             </div>
         `;
@@ -199,7 +243,7 @@ function setupMapSearch() {
     function renderSearchResults(foods) {
         resultsDropdown.innerHTML = '';
         if (foods.length === 0) {
-            resultsDropdown.innerHTML = '<div style="padding: 15px; text-align: center; color: #999; font-size: 14px;">Không tìm thấy quán nào...</div>';
+            resultsDropdown.innerHTML = `<div style="padding: 15px; text-align: center; color: #999; font-size: 14px;">${window.uiTranslations.loading_lang.includes('...') ? '...' : ''}</div>`;
         } else {
             // Limit to top 10 results to keep UI clean
             foods.slice(0, 10).forEach(food => {
@@ -211,7 +255,7 @@ function setupMapSearch() {
                     </div>
                     <div class="res-details">
                         <span class="res-name">${food.name}</span>
-                        <span class="res-addr">${food.address || "No address"}</span>
+                        <span class="res-addr">${food.address || window.uiTranslations.no_addr}</span>
                     </div>
                 `;
                 item.onclick = () => {
@@ -265,7 +309,7 @@ window.routeToPoi = async function(id) {
                 const userCoords = userMarker.getLatLng();
                 startNavigation(userCoords.lat, userCoords.lng, data.latitude, data.longitude);
             } else {
-                alert("Đang xác định vị trí của bạn, vui lòng đợi chốc lát...");
+                alert(window.uiTranslations.locating);
             }
         }
     } catch(e) { console.error("Error fetching POI for routing", e); }

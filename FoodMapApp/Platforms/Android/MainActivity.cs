@@ -7,14 +7,19 @@ using Android.OS;
 namespace FoodMapApp
 {
     [Activity(Theme = "@style/Maui.SplashTheme", MainLauncher = true, LaunchMode = LaunchMode.SingleTop, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
+    
+    // Custom Deep Link: foodmap://
     [IntentFilter(new[] { Android.Content.Intent.ActionView },
                   Categories = new[] { Android.Content.Intent.CategoryDefault, Android.Content.Intent.CategoryBrowsable },
-                  DataScheme = "foodmap",
-                  DataHost = "poi")]
+                  DataScheme = "foodmap")]
+
+    // App Link (HTTPS) for Zalo Compatibility and Web redirection
     [IntentFilter(new[] { Android.Content.Intent.ActionView },
                   Categories = new[] { Android.Content.Intent.CategoryDefault, Android.Content.Intent.CategoryBrowsable },
-                  DataScheme = "foodmap",
-                  DataHost = "guest")]
+                  DataScheme = "https",
+                  DataHost = "foodmap.app",
+                  DataPathPrefix = "/guest",
+                  AutoVerify = true)]
     public class MainActivity : MauiAppCompatActivity, AudioManager.IOnAudioFocusChangeListener
     {
         private AudioManager? _audioManager;
@@ -31,15 +36,6 @@ namespace FoodMapApp
             if (focusChange == AudioFocus.Loss || focusChange == AudioFocus.LossTransient || focusChange == AudioFocus.LossTransientCanDuck)
             {
                 MainPage.Instance?.HandleSystemInterruption();
-            }
-        }
-
-        protected override void OnNewIntent(Intent? intent)
-        {
-            base.OnNewIntent(intent);
-            if (intent != null)
-            {
-                this.Intent = intent;
             }
         }
     }
