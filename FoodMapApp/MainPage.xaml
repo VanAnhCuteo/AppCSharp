@@ -9,29 +9,7 @@
     <Grid>
         <WebView x:Name="mapView" />
 
-        <!-- Top Right Menu Icon (Elegant Tour Button) -->
-        <Border HorizontalOptions="End" VerticalOptions="Start" Margin="0,110,15,0" WidthRequest="50" HeightRequest="50" Padding="0" StrokeThickness="0">
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop Color="#FF6B81" Offset="0.0" />
-                    <GradientStop Color="#FF9A76" Offset="1.0" />
-                </LinearGradientBrush>
-            </Border.Background>
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="25" />
-            </Border.StrokeShape>
-            <Border.Shadow>
-                <Shadow Brush="#FF6B81" Offset="0,6" Radius="15" Opacity="0.3" />
-            </Border.Shadow>
-            <Grid>
-                <!-- Compass / Journey icon -->
-                <Path Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 Z M13.93,16.19 L7.93,14.08 C7.62,13.97 7.5,13.66 7.61,13.35 L9.72,7.35 C9.83,7.04 10.14,6.84 10.45,6.84 C10.55,6.84 10.66,6.86 10.76,6.9 L16.76,9.01 C17.07,9.12 17.27,9.43 17.27,9.74 C17.27,9.84 17.25,9.95 17.21,10.05 L15.1,16.05 C14.95,16.47 14.46,16.68 14.04,16.54 L13.93,16.19 Z M12,10.9 C11.39,10.9 10.9,11.39 10.9,12 C10.9,12.61 11.39,13.1 12,13.1 C12.61,13.1 13.1,12.61 13.1,12 C13.1,11.39 12.61,10.9 12,10.9 Z" 
-                      Fill="White" WidthRequest="26" HeightRequest="26" HorizontalOptions="Center" VerticalOptions="Center"/>
-                <Grid.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnMenuClicked" />
-                </Grid.GestureRecognizers>
-            </Grid>
-        </Border>
+
 
         <!-- Tour Selection Drawer Overlay -->
         <Grid x:Name="tourDrawerOverlay" IsVisible="False" BackgroundColor="#66000000" ZIndex="100">
@@ -131,8 +109,15 @@
                             <BoxView x:Name="mWave5" WidthRequest="3" HeightRequest="14" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
                             <BoxView x:Name="mWave6" WidthRequest="3" HeightRequest="19" Color="White" CornerRadius="1.5" VerticalOptions="Center" />
                         </HorizontalStackLayout>
+                        
+                        <!-- Queue Badge (New) -->
+                        <Border x:Name="queueBadge" IsVisible="False" HorizontalOptions="Start" VerticalOptions="Start" TranslationX="42" TranslationY="-8" WidthRequest="22" HeightRequest="22" BackgroundColor="#FF3B5C" Stroke="White" StrokeThickness="1.5">
+                            <Border.StrokeShape><RoundRectangle CornerRadius="11" /></Border.StrokeShape>
+                            <Label x:Name="queueBadgeLabel" Text="1" FontSize="11" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" TranslationY="-0.5" />
+                        </Border>
+                        
                         <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="10,0,0,0">
-                            <Label x:Name="manualModeLabel" Text="BẠN ĐANG NGHE CHỈ DẪN" FontSize="8" FontAttributes="Bold" TextColor="White" Opacity="0.8" CharacterSpacing="2" />
+                            <Label x:Name="manualModeLabel" Text="BẠN ĐANG NGHE TỰ ĐỘNG" FontSize="8" FontAttributes="Bold" TextColor="White" Opacity="0.8" CharacterSpacing="2" />
                             <Label x:Name="manualShopLabel" Text="..." FontSize="15" FontAttributes="Bold" TextColor="White" LineBreakMode="TailTruncation" />
                         </VerticalStackLayout>
                     </Grid>

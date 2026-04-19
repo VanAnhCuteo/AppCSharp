@@ -167,6 +167,14 @@ function setupMapSearch() {
     const searchInput = document.getElementById('map-search-input');
     const clearBtn = document.getElementById('search-clear-btn');
     const resultsDropdown = document.getElementById('search-results');
+    const tourBtn = document.getElementById('tour-btn');
+
+    if (tourBtn) {
+        tourBtn.onclick = () => {
+            window.location.href = "app-tour://open-drawer";
+        };
+    }
+
     if (!searchInput || !resultsDropdown) return;
 
     let debounceTimer;

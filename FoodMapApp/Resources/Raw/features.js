@@ -334,7 +334,12 @@ let isAudioPaused = false;
 let isAudioActive = false; // NEW: Track if MiniPlayer is open
 
 function toggleAudioProfessional() {
-    playCurrentAudio(true); // MANUAL trigger
+    // If audio is currently playing and NOT paused, stop it
+    if (isAudioActive && isAudioSpeaking && !isAudioPaused) {
+        window.location.href = `app-tts://stop?id=${currentBasePoiId}`;
+    } else {
+        playCurrentAudio(true); // Otherwise, start/resume
+    }
 }
 
 
@@ -526,16 +531,45 @@ let tourCurrentIndex = -1;
 let tourRoutingLayer = null;
 let currentTourId = 0;
 
-window.startTourRoute = async function(poisJson) {
+window.startTourRoute = async function(poisJson, tourId) {
     if (!poisJson || poisJson.length === 0) return;
     
     cancelNavigation();
     if (tourRoutingLayer) map.removeLayer(tourRoutingLayer);
     
-    currentTourPois = poisJson;
+    // Optimized Greedy Sort (Nearest Neighbor) starting from User Location
+    if (userMarker) {
+        const u = userMarker.getLatLng();
+        let sortedPois = [];
+        let unvisited = [...poisJson];
+        let currLat = u.lat;
+        let currLon = u.lng;
+
+        while (unvisited.length > 0) {
+            let nearestIdx = 0;
+            let minDist = Infinity;
+            for (let i = 0; i < unvisited.length; i++) {
+                let p = unvisited[i].Poi || unvisited[i].poi;
+                let d = calculateDistance(currLat, currLon, p.Latitude || p.latitude, p.Longitude || p.longitude);
+                if (d < minDist) {
+                    minDist = d;
+                    nearestIdx = i;
+                }
+            }
+            let nearest = unvisited.splice(nearestIdx, 1)[0];
+            sortedPois.push(nearest);
+            let np = nearest.Poi || nearest.poi;
+            currLat = np.Latitude || np.latitude;
+            currLon = np.Longitude || np.longitude;
+        }
+        currentTourPois = sortedPois;
+    } else {
+        currentTourPois = poisJson;
+    }
+
     isTourActive = true;
     tourCurrentIndex = -1;
-    currentTourId = poisJson[0].TourId || poisJson[0].tourId;
+    currentTourId = tourId || (currentTourPois[0].TourId || currentTourPois[0].tourId);
 
     // Hide all markers not in tour
     const tourPoiIds = currentTourPois.map(tp => (tp.PoiId || tp.poiId));

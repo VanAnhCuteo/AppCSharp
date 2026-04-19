@@ -39,37 +39,89 @@ namespace FoodMapApp.Views
 
         private async Task HandleQrCode(string qrContent)
         {
-            Debug.WriteLine($"QR Detected: {qrContent}");
+            string content = qrContent.Trim();
+            System.Diagnostics.Debug.WriteLine($"QR Content Detected: {content}");
 
-            if (qrContent.ToUpper() == "FOODMAP_GUEST" || qrContent.StartsWith("FOODMAP_GUEST_") || qrContent.ToLower() == "foodmap://guest" || qrContent.ToLower() == "https://foodmap.app/guest")
+            // 1. Tự động đăng nhập khách nếu chưa đăng nhập
+            if (!_authService.IsLoggedIn)
             {
-                // Instant Feedback via processing indicator or just straight nav
-                
-                // Generate a random ID (or extract from string if provided)
-                int guestId;
-                if (qrContent.Contains("_")) {
-                    string idPart = qrContent.Split('_').Last();
-                    if (!int.TryParse(idPart, out guestId)) guestId = new Random().Next(100000, 999999);
-                } else {
-                    guestId = new Random().Next(100000, 999999);
-                }
-
-                // Simulate login
+                int guestId = new Random().Next(100000, 999999);
                 _authService.LoginAsGuest(guestId);
-                
+            }
+
+            // 2. Phân loại nội dung QR để điều hướng
+            bool isGuestQr = content.Equals("FOODMAP_GUEST", StringComparison.OrdinalIgnoreCase)
+                          || content.Equals("foodmap://guest", StringComparison.OrdinalIgnoreCase)
+                          || content.Contains("foodmap.app/guest", StringComparison.OrdinalIgnoreCase);
+
+            if (isGuestQr)
+            {
+                // Chuyển về Trang Chủ
+                await Shell.Current.GoToAsync("//MainTabs/HomePage");
+            }
+            else if (content.Contains("foodmap://audio/", StringComparison.OrdinalIgnoreCase) || 
+                     content.Contains("foodmap.app/audio/", StringComparison.OrdinalIgnoreCase))
+            {
+                // Xử lý link Audio (Ví dụ: foodmap://audio/5 hoặc https://foodmap.app/audio/5)
                 try
                 {
-                    await Shell.Current.GoToAsync("//MainTabs");
+                    string idPart = "";
+                    if (content.Contains("audio/"))
+                    {
+                        idPart = content.Substring(content.IndexOf("audio/") + 6).Split('/')[0].Split('?')[0];
+                    }
+
+                    if (int.TryParse(idPart, out int id))
+                    {
+                        // Chuyển đến trang xem mã QR và tự động phát audio
+                        await Shell.Current.GoToAsync($"QRViewerPage?id={id}&auto=true");
+                    }
+                    else
+                    {
+                        await DisplayAlert("Lỗi", "ID âm thanh không hợp lệ", "OK");
+                        _isProcessing = false;
+                    }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    await DisplayAlert("Lỗi điều hướng", ex.Message, "OK");
-                    await Shell.Current.GoToAsync("//HomePage"); // Fallback
+                    await DisplayAlert("Lỗi", "Không thể xử lý mã QR Audio này", "OK");
+                    _isProcessing = false;
+                }
+            }
+            else if (content.Contains("foodmap://poi/", StringComparison.OrdinalIgnoreCase) || 
+                     content.Contains("foodmap.app/poi/", StringComparison.OrdinalIgnoreCase))
+            {
+                // Xử lý link POI (ví dụ: foodmap://poi/123 hoặc https://foodmap.app/poi/123)
+                try
+                {
+                    string idPart = "";
+                    if (content.Contains("poi/"))
+                    {
+                        idPart = content.Substring(content.IndexOf("poi/") + 4).Split('/')[0].Split('?')[0];
+                    }
+
+                    if (int.TryParse(idPart, out int id))
+                    {
+                        // Set pending ID để trang Map tự mở khi xuất hiện
+                        MainPage.PendingOpenFoodId = id;
+                        await Shell.Current.GoToAsync("//MainTabs/MainPage");
+                    }
+                    else
+                    {
+                        await DisplayAlert("Lỗi", "Mã địa điểm không hợp lệ", "OK");
+                        _isProcessing = false;
+                    }
+                }
+                catch
+                {
+                    await DisplayAlert("Lỗi", "Không thể xử lý mã QR này", "OK");
+                    _isProcessing = false;
                 }
             }
             else
             {
-                await DisplayAlert(LocalizationService.Instance.Get("title", "Thông báo"), LocalizationService.Instance.Get("qr_scanner_invalid"), "OK");
+                // Trường hợp mã không thuộc hệ thống FoodMap
+                await DisplayAlert("Thông báo", $"Nội dung QR: {content}", "OK");
                 _isProcessing = false;
             }
         }
@@ -96,8 +148,14 @@ namespace FoodMapApp.Views
                     
                     // Simple simulation for demo if complex decoding is missing
                     // In a real production app, we'd use ZXing.SkiaSharp or similar to decode Stream
-                    await Task.Delay(1000); 
-                    await HandleQrCode("FOODMAP_GUEST");
+                    await Task.Delay(500); 
+                    
+                    string testContent = await DisplayPromptAsync("Giả lập QR (Debug)", "Nhập nội dung mã QR muốn kiểm tra:", "Quét", "Mặc định (Guest)", "foodmap://audio/14");
+                    
+                    if (string.IsNullOrEmpty(testContent))
+                        await HandleQrCode("FOODMAP_GUEST");
+                    else
+                        await HandleQrCode(testContent);
                     
                     processingIndicator.IsRunning = false;
                 }

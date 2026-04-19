@@ -10,6 +10,8 @@ using ZXing;
 namespace FoodMapApp.Views;
 
 [QueryProperty(nameof(Shop), "Shop")]
+[QueryProperty(nameof(ShopId), "id")]
+[QueryProperty(nameof(IsAutoPlay), "auto")]
 public partial class QRViewerPage : ContentPage
 {
     private FoodModel _shop;
@@ -27,6 +29,10 @@ public partial class QRViewerPage : ContentPage
     private Locale _vietnameseLocale;
     private bool _shouldResumeOnAppearing = false;
     private Stopwatch _audioStopwatch = new Stopwatch();
+
+    public string ShopId { set => LoadShopByIdAsync(value); }
+    public string IsAutoPlay { set => _autoAudioEnabled = value?.ToLower() == "true"; }
+    private bool _autoAudioEnabled = false;
 
     public FoodModel Shop
     {
@@ -57,6 +63,27 @@ public partial class QRViewerPage : ContentPage
             _chunks = PrepareAudioChunks($"{_shop.name}. {_shop.description}");
             _currentChunkIndex = 0;
             _isPaused = false;
+        }
+    }
+
+    private async void LoadShopByIdAsync(string idStr)
+    {
+        if (int.TryParse(idStr, out int id))
+        {
+            try
+            {
+                // Fetch from the same list used in ShopQRListPage
+                var foods = await HttpService.GetWithCacheAsync<List<FoodModel>>($"{AppConfig.FoodApiUrl}?lang=vi", "shop_qr_list_cache");
+                var target = foods?.FirstOrDefault(f => f.id == id);
+                if (target != null)
+                {
+                    Shop = target;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error loading shop by ID: {ex.Message}");
+            }
         }
     }
 
@@ -312,7 +339,22 @@ public partial class QRViewerPage : ContentPage
     {
         base.OnAppearing();
         await LocalizeUI();
-        if (_shouldResumeOnAppearing && _shop != null && _chunks.Length > 0)
+
+        if (_autoAudioEnabled && _shop != null)
+        {
+            _autoAudioEnabled = false; // Run only once
+            await Task.Delay(500); // Wait for page to settle
+            
+            // 1. Bật kính quét
+            OnScanButtonClicked(null, EventArgs.Empty);
+            
+            // 2. Chờ hiệu ứng laser chạy (mô phỏng quét tự động)
+            await Task.Delay(1500);
+            
+            // 3. Kết thúc quét thành công
+            if (_isScanning) OnScanSuccess();
+        }
+        else if (_shouldResumeOnAppearing && _shop != null && _chunks.Length > 0)
         {
             _ = PlayAudioWithChunksAsync();
         }

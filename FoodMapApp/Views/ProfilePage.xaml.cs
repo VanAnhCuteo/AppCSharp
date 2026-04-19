@@ -79,8 +79,10 @@ namespace FoodMapApp.Views
             
             ProfileRoleLabel.Text = roleDisplay;
             
-            // Hide edit button for guests
+            // Hide features for guests
             EditProfileButton.IsVisible = !isGuest;
+            TourHistorySection.IsVisible = !isGuest;
+            AudioHistorySection.IsVisible = !isGuest;
 
             EditUsernameEntry.Text = username;
             EditEmailEntry.Text = email;
@@ -89,6 +91,7 @@ namespace FoodMapApp.Views
 
         private void OnEditClicked(object sender, EventArgs e)
         {
+            if (new AuthService().IsGuest) return;
             DisplayModeLayout.IsVisible = false;
             EditModeLayout.IsVisible = true;
         }
@@ -102,6 +105,9 @@ namespace FoodMapApp.Views
 
         private async void OnSaveClicked(object sender, EventArgs e)
         {
+            var authService = new AuthService();
+            if (authService.IsGuest) return;
+
             string newUsername = EditUsernameEntry.Text?.Trim();
             string newEmail = EditEmailEntry.Text?.Trim();
             string newPassword = EditPasswordEntry.Text?.Trim();
@@ -115,7 +121,6 @@ namespace FoodMapApp.Views
             int userId = Preferences.Default.Get("user_id", 0);
             if (userId == 0) return;
 
-            var authService = new AuthService();
             bool success = await authService.UpdateProfileAsync(userId, newUsername, newEmail, string.IsNullOrEmpty(newPassword) ? null : newPassword);
 
             if (success)
@@ -242,11 +247,13 @@ namespace FoodMapApp.Views
 
         private async void OnAudioHistoryClicked(object sender, EventArgs e)
         {
+            if (new AuthService().IsGuest) return;
             await Navigation.PushAsync(new AudioHistoryPage());
         }
 
         private async void OnHistoryHeaderClicked(object sender, EventArgs e)
         {
+            if (new AuthService().IsGuest) return;
             await Navigation.PushAsync(new TourHistoryPage());
         }
     }

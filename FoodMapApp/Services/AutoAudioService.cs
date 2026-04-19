@@ -15,6 +15,7 @@ namespace FoodMapApp.Services
         public static AutoAudioService Instance => _instance ??= new AutoAudioService();
 
         private List<AudioQueueItem> _queue = new();
+        public IReadOnlyList<AudioQueueItem> Queue => _queue;
         private Dictionary<int, DateTime> _cooldowns = new();
         private const int MaxQueueSize = 3;
         private const int CooldownMinutes = 30;
@@ -133,6 +134,9 @@ namespace FoodMapApp.Services
                 return;
             }
 
+            // User requirement: Wait 3s before starting a new auto-audio
+            await Task.Delay(3000);
+
             CurrentItem = _queue[0];
             IsPaused = false;
             OnStateChanged?.Invoke(CurrentItem, _queue);
@@ -183,40 +187,15 @@ namespace FoodMapApp.Services
             IsCallActive = active;
             if (active)
             {
-                // Pause immediately
                 if (MainPage.Instance != null) MainPage.Instance.HandleSystemInterruption();
             }
             else
             {
-                // Logic for when call ends
-                if (CurrentItem != null)
-                {
-                    double progress = (double)CurrentItem.CurrentSentenceIndex / CurrentItem.TotalSentences;
-                    bool stillInRange = IsStillInRange(CurrentItem.Poi);
-
-                    if (!stillInRange)
-                    {
-                        if (progress > 0.5)
-                        {
-                            // Mark as heard even if left
-                            MarkAsHeard(CurrentItem.Poi.id);
-                        }
-                        else
-                        {
-                            // Just skip
-                            RemoveFromQueue(CurrentItem.Poi.id);
-                        }
-                    }
-                    else
-                    {
-                        // Still in range, just resume
-                        if (MainPage.Instance != null) MainPage.Instance.ResumeAudio();
-                    }
-                }
+                if (MainPage.Instance != null) _ = MainPage.Instance.HandleCallEndAsync();
             }
         }
 
-        private bool IsStillInRange(FoodModel poi)
+        public bool IsStillInRange(FoodModel poi)
         {
             if (_lastLocation == null) return true;
             double dist = Location.CalculateDistance(_lastLocation, poi.latitude, poi.longitude, DistanceUnits.Kilometers) * 1000;

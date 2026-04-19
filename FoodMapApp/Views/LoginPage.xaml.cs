@@ -23,7 +23,14 @@ namespace FoodMapApp.Views
                 App.PendingGuestLogin = false; // Reset
                 int guestId = new Random().Next(100000, 999999);
                 _authService.LoginAsGuest(guestId);
-                await Shell.Current.GoToAsync("//MainTabs");
+                await Shell.Current.GoToAsync("//HomePage");
+                return;
+            }
+
+            // 1. Skip login if already authenticated
+            if (_authService.IsLoggedIn)
+            {
+                await Shell.Current.GoToAsync("//HomePage");
                 return;
             }
 
@@ -125,7 +132,7 @@ namespace FoodMapApp.Views
 
         private async void OnQrScanClicked(object sender, EventArgs e)
         {
-            await Navigation.PushAsync(new QrScannerPage());
+            await Shell.Current.GoToAsync("QrScannerPage");
         }
 
         private async void OnLanguageClicked(object sender, EventArgs e)
