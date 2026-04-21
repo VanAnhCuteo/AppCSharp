@@ -11,10 +11,11 @@ namespace FoodMapApp.Services
         private static LocalizationService? _instance;
         public static LocalizationService Instance => _instance ??= new LocalizationService();
 
+        private Dictionary<string, Dictionary<string, string>> _languageCache = new();
         private Dictionary<string, string> _cache = new();
         private string _currentLang = "vi";
         public List<LanguageModel> AvailableLanguages { get; private set; } = new();
-        private const string CacheFileName = "ui_translations_cache.json";
+        private const string CacheFileName = "ui_translations_cache_v2.json";
 
         private LocalizationService()
         {
@@ -31,6 +32,10 @@ namespace FoodMapApp.Services
                 {
                     _currentLang = value;
                     Preferences.Default.Set("app_lang", value);
+                    if (_languageCache.TryGetValue(value, out var cached))
+                    {
+                         _cache = cached;
+                    }
                 }
             }
         }
@@ -76,17 +81,35 @@ namespace FoodMapApp.Services
         public async Task InitializeAsync(string lang, Dictionary<string, string> sourceStrings)
         {
             CurrentLanguage = lang;
+            
+            if (!_languageCache.ContainsKey(lang))
+            {
+                _languageCache[lang] = new Dictionary<string, string>();
+                _cache = _languageCache[lang];
+            }
+            else
+            {
+                _cache = _languageCache[lang];
+            }
+
             if (lang == "vi")
             {
-                _cache = sourceStrings;
+                foreach(var kv in sourceStrings) _cache[kv.Key] = kv.Value;
                 SaveToDisk();
                 return;
+            }
+
+            var missingStrings = sourceStrings.Where(kv => !_cache.ContainsKey(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value);
+
+            if (!missingStrings.Any())
+            {
+                return; // Nothing to translate
             }
 
             try
             {
                 using HttpClient client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-                var payload = new { TargetLang = lang.Split('-')[0], Strings = sourceStrings };
+                var payload = new { TargetLang = lang.Split('-')[0], Strings = missingStrings };
                 var response = await client.PostAsJsonAsync($"{AppConfig.FoodApiUrl}/translate-ui", payload);
 
                 if (response.IsSuccessStatusCode)
@@ -94,7 +117,10 @@ namespace FoodMapApp.Services
                     var result = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
                     if (result != null)
                     {
-                        _cache = result;
+                        foreach(var kv in result)
+                        {
+                            _cache[kv.Key] = kv.Value;
+                        }
                         SaveToDisk();
                     }
                 }
@@ -110,7 +136,7 @@ namespace FoodMapApp.Services
             try
             {
                 string path = Path.Combine(FileSystem.CacheDirectory, CacheFileName);
-                string json = JsonSerializer.Serialize(_cache);
+                string json = JsonSerializer.Serialize(_languageCache);
                 File.WriteAllText(path, json);
             }
             catch { }
@@ -124,8 +150,15 @@ namespace FoodMapApp.Services
                 if (File.Exists(path))
                 {
                     string json = File.ReadAllText(path);
-                    var data = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-                    if (data != null) _cache = data;
+                    var data = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(json);
+                    if (data != null) 
+                    {
+                        _languageCache = data;
+                        if (_languageCache.TryGetValue(_currentLang, out var cached))
+                        {
+                            _cache = cached;
+                        }
+                    }
                 }
             }
             catch { }

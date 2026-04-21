@@ -20,7 +20,9 @@ namespace FoodMapApp
                         int currentId = current?.Poi.id ?? 0;
                         await mapView.EvaluateJavaScriptAsync($"if(window.syncAudioQueue) window.syncAudioQueue({queueIdsJson}, {currentId});");
                     }
-                    if (current == null && !_manualSession.IsActive) {
+                    // Only clear _activeSession if it's truly not active anymore
+                    // Don't clear a paused session that user may want to resume
+                    if (current == null && !_manualSession.IsActive && (_activeSession == null || !_activeSession.IsActive)) {
                         _activeSession = null;
                         await SyncPlayerUI(null);
                     }
@@ -61,6 +63,13 @@ namespace FoodMapApp
                 if (!string.IsNullOrWhiteSpace(text)) {
                     var sentences = NormalizeText(text).Split(new[] { '.', '!', '?', ';', ',', '。', '！', '？' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
                     if (isManual) {
+                        // Case 1: Nhớ trạng thái auto trước khi chuyển sang thủ công
+                        _hadAutoBeforeManual = AutoAudioService.Instance.CurrentItem != null
+                                            || AutoAudioService.Instance.Queue.Count > 0;
+
+                        // Tạm dừng auto audio service
+                        AutoAudioService.Instance.SetPaused(true);
+
                         StopSpeech(false, false);
                         _manualSession.PoiId = id; _manualSession.Language = lang; _manualSession.Sentences = sentences;
                         _manualSession.SentenceIndex = 0; _manualSession.TotalSentences = sentences.Length;
@@ -92,17 +101,30 @@ namespace FoodMapApp
                 e.Cancel = true;
                 var query = HttpUtility.ParseQueryString(new Uri(e.Url).Query);
                 string lang = query["lang"] ?? "vi", name = query["name"] ?? "";
-                bool isAudioActive = _manualSession.IsActive || (_activeSession != null && !_activeSession.IsPaused);
+
+                // Case 2+3: Xác định trạng thái audio hiện tại
+                bool isManualActive = _manualSession.IsActive;
+                bool isAutoActive = _activeSession != null && !_activeSession.IsManual && _activeSession.IsActive;
+
                 var uiSet = await GetUISetAsync(_manualSession.Language ?? "vi");
-                if (await DisplayAlert(uiSet["title"], uiSet["msg_audio"], uiSet["ok"], uiSet["cancel"])) {
-                    StopSpeech(true);
+
+                if (await DisplayAlert(uiSet["title"], uiSet["msg_audio"], uiSet["ok"], uiSet["cancel"]))
+                {
+                    // Dừng audio hiện tại
+                    StopSpeech(false, false);
+
+                    // Cập nhật ngôn ngữ
                     _manualSession.Language = lang;
                     LocalizationService.Instance.CurrentLanguage = lang;
                     await LocalizeUI();
+
+                    // Cập nhật ngôn ngữ cho auto queue item
                     if (AutoAudioService.Instance.CurrentItem != null) {
                         AutoAudioService.Instance.CurrentItem.Language = lang;
                         AutoAudioService.Instance.CurrentItem.CurrentSentenceIndex = 0;
                     }
+
+                    // Cập nhật UI bản đồ
                     if (mapView != null) {
                         var newUiSet = await GetUISetAsync(lang);
                         await mapView.EvaluateJavaScriptAsync($"if(window.setUiTranslations) window.setUiTranslations({JsonSerializer.Serialize(newUiSet)});");
@@ -110,7 +132,28 @@ namespace FoodMapApp
                         await mapView.EvaluateJavaScriptAsync($"if(window.updateAppLanguage) window.updateAppLanguage('{lang}', '{name?.Replace("'", "\\'")}');");
                     }
                     LoadFoods("vi");
-                    if (isAudioActive && !AutoAudioService.Instance.IsCallActive) _ = AutoAudioService.Instance.PlayNextAsync();
+
+                    if (!AutoAudioService.Instance.IsCallActive)
+                    {
+                        if (isManualActive)
+                        {
+                            // Case 3: Đang nghe thủ công → phát lại thủ công bằng ngôn ngữ mới
+                            // (Khi tắt thủ công sẽ kích hoạt Case 1 hỏi tiếp tục auto)
+                            _manualSession.SentenceIndex = 0;
+                            _manualSession.IsPaused = false;
+                            _manualSession.IsActive = true;
+                            _activeSession = _manualSession;
+                            _ = SpeakWithChunksAsync(_manualSession);
+                        }
+                        else if (isAutoActive)
+                        {
+                            // Case 2: Đang nghe tự động → phát lại tự động bằng ngôn ngữ mới
+                            if (AutoAudioService.Instance.CurrentItem != null)
+                                _ = TriggerAutoAudioAsync(AutoAudioService.Instance.CurrentItem);
+                            else
+                                _ = AutoAudioService.Instance.PlayNextAsync();
+                        }
+                    }
                 }
             }
             else if (e.Url.StartsWith("app-request-reload://markers?")) {
@@ -127,7 +170,16 @@ namespace FoodMapApp
             else if (e.Url.StartsWith("app-tour://update?")) {
                 e.Cancel = true;
                 var query = HttpUtility.ParseQueryString(new Uri(e.Url).Query);
-                UpdateTourProgressUI(query["duration"] ?? "", query["price"] ?? "", query["progress"] ?? "");
+                UpdateTourProgressUI(query["duration"] ?? "", query["price"] ?? "", query["progress"] ?? "", query["durPrefix"] ?? "", query["pricePrefix"] ?? "");
+            }
+            else if (e.Url.StartsWith("app-tour://state?")) {
+                e.Cancel = true;
+                var query = HttpUtility.ParseQueryString(new Uri(e.Url).Query);
+                string btn = query["btn"] ?? "";
+                MainThread.BeginInvokeOnMainThread(() => {
+                    btnSimulateArrive.IsVisible = (btn == "arrive");
+                    btnSimulateNext.IsVisible = (btn == "next");
+                });
             }
             else if (e.Url.StartsWith("app-tour://save?")) {
                 e.Cancel = true;

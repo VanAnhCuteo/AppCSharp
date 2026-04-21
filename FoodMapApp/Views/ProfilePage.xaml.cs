@@ -20,7 +20,6 @@ namespace FoodMapApp.Views
             await LocalizeUI();
             
             LoadProfileFromSession();
-            await LoadTourHistoryAsync();
         }
 
         private async Task LocalizeUI()
@@ -133,101 +132,6 @@ namespace FoodMapApp.Views
             else
             {
                 await DisplayAlert(LocalizationService.Instance.Get("prof_save_err"), LocalizationService.Instance.Get("prof_update_fail"), "OK");
-            }
-        }
-
-
-
-        private async Task LoadTourHistoryAsync()
-        {
-            try
-            {
-                int userId = Preferences.Default.Get("user_id", 0);
-                var authService = new AuthService();
-
-                if (authService.IsGuest)
-                {
-                    tourHistoryContainer.Children.Clear();
-                    tourHistoryContainer.Children.Add(new Label { 
-                        Text = LocalizationService.Instance.Get("prof_history_guest"), 
-                        TextColor = Colors.Gray, 
-                        HorizontalOptions = LayoutOptions.Center,
-                        Margin = new Thickness(0, 20)
-                    });
-                    return;
-                }
-
-                if (userId == 0)
-
-                tourHistoryContainer.Children.Clear();
-                tourHistoryContainer.Children.Add(new Label { Text = LocalizationService.Instance.Get("prof_loading"), TextColor = Colors.Gray, FontAttributes = FontAttributes.Italic, HorizontalOptions = LayoutOptions.Center });
-
-                using HttpClient client = new HttpClient();
-                var response = await client.GetAsync($"{AppConfig.BaseUrl}/Tours/history/{userId}");
-                
-                if (response.IsSuccessStatusCode)
-                {
-                    var json = await response.Content.ReadAsStringAsync();
-                    var histories = System.Text.Json.JsonSerializer.Deserialize<List<TourHistoryModel>>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    
-                    tourHistoryContainer.Children.Clear();
-
-                    if (histories == null || !histories.Any())
-                    {
-                        tourHistoryContainer.Children.Add(new Label { Text = LocalizationService.Instance.Get("prof_no_history"), TextColor = Colors.Gray, HorizontalOptions = LayoutOptions.Center });
-                        return;
-                    }
-
-                    foreach (var h in histories)
-                    {
-                        var frame = new Border
-                        {
-                            StrokeThickness = 0,
-                            BackgroundColor = Colors.White,
-                            Padding = new Thickness(12),
-                            Margin = new Thickness(0, 0, 0, 15),
-                            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(20) }
-                        };
-                        frame.Shadow = new Shadow { Brush = Color.FromArgb("#FF6B81"), Offset = new Point(0, 4), Opacity = 0.08f, Radius = 10 };
-                        
-                        var grid = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) }, ColumnSpacing = 15 };
-
-                        // Icon Column
-                        var iconBorder = new Border { BackgroundColor = Color.FromArgb("#FFF0F3"), WidthRequest = 44, HeightRequest = 44, StrokeThickness = 0 };
-                        iconBorder.StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(14) };
-                        iconBorder.Content = new Microsoft.Maui.Controls.Shapes.Path { 
-                            Data = (Microsoft.Maui.Controls.Shapes.Geometry)new Microsoft.Maui.Controls.Shapes.PathGeometryConverter().ConvertFromInvariantString("M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"),
-                            Fill = Color.FromArgb("#FF6B81"), Aspect = Stretch.Uniform, WidthRequest = 22, HeightRequest = 22, HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center 
-                        };
-                        grid.Children.Add(iconBorder);
-
-                        // Info Column
-                        var infoStack = new VerticalStackLayout { VerticalOptions = LayoutOptions.Center, Spacing = 2 };
-                        infoStack.Children.Add(new Label { Text = h.TourName, FontAttributes = FontAttributes.Bold, FontSize = 16, TextColor = Color.FromArgb("#333") });
-                        infoStack.Children.Add(new Label { Text = h.CreatedAt?.ToString("dd/MM/yyyy") ?? "", FontSize = 12, TextColor = Colors.Gray });
-                        grid.Add(infoStack, 1, 0);
-
-                        // Status Column
-                        bool isCompleted = h.Status?.Contains("100") == true;
-                        var statusBorder = new Border { BackgroundColor = Color.FromArgb("#FFF0F3"), Padding = new Thickness(10, 4), VerticalOptions = LayoutOptions.Center, StrokeThickness = 0 };
-                        statusBorder.StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(10) };
-                        statusBorder.Content = new Label { 
-                            Text = isCompleted ? LocalizationService.Instance.Get("prof_completed") : $"{(int)h.ProgressPercentage}%", 
-                            TextColor = isCompleted ? Colors.Green : Color.FromArgb("#FF6B81"), 
-                            FontSize = 11, FontAttributes = FontAttributes.Bold 
-                        };
-                        grid.Add(statusBorder, 2, 0);
-
-                        frame.Content = grid;
-                        tourHistoryContainer.Children.Add(frame);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                tourHistoryContainer.Children.Clear();
-                tourHistoryContainer.Children.Add(new Label { Text = LocalizationService.Instance.Get("prof_error_load"), TextColor = Colors.Red, HorizontalOptions = LayoutOptions.Center });
-                System.Diagnostics.Debug.WriteLine($"LoadHistory error: {ex.Message}");
             }
         }
 

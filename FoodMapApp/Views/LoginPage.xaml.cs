@@ -23,14 +23,22 @@ namespace FoodMapApp.Views
                 App.PendingGuestLogin = false; // Reset
                 int guestId = new Random().Next(100000, 999999);
                 _authService.LoginAsGuest(guestId);
-                await Shell.Current.GoToAsync("//HomePage");
+                await Shell.Current.GoToAsync("//MainTabs");
                 return;
             }
 
             // 1. Skip login if already authenticated
             if (_authService.IsLoggedIn)
             {
-                await Shell.Current.GoToAsync("//HomePage");
+                // Nếu đang có Deep Link chờ mở quán (POI), không tự động nhảy về HomePage
+                // để tránh xung đột với lệnh điều hướng từ App.xaml.cs
+                if (MainPage.PendingOpenFoodId.HasValue || !string.IsNullOrEmpty(App.PendingDeepLinkUri))
+                {
+                    System.Diagnostics.Debug.WriteLine("Deep link detected, skipping auto-redirect to HomePage");
+                    return;
+                }
+
+                await Shell.Current.GoToAsync("//MainTabs");
                 return;
             }
 
@@ -109,7 +117,7 @@ namespace FoodMapApp.Views
 
             if (result.success)
             {
-                await Shell.Current.GoToAsync("//HomePage");
+                await Shell.Current.GoToAsync("//MainTabs");
             }
             else
             {

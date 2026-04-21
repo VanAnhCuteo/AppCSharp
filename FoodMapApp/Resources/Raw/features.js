@@ -638,10 +638,34 @@ window.startTourRoute = async function(poisJson, tourId) {
 
     // Immediate update back to C# UI
     const progressText = `0% (${window.uiTranslations?.explore || "Bắt đầu"})`;
-    window.location.href = `app-tour://update?duration=${encodeURIComponent(timeStr)}&price=${encodeURIComponent(priceStr)}&progress=${encodeURIComponent(progressText)}`;
+    window.location.href = `app-tour://update?duration=${encodeURIComponent(timeStr)}&price=${encodeURIComponent(priceStr)}&progress=${encodeURIComponent(progressText)}&durPrefix=${encodeURIComponent("⏳ Thời gian:")}&pricePrefix=${encodeURIComponent("💰 Tổng giá:")}`;
 };
 
-window.simulateTourNextStop = function() {
+async function drawTourSegment(slat, slon, dlat, dlon) {
+    if (tourRoutingLayer) {
+        map.removeLayer(tourRoutingLayer);
+        tourRoutingLayer = null;
+    }
+    const url = `https://router.project-osrm.org/route/v1/driving/${slon},${slat};${dlon},${dlat}?overview=full&geometries=geojson`;
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.code === 'Ok') {
+            const route = data.routes[0];
+            tourRoutingLayer = L.geoJSON(route.geometry, {
+                style: { color: '#FF9A76', weight: 6, opacity: 0.8, lineJoin: 'round' }
+            }).addTo(map);
+            map.fitBounds(tourRoutingLayer.getBounds(), { padding: [50, 50] });
+        } else {
+            // fallback straight line
+            const directLine = L.polyline([[slat, slon], [dlat, dlon]], { color: '#FF9A76', weight: 5, dashArray: '5, 10' });
+            tourRoutingLayer = L.featureGroup([directLine]).addTo(map);
+            map.fitBounds(tourRoutingLayer.getBounds(), { padding: [50, 50] });
+        }
+    } catch (e) { console.error("Segment Routing Error", e); }
+}
+
+window.simulateTourNextStop = async function() {
     if (!isTourActive || !currentTourPois.length) return;
 
     // Increment index
@@ -649,10 +673,42 @@ window.simulateTourNextStop = function() {
 
     if (tourCurrentIndex >= currentTourPois.length) {
         // Tour Finished
-        window.location.href = `app-tour://update?progress=${encodeURIComponent("100% (Hoàn tất tour)")}&duration=&price=`;
+        window.location.href = `app-tour://update?progress=${encodeURIComponent("100% (Hoàn tất tour)")}&duration=&price=&durPrefix=${encodeURIComponent("⏳ Thời gian:")}&pricePrefix=${encodeURIComponent("💰 Tổng giá:")}`;
         window.location.href = `app-tour://save?id=${currentTourId}&pct=100&status=Completed`;
+        window.location.href = `app-tour://state?btn=end`;
+        window.endTourRoute(); // Clean up map immediately
         return;
     }
+
+    const currentTourPoi = currentTourPois[tourCurrentIndex];
+    const poi = currentTourPoi.Poi || currentTourPoi.poi;
+
+    // 1. Determine path endpoints
+    let slat = userMarker ? userMarker.getLatLng().lat : null;
+    let slon = userMarker ? userMarker.getLatLng().lng : null;
+    if (tourCurrentIndex > 0) {
+        const prevPoi = currentTourPois[tourCurrentIndex - 1].Poi || currentTourPois[tourCurrentIndex - 1].poi;
+        slat = prevPoi.Latitude || prevPoi.latitude;
+        slon = prevPoi.Longitude || prevPoi.longitude;
+    }
+    const dlat = poi.Latitude || poi.latitude;
+    const dlon = poi.Longitude || poi.longitude;
+
+    if (slat && slon) {
+        await drawTourSegment(slat, slon, dlat, dlon);
+    }
+
+    // 2. Hide specific POI details while travelling
+    const shopName = poi.Name || poi.name || `Quán ${tourCurrentIndex + 1}`;
+    let pct = Math.round((tourCurrentIndex / currentTourPois.length) * 100);
+    const progressStr = `${pct}% (Đang đến ${shopName})`;
+    
+    window.location.href = `app-tour://update?progress=${encodeURIComponent(progressStr)}&duration=${encodeURIComponent("Đang di chuyển...")}&price=${encodeURIComponent("---")}&durPrefix=${encodeURIComponent("⏳ Đi đường:")}&pricePrefix=${encodeURIComponent("💰 Giá:")}`;
+    window.location.href = `app-tour://state?btn=arrive`;
+};
+
+window.simulateTourArrive = function() {
+    if (!isTourActive || tourCurrentIndex < 0 || tourCurrentIndex >= currentTourPois.length) return;
 
     const currentTourPoi = currentTourPois[tourCurrentIndex];
     const poi = currentTourPoi.Poi || currentTourPoi.poi;
@@ -686,12 +742,18 @@ window.simulateTourNextStop = function() {
         }
     });
 
-    // 3. Update Progress UI
+    // 3. Update Progress UI with POI specific info
     let pct = Math.round(((tourCurrentIndex + 1) / currentTourPois.length) * 100);
     const shopName = poi.Name || poi.name || `Quán ${tourCurrentIndex + 1}`;
     const progressStr = `${pct}% (${shopName})`;
     
-    window.location.href = `app-tour://update?progress=${encodeURIComponent(progressStr)}&duration=&price=`;
+    let stayMins = currentTourPoi.StayDurationMinutes || currentTourPoi.stayDurationMinutes || 0;
+    let timeStr = `${stayMins} phút`;
+    let priceStr = currentTourPoi.ApproximatePrice || currentTourPoi.approximatePrice || "Chưa rõ";
+    
+    window.location.href = `app-tour://update?progress=${encodeURIComponent(progressStr)}&duration=${encodeURIComponent(timeStr)}&price=${encodeURIComponent(priceStr)}&durPrefix=${encodeURIComponent("⏳ Thời gian ở lại:")}&pricePrefix=${encodeURIComponent("💰 Giá tại quán:")}`;
+
+    window.location.href = `app-tour://state?btn=next`;
 
     // 4. Save intermediate progress
     if (pct >= 50 && tourCurrentIndex === Math.floor(currentTourPois.length / 2)) {
@@ -699,7 +761,7 @@ window.simulateTourNextStop = function() {
     }
 };
 
-window.endTour = function() {
+window.endTourRoute = function() {
     isTourActive = false;
     currentTourPois = [];
     tourCurrentIndex = -1;
@@ -710,6 +772,7 @@ window.endTour = function() {
     // Show all markers again
     mapMarkers.forEach(m => {
         m.marker.setOpacity(1);
+        m.marker.setIcon(pinkIcon); // Reset all back to default pink
     });
     if (userMarker) {
         processLocation({ coords: { latitude: userMarker.getLatLng().lat, longitude: userMarker.getLatLng().lng } });

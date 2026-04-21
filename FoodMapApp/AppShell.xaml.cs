@@ -15,15 +15,9 @@ namespace FoodMapApp
         protected override void OnNavigating(ShellNavigatingEventArgs args)
         {
             base.OnNavigating(args);
-
-            // Handle Map Page Audio cleanup
-            if (args.Current?.Location.OriginalString.Contains("MainPage") == true)
-            {
-                MainPage.Instance?.StopGlobalAudio();
-            }
-
-            // Handle QR Page Audio - We'll let the QR page handle itself in OnDisappearing 
-            // but we can ensure a clean break here if needed.
+            // Audio cleanup is handled by MainPage.OnDisappearing()
+            // Do NOT call StopGlobalAudio here as it destroys sessions
+            // that OnDisappearing is trying to preserve for tab resume.
         }
     }
 }

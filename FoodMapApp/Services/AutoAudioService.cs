@@ -18,7 +18,7 @@ namespace FoodMapApp.Services
         public IReadOnlyList<AudioQueueItem> Queue => _queue;
         private Dictionary<int, DateTime> _cooldowns = new();
         private const int MaxQueueSize = 3;
-        private const int CooldownMinutes = 30;
+        private const int CooldownMinutes = 15;
         private Location? _lastLocation;
 
         public event Action<AudioQueueItem?, List<AudioQueueItem>>? OnStateChanged;
@@ -56,7 +56,9 @@ namespace FoodMapApp.Services
             // 2. Handle Current Item Exit
             if (CurrentItem != null && !inRange.Any(p => p.id == CurrentItem.Poi.id))
             {
-                double progress = (double)CurrentItem.CurrentSentenceIndex / CurrentItem.TotalSentences;
+                double progress = CurrentItem.TotalSentences > 0 
+                    ? (double)CurrentItem.CurrentSentenceIndex / CurrentItem.TotalSentences 
+                    : 0;
                 if (progress < 0.5)
                 {
                     // User requirement: Left quickly and heard < 50% -> fade out then skip
@@ -125,8 +127,12 @@ namespace FoodMapApp.Services
             return distScore * 0.5 + listenScore * 0.5;
         }
 
+        private bool _isPlayingNext = false;
+
         public async Task PlayNextAsync()
         {
+            if (_isPlayingNext) return;
+            
             if (_queue.Count == 0 || IsCallActive) 
             {
                 CurrentItem = null;
@@ -134,17 +140,31 @@ namespace FoodMapApp.Services
                 return;
             }
 
-            // User requirement: Wait 3s before starting a new auto-audio
-            await Task.Delay(3000);
-
-            CurrentItem = _queue[0];
-            IsPaused = false;
-            OnStateChanged?.Invoke(CurrentItem, _queue);
-
-            // Fetch Guide from API and trigger playback via MainPage
-            if (MainPage.Instance != null)
+            _isPlayingNext = true;
+            try
             {
-                await MainPage.Instance.TriggerAutoAudioAsync(CurrentItem);
+                // User requirement: Wait 3s before starting a new auto-audio
+                await Task.Delay(3000);
+
+                if (_queue.Count == 0 || IsCallActive) 
+                {
+                    CurrentItem = null;
+                    return;
+                }
+
+                CurrentItem = _queue[0];
+                IsPaused = false;
+                OnStateChanged?.Invoke(CurrentItem, _queue);
+
+                // Fetch Guide from API and trigger playback via MainPage
+                if (MainPage.Instance != null && CurrentItem != null)
+                {
+                    await MainPage.Instance.TriggerAutoAudioAsync(CurrentItem);
+                }
+            }
+            finally
+            {
+                _isPlayingNext = false;
             }
         }
 
@@ -160,6 +180,24 @@ namespace FoodMapApp.Services
                 CurrentItem = null;
                 _ = PlayNextAsync();
             }
+        }
+
+        /// <summary>
+        /// Case 6: Đánh dấu đã nghe (cooldown) nhưng KHÔNG tự phát quán tiếp theo.
+        /// Dùng khi user bấm X trên auto audio.
+        /// </summary>
+        public void MarkAsHeardOnly(int poiId)
+        {
+            _cooldowns[poiId] = DateTime.Now;
+            int count = Preferences.Default.Get($"listen_count_{poiId}", 0);
+            Preferences.Default.Set($"listen_count_{poiId}", count + 1);
+            
+            if (CurrentItem?.Poi.id == poiId)
+            {
+                _queue.Remove(CurrentItem);
+                CurrentItem = null;
+            }
+            OnStateChanged?.Invoke(CurrentItem, _queue);
         }
 
         public void RemoveFromQueue(int poiId)

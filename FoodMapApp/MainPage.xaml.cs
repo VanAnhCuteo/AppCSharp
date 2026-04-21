@@ -31,7 +31,12 @@ namespace FoodMapApp
         {
             base.OnAppearing();
 
-            if (_manualSession.IsActive)
+            if (_activeSession != null && _activeSession.IsActive)
+            {
+                _activeSession.IsPaused = true;
+                _ = SyncPlayerUI(_activeSession);
+            }
+            else if (_manualSession.IsActive)
             {
                 _manualSession.IsPaused = true;
                 _activeSession = _manualSession;
@@ -55,10 +60,16 @@ namespace FoodMapApp
         {
             base.OnDisappearing();
             
-            if (_isActuallySpeaking && _activeSession != null)
+            if (_activeSession != null && !_activeSession.IsPaused)
             {
                 _activeSession.IsPaused = true;
-                StopSpeech(fullReset: false, clearQueue: false);
+                if (!_activeSession.IsManual) {
+                    AutoAudioService.Instance.SetPaused(true);
+                }
+                
+                if (_isActuallySpeaking) {
+                    StopSpeech(fullReset: false, clearQueue: false);
+                }
             }
 
             MainThread.BeginInvokeOnMainThread(async () => {
@@ -93,7 +104,20 @@ namespace FoodMapApp
                 ["main_tour_next"] = "Tới điểm tiếp theo ⏭", ["main_tour_end"] = "Kết thúc Tour",
                 ["main_tour_not_moved"] = "Chưa di chuyển", ["main_tour_error"] = "Lỗi kết nối",
                 ["main_tour_io_error"] = "Lỗi đường truyền thiết bị", ["main_audio_listening"] = "BẠN ĐANG NGHE CHỈ DẪN",
-                ["main_locating"] = "Đang xác định vị trí của bạn...", ["main_calculating"] = "Đang tính toán..."
+                ["main_locating"] = "Đang xác định vị trí của bạn...", ["main_calculating"] = "Đang tính toán...",
+                // Case 1: Dialog tiếp tục auto sau khi tắt thủ công
+                ["main_audio_resume_title"] = "Tiếp tục nghe?", 
+                ["main_audio_resume_msg"] = "Bạn muốn tiếp tục nghe audio tự động không?",
+                ["main_audio_resume_btn"] = "Tiếp tục", 
+                ["main_audio_cancel_btn"] = "Không",
+                // Case 6: Dialog tắt hàng đợi
+                ["main_audio_clear_queue_title"] = "Tắt hàng đợi?",
+                ["main_audio_clear_queue_msg"] = "Còn {0} quán đang chờ phát. Bạn muốn tắt hàng đợi?",
+                ["main_audio_clear_btn"] = "Tắt hàng đợi",
+                ["main_audio_skip_btn"] = "Bỏ qua quán này",
+                // Mini-player labels
+                ["main_audio_manual_label"] = "BẠN ĐANG NGHE THỦ CÔNG",
+                ["main_audio_auto_label"] = "BẠN ĐANG NGHE TỰ ĐỘNG"
             };
             await LocalizationService.Instance.InitializeAsync(Preferences.Default.Get("app_lang", "vi"), source);
             tourDrawerTitleLabel.Text = LocalizationService.Instance.Get("main_tour_title");
@@ -126,12 +150,27 @@ namespace FoodMapApp
 
         public void ResumeAudio()
         {
-            if (_activeSession != null) {
+            if (_activeSession != null && _activeSession.IsActive)
+            {
                 _activeSession.IsPaused = false;
-                _pauseTcs?.TrySetResult(true);
+                if (_isActuallySpeaking)
+                {
+                    _pauseTcs?.TrySetResult(true);
+                }
+                else
+                {
+                    _ = SpeakWithChunksAsync(_activeSession);
+                }
+                _ = SyncPlayerUI(_activeSession);
             }
         }
 
-        public void StopAudioWithFade() => StopSpeech(fullReset: false, clearQueue: false);
+        public void StopAudioWithFade()
+        {
+            if (_activeSession != null)
+                _activeSession.IsPaused = true;
+            StopSpeech(fullReset: false, clearQueue: false);
+            MainThread.BeginInvokeOnMainThread(async () => await SyncPlayerUI(_activeSession));
+        }
     }
 }

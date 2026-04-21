@@ -1,3 +1,4 @@
+using System.Linq;
 using FoodMapApp.Models;
 using FoodMapApp.Services;
 
@@ -52,6 +53,7 @@ namespace FoodMapApp.Views
                     if (history != null)
                     {
                         historyListView.ItemsSource = history;
+                        CalculateAndShowStats(history);
                     }
                 }
             }
@@ -63,6 +65,26 @@ namespace FoodMapApp.Views
             {
                 loadingOverlay.IsVisible = false;
             }
+        }
+
+        private void CalculateAndShowStats(List<AudioLogModel> history)
+        {
+            if (history == null || !history.Any()) return;
+
+            int totalListens = history.Count;
+            int totalSeconds = history.Sum(h => h.duration_seconds);
+            double average = (double)totalSeconds / totalListens;
+
+            string baseTitle = LocalizationService.Instance.Get("audio_history_title", "Lịch sử nghe Audio");
+            
+            // Format duration string (e.g. 1m 20s or 45s)
+            string avgDisplay;
+            if (average >= 60)
+                avgDisplay = $"{(int)average / 60}m {(int)average % 60}s";
+            else
+                avgDisplay = $"{(int)average}s";
+
+            HistoryTitleLabel.Text = $"{baseTitle} (TB: {avgDisplay})";
         }
 
         private async void OnBackClicked(object sender, EventArgs e)

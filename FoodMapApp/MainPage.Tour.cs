@@ -103,8 +103,10 @@ namespace FoodMapApp
             catch (Exception ex) { Debug.WriteLine($"Tour History Save Error: {ex.Message}"); }
         }
 
-        private void UpdateTourProgressUI(string duration, string price, string progress)
+        private void UpdateTourProgressUI(string duration, string price, string progress, string durPrefix = "", string pricePrefix = "")
         {
+            if (!string.IsNullOrEmpty(durPrefix)) simTimeLabelPrefix.Text = durPrefix;
+            if (!string.IsNullOrEmpty(pricePrefix)) simPriceLabelPrefix.Text = pricePrefix;
             simTotalTime.Text = duration;
             simTotalPrice.Text = price;
             simProgress.Text = progress;
@@ -113,8 +115,12 @@ namespace FoodMapApp
         private async void OnSimulateStartClicked(object sender, EventArgs e)
         {
             btnSimulateStart.IsVisible = false;
-            btnSimulateNext.IsVisible = true;
             if (mapView != null) await mapView.EvaluateJavaScriptAsync("window.simulateTourNextStop()");
+        }
+
+        private async void OnSimulateArriveClicked(object sender, EventArgs e)
+        {
+            if (mapView != null) await mapView.EvaluateJavaScriptAsync("window.simulateTourArrive()");
         }
 
         private async void OnSimulateNextClicked(object sender, EventArgs e)

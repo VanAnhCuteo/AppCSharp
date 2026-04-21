@@ -57,12 +57,12 @@ namespace FoodMapApp.Views
             if (isGuestQr)
             {
                 // Chuyển về Trang Chủ
-                await Shell.Current.GoToAsync("//MainTabs/HomePage");
+                await Shell.Current.GoToAsync("//HomePage");
             }
             else if (content.Contains("foodmap://audio/", StringComparison.OrdinalIgnoreCase) || 
                      content.Contains("foodmap.app/audio/", StringComparison.OrdinalIgnoreCase))
             {
-                // Xử lý link Audio (Ví dụ: foodmap://audio/5 hoặc https://foodmap.app/audio/5)
+                // Xử lý link Audio (Ví dụ: foodmap://audio/5) -> Bây giờ chuyển thẳng tới Bản đồ
                 try
                 {
                     string idPart = "";
@@ -73,8 +73,9 @@ namespace FoodMapApp.Views
 
                     if (int.TryParse(idPart, out int id))
                     {
-                        // Chuyển đến trang xem mã QR và tự động phát audio
-                        await Shell.Current.GoToAsync($"QRViewerPage?id={id}&auto=true");
+                        // Thay vì vào QRViewerPage, ta vào thẳng Bản Đồ và mở chi tiết quán
+                        MainPage.PendingOpenFoodId = id;
+                        await Shell.Current.GoToAsync("//MainPage");
                     }
                     else
                     {
@@ -104,7 +105,7 @@ namespace FoodMapApp.Views
                     {
                         // Set pending ID để trang Map tự mở khi xuất hiện
                         MainPage.PendingOpenFoodId = id;
-                        await Shell.Current.GoToAsync("//MainTabs/MainPage");
+                        await Shell.Current.GoToAsync("//MainPage");
                     }
                     else
                     {
