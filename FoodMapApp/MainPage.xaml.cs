@@ -42,6 +42,11 @@ namespace FoodMapApp
                 _activeSession = _manualSession;
                 _ = SyncPlayerUI(_manualSession);
             }
+            else
+            {
+                // Mở khóa auto audio khi quay lại MainPage (đối xứng với SetPaused(true) ở OnDisappearing)
+                AutoAudioService.Instance.SetPaused(false);
+            }
 
             _ = Permissions.RequestAsync<Permissions.LocationWhenInUse>();
             

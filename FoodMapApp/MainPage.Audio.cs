@@ -75,7 +75,7 @@ namespace FoodMapApp
             if (string.IsNullOrEmpty(poiId) || duration < 1) return;
             try
             {
-                if (new AuthService().IsGuest) return;
+                // Khách cũng được tính thống kê lượt nghe (chỉ ẩn lịch sử ở ProfilePage)
                 int userId = Preferences.Default.Get("user_id", 1);
                 var payload = new { user_id = userId, duration_seconds = duration };
                 using HttpClient client = new HttpClient();
@@ -530,6 +530,7 @@ namespace FoodMapApp
                     if (clearQueue)
                     {
                         AutoAudioService.Instance.ClearQueue();
+                        AutoAudioService.Instance.SetPaused(false); // Mở khóa auto cho POI mới
                     }
                     else
                     {
@@ -537,7 +538,11 @@ namespace FoodMapApp
                         _ = AutoAudioService.Instance.PlayNextAsync();
                     }
                 }
-                // Không có hàng đợi → tự dừng, auto sẽ tự kích hoạt khi có POI mới
+                else
+                {
+                    // Không có hàng đợi → mở khóa auto cho POI mới
+                    AutoAudioService.Instance.SetPaused(false);
+                }
             }
 
             _ = ReportCurrentLocationAsync();
