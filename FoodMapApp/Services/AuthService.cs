@@ -13,60 +13,11 @@ namespace FoodMapApp.Services
             _httpClient = new HttpClient();
         }
 
-        public async Task<AuthResponse> LoginAsync(string identifier, string password)
-        {
-            try
-            {
-                var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/login", new { identifier, password });
-                var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
-
-                if (result != null && result.success)
-                {
-                    SaveUserSession(result);
-                }
-
-                return result ?? new AuthResponse { success = false, message = "Empty response from server" };
-            }
-            catch (Exception ex)
-            {
-                return new AuthResponse { success = false, message = $"Connection error: {ex.Message}" };
-            }
-        }
-
-        public async Task<AuthResponse> RegisterAsync(string username, string email, string password)
-        {
-            try
-            {
-                var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/register", new { username, email, password });
-                var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
-
-                if (result != null && result.success)
-                {
-                    SaveUserSession(result);
-                }
-
-                return result ?? new AuthResponse { success = false, message = "Empty response from server" };
-            }
-            catch (Exception ex)
-            {
-                return new AuthResponse { success = false, message = $"Connection error: {ex.Message}" };
-            }
-        }
-
-        private void SaveUserSession(AuthResponse response)
-        {
-            Preferences.Default.Set("user_id", response.user_id);
-            Preferences.Default.Set("username", response.username);
-            Preferences.Default.Set("email", response.email); // Save email
-            Preferences.Default.Set("role", response.role);
-            Preferences.Default.Set("is_logged_in", true);
-        }
-
         public void LoginOffline()
         {
             Preferences.Default.Set("user_id", -1);
             Preferences.Default.Set("username", "Khách");
-            Preferences.Default.Set("email", "offline@foodmap.com"); // Email giả định
+            Preferences.Default.Set("email", "offline@foodmap.com");
             Preferences.Default.Set("role", "offline");
             Preferences.Default.Set("is_logged_in", true);
         }
@@ -77,29 +28,6 @@ namespace FoodMapApp.Services
             Preferences.Default.Set("username", $"Khách {id}");
             Preferences.Default.Set("role", "guest");
             Preferences.Default.Set("is_logged_in", true);
-        }
-
-        public async Task<bool> UpdateProfileAsync(int userId, string username, string email, string? password = null)
-        {
-            try
-            {
-                var request = new { user_id = userId, username, email, password };
-                var response = await _httpClient.PutAsJsonAsync($"{BaseUrl}/update", request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    // Update local session
-                    Preferences.Default.Set("username", username);
-                    Preferences.Default.Set("email", email);
-                    return true;
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Update Profile error: {ex.Message}");
-                return false;
-            }
         }
 
         public async Task LogoutAsync()
@@ -141,7 +69,7 @@ namespace FoodMapApp.Services
         public string message { get; set; }
         public int user_id { get; set; }
         public string username { get; set; }
-        public string email { get; set; } // Add email
+        public string email { get; set; }
         public string role { get; set; }
     }
 }

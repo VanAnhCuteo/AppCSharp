@@ -6,7 +6,6 @@ namespace FoodMapApp
         {
             InitializeComponent();
 
-            Routing.RegisterRoute("RegisterPage", typeof(Views.RegisterPage));
             Routing.RegisterRoute("ShopQRListPage", typeof(Views.ShopQRListPage));
             Routing.RegisterRoute("QRViewerPage", typeof(Views.QRViewerPage));
             Routing.RegisterRoute("QrScannerPage", typeof(Views.QrScannerPage));

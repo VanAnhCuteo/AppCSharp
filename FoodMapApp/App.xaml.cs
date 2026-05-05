@@ -59,16 +59,26 @@ namespace FoodMapApp
             string host = uri.Host.ToLower();
             string scheme = uri.Scheme.ToLower();
 
-            // 1. Handle POI Deep Link (foodmap://poi/{id} hoặc https://foodmap.app/poi/{id})
+            // Robust ID extraction
+            string fullUrl = uri.ToString();
+            string idStr = "";
+            if (fullUrl.Contains("poi/"))
+                idStr = fullUrl.Substring(fullUrl.IndexOf("poi/") + 4).Split('/')[0].Split('?')[0];
+            else if (fullUrl.Contains("audio/"))
+                idStr = fullUrl.Substring(fullUrl.IndexOf("audio/") + 6).Split('/')[0].Split('?')[0];
+            else
+                idStr = uri.Segments.LastOrDefault()?.Trim('/') ?? "";
+
+            // 1. Handle POI Deep Link
             if ((scheme == "foodmap" && host == "poi") || (scheme == "https" && host == "foodmap.app" && path.Contains("/poi/")))
             {
-                var idStr = uri.Segments.LastOrDefault()?.Trim('/');
                 if (int.TryParse(idStr, out int id))
                 {
                     FoodMapApp.MainPage.PendingOpenFoodId = id;
 
                     if (!authService.IsLoggedIn)
                     {
+                        // Không đặt PendingGuestLogin ở đây để tránh LoginPage tự điều hướng về HomePage
                         authService.LoginAsGuest(new Random().Next(100000, 999999));
                     }
 
@@ -80,10 +90,9 @@ namespace FoodMapApp
                     _ = NavigateToMapAsync();
                 }
             }
-            // 2. Handle Audio QR/Deep Link (foodmap://audio/{id} hoặc https://foodmap.app/audio/{id})
+            // 2. Handle Audio QR/Deep Link
             else if ((scheme == "foodmap" && host == "audio") || (scheme == "https" && host == "foodmap.app" && path.Contains("/audio/")))
             {
-                var idStr = uri.Segments.LastOrDefault()?.Trim('/');
                 if (int.TryParse(idStr, out int id))
                 {
                     if (!authService.IsLoggedIn)
@@ -93,7 +102,7 @@ namespace FoodMapApp
                     _ = NavigateDirectlyAsync($"QRViewerPage?id={id}&auto=true");
                 }
             }
-            // 3. Handle Guest Login Deep Link (foodmap://guest hoặc https://foodmap.app/guest)
+            // 3. Handle Guest Login Deep Link
             else if ((scheme == "foodmap" && host == "guest") || (scheme == "https" && host == "foodmap.app" && path.Contains("/guest")))
             {
                 if (!authService.IsLoggedIn)
@@ -116,11 +125,13 @@ namespace FoodMapApp
             {
                 if (Shell.Current != null)
                 {
+                    bool success = false;
                     await MainThread.InvokeOnMainThreadAsync(async () =>
                     {
                         try
                         {
-                            await Shell.Current.GoToAsync("//MainTabs/MainPage");
+                            // Use the more direct route //MainPage
+                            await Shell.Current.GoToAsync("//MainPage");
 
                             // Wait for MainPage instance to be ready
                             for (int j = 0; j < 20; j++)
@@ -128,6 +139,7 @@ namespace FoodMapApp
                                 if (FoodMapApp.MainPage.Instance != null)
                                 {
                                     await FoodMapApp.MainPage.Instance.TryOpenPendingDetail();
+                                    success = true;
                                     break;
                                 }
                                 await Task.Delay(200);
@@ -135,12 +147,13 @@ namespace FoodMapApp
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Navigation Error: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Navigation Attempt {i} Error: {ex.Message}");
                         }
                     });
-                    return;
+
+                    if (success) return;
                 }
-                await Task.Delay(200);
+                await Task.Delay(250);
             }
 
             System.Diagnostics.Debug.WriteLine("Shell not available after timeout.");

@@ -181,12 +181,6 @@ namespace FoodMapApp
                     btnSimulateNext.IsVisible = (btn == "next");
                 });
             }
-            else if (e.Url.StartsWith("app-tour://save?")) {
-                e.Cancel = true;
-                var query = HttpUtility.ParseQueryString(new Uri(e.Url).Query);
-                if (int.TryParse(query["id"], out int tid) && decimal.TryParse(query["pct"], out decimal pct))
-                    _ = SaveTourHistoryLocallyAsync(tid, pct, query["status"] ?? "");
-            }
             else if (e.Url.StartsWith("app-tour://open-drawer")) {
                 e.Cancel = true;
                 OnMenuClicked(this, EventArgs.Empty);

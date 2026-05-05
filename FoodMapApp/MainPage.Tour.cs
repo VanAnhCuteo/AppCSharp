@@ -88,21 +88,6 @@ namespace FoodMapApp
             catch (Exception ex) { Debug.WriteLine($"StartTourMode error: {ex.Message}"); }
         }
 
-        private async Task SaveTourHistoryLocallyAsync(int tourId, decimal progressPercentage, string status)
-        {
-            try
-            {
-                if (new AuthService().IsGuest) return;
-                int userId = Preferences.Default.Get("user_id", 0);
-                if (userId == 0) return;
-                var payload = new { UserId = userId, TourId = tourId, ProgressPercentage = progressPercentage, Status = status };
-                using HttpClient client = new HttpClient();
-                var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
-                await client.PostAsync($"{AppConfig.BaseUrl}/Tours/history", content);
-            }
-            catch (Exception ex) { Debug.WriteLine($"Tour History Save Error: {ex.Message}"); }
-        }
-
         private void UpdateTourProgressUI(string duration, string price, string progress, string durPrefix = "", string pricePrefix = "")
         {
             if (!string.IsNullOrEmpty(durPrefix)) simTimeLabelPrefix.Text = durPrefix;

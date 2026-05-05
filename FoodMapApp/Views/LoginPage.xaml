@@ -139,88 +139,10 @@
                     </Border.Shadow>
                     <VerticalStackLayout Spacing="22">
 
-                        <!-- Identifier field -->
-                        <VerticalStackLayout Spacing="8">
-                            <Label x:Name="IdentifierLabel" Text="Email hoặc Số điện thoại" FontSize="13" FontAttributes="Bold"
-                                   TextColor="#1A1A2E" Margin="4,0"/>
-                            <Border BackgroundColor="#FFF7F8" Padding="0"
-                                    StrokeThickness="0" HeightRequest="60">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="18"/></Border.StrokeShape>
-                                <Grid ColumnDefinitions="Auto,*">
-                                    <!-- Email Vector -->
-                                    <Border Grid.Column="0" WidthRequest="48" HeightRequest="48"
-                                            BackgroundColor="#FFECEF" StrokeThickness="0"
-                                            VerticalOptions="Center" Margin="8,0,0,0">
-                                        <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
-                                        <Path Data="M20,4 L4,4 C2.9,4 2.01,4.9 2.01,6 L2,18 C2,19.1 2.9,20 4,20 L20,20 C21.1,20 22,19.1 22,18 L22,6 C22,4.9 21.1,4 20,4 M20,8 L12,13 L4,8 L4,6 L12,11 L20,6 L20,8 Z"
-                                              Fill="#FF6B81" Aspect="Uniform" WidthRequest="20" HeightRequest="20"
-                                              HorizontalOptions="Center" VerticalOptions="Center"/>
-                                    </Border>
-                                    <Entry Grid.Column="1" x:Name="IdentifierEntry"
-                                           TextColor="#1A1A2E" BackgroundColor="Transparent"
-                                           PlaceholderColor="#B0A3AB" Margin="12,0,16,0"
-                                           Keyboard="Email"
-                                           Placeholder="yourname@email.com"
-                                           IsTextPredictionEnabled="False"
-                                           IsSpellCheckEnabled="False"
-                                           VerticalOptions="Center"/>
-                                </Grid>
-                            </Border>
-                        </VerticalStackLayout>
-
-                        <!-- Password field -->
-                        <VerticalStackLayout Spacing="8">
-                            <Label x:Name="PasswordLabel" Text="Mật khẩu" FontSize="13" FontAttributes="Bold"
-                                   TextColor="#1A1A2E" Margin="4,0"/>
-                            <Border BackgroundColor="#FFF7F8" Padding="0"
-                                    StrokeThickness="0" HeightRequest="60">
-                                <Border.StrokeShape><RoundRectangle CornerRadius="18"/></Border.StrokeShape>
-                                <Grid ColumnDefinitions="Auto,*">
-                                    <!-- Lock Vector -->
-                                    <Border Grid.Column="0" WidthRequest="48" HeightRequest="48"
-                                            BackgroundColor="#FFF0E8" StrokeThickness="0"
-                                            VerticalOptions="Center" Margin="8,0,0,0">
-                                        <Border.StrokeShape><RoundRectangle CornerRadius="14"/></Border.StrokeShape>
-                                        <Path Data="M18,8 L17,8 L17,6 C17,3.24 14.76,1 12,1 C9.24,1 7,3.24 7,6 L7,8 L6,8 C4.9,8 4,8.9 4,10 L4,20 C4,21.1 4.9,22 6,22 L18,22 C19.1,22 20,21.1 20,20 L20,10 C20,8.9 19.1,8 18,8 M9,6 C9,4.34 10.34,3 12,3 C13.66,3 15,4.34 15,6 L15,8 L9,8 L9,6 M12,17 C10.9,17 10,16.1 10,15 C10,13.9 10.9,13 12,17 Z"
-                                              Fill="#FF9A76" Aspect="Uniform" WidthRequest="20" HeightRequest="20"
-                                              HorizontalOptions="Center" VerticalOptions="Center"/>
-                                    </Border>
-                                    <Entry Grid.Column="1" x:Name="PasswordEntry"
-                                           Placeholder="••••••••" IsPassword="True"
-                                           TextColor="#1A1A2E" BackgroundColor="Transparent"
-                                           PlaceholderColor="#B0A3AB" Margin="12,0,16,0"
-                                           IsTextPredictionEnabled="False"
-                                           IsSpellCheckEnabled="False"
-                                           VerticalOptions="Center"/>
-                                </Grid>
-                            </Border>
-                        </VerticalStackLayout>
-
-                        <!-- Login Button -->
-                        <Button x:Name="LoginButton" Text="Đăng nhập" Clicked="OnLoginClicked"
+                        <!-- Guest Button -->
+                        <Button x:Name="QrScanButton" Text="Tài khoản khách" Clicked="OnGuestClicked"
                                 TextColor="White" FontAttributes="Bold" FontSize="16"
                                 CornerRadius="22" HeightRequest="64"
-                                Margin="0,10,0,0" BorderWidth="0"
-                                CharacterSpacing="0.5">
-                            <Button.Background>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                    <GradientStop Color="#FF6B81" Offset="0.0"/>
-                                    <GradientStop Color="#FF8A70" Offset="0.7"/>
-                                    <GradientStop Color="#FF9A76" Offset="1.0"/>
-                                </LinearGradientBrush>
-                            </Button.Background>
-                            <Button.Shadow>
-                                <Shadow Brush="#FF6B81" Offset="0,10" Opacity="0.35" Radius="20"/>
-                            </Button.Shadow>
-                        </Button>
-
-                        <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False"
-                                           Color="#FF6B81" HorizontalOptions="Center"/>
-
-                        <!-- Guest Button (Renamed from QR) -->
-                        <Button x:Name="QrScanButton" Text="Tài khoản khách" Clicked="OnGuestClicked"
-                                TextColor="White" FontAttributes="Bold" FontSize="14"
-                                CornerRadius="22" HeightRequest="60"
                                 Margin="0,4,0,0" BorderWidth="0" CharacterSpacing="1">
                              <Button.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -232,6 +154,9 @@
                                 <Shadow Brush="#6C5CE7" Offset="0,6" Opacity="0.25" Radius="12"/>
                             </Button.Shadow>
                         </Button>
+
+                        <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False"
+                                           Color="#FF6B81" HorizontalOptions="Center"/>
 
                         <!-- OR Separator -->
                         <Grid ColumnDefinitions="*,Auto,*" Margin="0,4,0,4">
@@ -256,17 +181,8 @@
                 </Border>
             </Grid>
 
-            <!-- Register link -->
-            <HorizontalStackLayout Grid.Row="2" HorizontalOptions="Center"
-                                   Spacing="6" Margin="0,30,0,44">
-                <Label x:Name="NoAccountLabel" Text="Bạn chưa có tài khoản?" TextColor="#6C6C80" FontSize="14"/>
-                <Label x:Name="RegisterNowLabel" Text="Đăng ký ngay" TextColor="#FF6B81"
-                       FontAttributes="Bold" FontSize="14">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnRegisterTapped"/>
-                    </Label.GestureRecognizers>
-                </Label>
-            </HorizontalStackLayout>
+            <!-- Bottom spacer -->
+            <BoxView Grid.Row="2" HeightRequest="44" Color="Transparent"/>
 
         </Grid>
     </ScrollView>

@@ -31,13 +31,14 @@ namespace FoodMapApp.Views
             if (_authService.IsLoggedIn)
             {
                 // Nếu đang có Deep Link chờ mở quán (POI), không tự động nhảy về HomePage
-                // để tránh xung đột với lệnh điều hướng từ App.xaml.cs
+                // LUỒNG POI: Để App.xaml.cs tự điều hướng tới MainPage
                 if (MainPage.PendingOpenFoodId.HasValue || !string.IsNullOrEmpty(App.PendingDeepLinkUri))
                 {
-                    System.Diagnostics.Debug.WriteLine("Deep link detected, skipping auto-redirect to HomePage");
+                    System.Diagnostics.Debug.WriteLine("Deep link (POI/Audio) detected, letting App.xaml.cs handle navigation");
                     return;
                 }
 
+                // LUỒNG BÌNH THƯỜNG: Tự động vào HomePage
                 await Shell.Current.GoToAsync("//MainTabs");
                 return;
             }
@@ -58,34 +59,19 @@ namespace FoodMapApp.Views
             var source = new Dictionary<string, string>
             {
                 ["login_title"] = "FoodMap Vĩnh Khánh",
-                ["login_welcome"] = "Chào mừng trở lại! Vui lòng đăng nhập.",
-                ["login_id_label"] = "Tên đăng nhập hoặc Email",
-                ["login_id_ph"] = "Nhập tên đăng nhập",
-                ["login_pwd_label"] = "Mật khẩu",
-                ["login_btn"] = "ĐĂNG NHẬP",
+                ["login_welcome"] = "Khám phá ẩm thực quanh bạn",
                 ["login_guest_btn"] = "TÀI KHOẢN KHÁCH",
                 ["login_or"] = "HOẶC",
                 ["login_offline_btn"] = "ĐĂNG NHẬP OFFLINE",
-                ["login_no_acc"] = "Chưa có tài khoản?",
-                ["login_register_link"] = "Đăng ký ngay",
-                ["login_err"] = "Lỗi",
-                ["login_missing_fields"] = "Vui lòng nhập tên đăng nhập và mật khẩu.",
-                ["login_fail_title"] = "Đăng nhập thất bại"
             };
 
             await LocalizationService.Instance.InitializeAsync(Preferences.Default.Get("app_lang", "vi"), source);
 
             AppTitleLabel.Text = LocalizationService.Instance.Get("login_title");
             WelcomeLabel.Text = LocalizationService.Instance.Get("login_welcome");
-            IdentifierLabel.Text = LocalizationService.Instance.Get("login_id_label");
-            IdentifierEntry.Placeholder = LocalizationService.Instance.Get("login_id_ph");
-            PasswordLabel.Text = LocalizationService.Instance.Get("login_pwd_label");
-            LoginButton.Text = LocalizationService.Instance.Get("login_btn");
             QrScanButton.Text = LocalizationService.Instance.Get("login_guest_btn");
             OrLabel.Text = LocalizationService.Instance.Get("login_or");
             OfflineButton.Text = LocalizationService.Instance.Get("login_offline_btn");
-            NoAccountLabel.Text = LocalizationService.Instance.Get("login_no_acc");
-            RegisterNowLabel.Text = LocalizationService.Instance.Get("login_register_link");
 
             // Update Language Bubble Code
             string lang = LocalizationService.Instance.CurrentLanguage;
@@ -98,31 +84,6 @@ namespace FoodMapApp.Views
                 "zh" => "ZH",
                 _ => lang.Length >= 2 ? lang.Substring(0, 2).ToUpper() : lang.ToUpper()
             };
-        }
-
-        private async void OnLoginClicked(object sender, EventArgs e)
-        {
-            string identifier = IdentifierEntry.Text;
-            string password = PasswordEntry.Text;
-
-            if (string.IsNullOrEmpty(identifier) || string.IsNullOrEmpty(password))
-            {
-                await DisplayAlert(LocalizationService.Instance.Get("login_err"), LocalizationService.Instance.Get("login_missing_fields"), "OK");
-                return;
-            }
-
-            LoadingIndicator.IsRunning = true;
-            var result = await _authService.LoginAsync(identifier, password);
-            LoadingIndicator.IsRunning = false;
-
-            if (result.success)
-            {
-                await Shell.Current.GoToAsync("//MainTabs");
-            }
-            else
-            {
-                await DisplayAlert(LocalizationService.Instance.Get("login_fail_title"), result.message, "OK");
-            }
         }
 
         private async void OnOfflineClicked(object sender, EventArgs e)
@@ -174,11 +135,6 @@ namespace FoodMapApp.Views
             {
                 Console.WriteLine($"Error selecting language: {ex.Message}");
             }
-        }
-
-        private async void OnRegisterTapped(object sender, EventArgs e)
-        {
-            await Shell.Current.GoToAsync("RegisterPage");
         }
     }
 }

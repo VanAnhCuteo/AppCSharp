@@ -67,39 +67,5 @@ namespace FoodMapAPI.Controllers
                 TourPois = pois
             });
         }
-
-        public class HistoryRequest
-        {
-            public int UserId { get; set; }
-            public int TourId { get; set; }
-            public decimal ProgressPercentage { get; set; }
-            public string Status { get; set; } = "InProgress";
-        }
-
-        [HttpPost("history")]
-        public async Task<ActionResult> SaveHistory([FromBody] HistoryRequest request)
-        {
-            if (request.UserId <= 0 || request.TourId <= 0) return BadRequest("Invalid Data");
-
-            var history = await _tourService.SaveTourHistoryAsync(request.UserId, request.TourId, request.ProgressPercentage, request.Status);
-            return Ok(history);
-        }
-
-        [HttpGet("history/{userId}")]
-        public async Task<ActionResult> GetUserHistory(int userId)
-        {
-            var history = await _tourService.GetUserTourHistoryAsync(userId);
-            var result = history.Select(h => new
-            {
-                h.Id,
-                h.UserId,
-                h.TourId,
-                h.Status,
-                h.ProgressPercentage,
-                h.CreatedAt,
-                TourName = h.Tour?.Name
-            });
-            return Ok(result);
-        }
     }
 }

@@ -85,18 +85,6 @@ using (var scope = app.Services.CreateScope())
                 PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
-
-        db.Database.ExecuteSqlRaw(@"
-            CREATE TABLE IF NOT EXISTS `tour_histories` (
-                `id` INT NOT NULL AUTO_INCREMENT,
-                `user_id` INT NOT NULL,
-                `tour_id` INT NOT NULL,
-                `status` VARCHAR(50) DEFAULT 'InProgress',
-                `progress_percentage` DECIMAL(5,2) DEFAULT 0,
-                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (`id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        ");
     }
     catch (Exception ex)
     {
