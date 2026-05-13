@@ -62,7 +62,7 @@ async function openLanguagePicker() {
     list.innerHTML = `<div style="padding: 20px; text-align: center; color: #888;">${window.uiTranslations.loading_lang}</div>`;
 
     try {
-        const res = await fetch(`${platformApiBase}/${currentBasePoiId}/available-languages`);
+        const res = await fetch(`${platformApiBase}/${currentBasePoiId}/available-languages?userId=${currentUserId || 0}`);
         if (res.ok) {
             const languages = await res.json();
             list.innerHTML = '';
@@ -158,7 +158,7 @@ async function openDetails(poiId, lang = selectedLanguage) {
     try {
         // ALWAYS fetch UI details in Vietnamese (per user request)
         console.log(`DEBUG: Fetching UI details in Vietnamese for: ${poiId}`);
-        const detailsRes = await fetch(`${platformApiBase}/${poiId}?lang=vi`);
+        const detailsRes = await fetch(`${platformApiBase}/${poiId}?lang=vi&userId=${currentUserId || 0}`);
         if (detailsRes.ok) {
             const data = await detailsRes.json();
             console.log("DEBUG: POI details loaded (Vietnamese):", data);
@@ -217,7 +217,7 @@ async function openDetails(poiId, lang = selectedLanguage) {
 
         // Fetch Audio Guide in the TARGET language
         console.log(`DEBUG: Fetching Audio Guide in ${lang} for: ${poiId}`);
-        const guideRes = await fetch(`${platformApiBase}/${poiId}/guide?lang=${lang}`);
+        const guideRes = await fetch(`${platformApiBase}/${poiId}/guide?lang=${lang}&userId=${currentUserId || 0}`);
         if (guideRes.ok) {
             currentAudioGuide = await guideRes.json();
             const speakerBtn = document.getElementById('sheet-speaker-btn');

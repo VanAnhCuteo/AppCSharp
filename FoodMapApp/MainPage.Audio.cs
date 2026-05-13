@@ -14,6 +14,7 @@ namespace FoodMapApp
         // ═══════════════════════════════════════════
         private static AudioSession _manualSession = new() { IsManual = true };
         private static AudioSession? _activeSession = null;
+        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
         
         /// Case 1: Nhớ trạng thái auto trước khi manual chiếm quyền
         private static bool _hadAutoBeforeManual = false;
@@ -78,12 +79,13 @@ namespace FoodMapApp
                 // Khách cũng được tính thống kê lượt nghe (chỉ ẩn lịch sử ở ProfilePage)
                 int userId = Preferences.Default.Get("user_id", 1);
                 var payload = new { user_id = userId, duration_seconds = duration };
-                using HttpClient client = new HttpClient();
                 var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
-                await client.PostAsync($"{AppConfig.FoodApiUrl}/{poiId}/audio-log", content);
-                Debug.WriteLine($"DEBUG: Logged {duration}s for POI {poiId}");
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                var response = await _httpClient.PostAsync($"{AppConfig.FoodApiUrl}/{poiId}/audio-log", content);
+                sw.Stop();
+                Debug.WriteLine($"[AudioLog] POST /audio-log POI={poiId}, duration={duration}s, status={response.StatusCode}, latency={sw.ElapsedMilliseconds}ms");
             }
-            catch (Exception ex) { Debug.WriteLine($"DEBUG: Log error: {ex.Message}"); }
+            catch (Exception ex) { Debug.WriteLine($"[AudioLog] ERROR POI={poiId}: {ex.Message}"); }
         }
 
         private void FinalizeAndSendLog()
@@ -142,7 +144,13 @@ namespace FoodMapApp
 
         private async Task SpeakWithChunksAsync(AudioSession session)
         {
-            if (!await _ttsSemaphore.WaitAsync(500)) return;
+            Debug.WriteLine($"[TTS] SpeakWithChunks: chờ semaphore... (POI={session.PoiId})");
+            if (!await _ttsSemaphore.WaitAsync(500))
+            {
+                Debug.WriteLine($"[TTS] ⚠ Semaphore TIMEOUT 500ms – SKIP (POI={session.PoiId}). Đã có 1 session khác đang chạy.");
+                return;
+            }
+            Debug.WriteLine($"[TTS] ✓ Semaphore acquired (POI={session.PoiId}, {session.Sentences.Length} câu, isManual={session.IsManual})");
             _isActuallySpeaking = true;
             _ttsCts = new CancellationTokenSource();
 
@@ -208,6 +216,7 @@ namespace FoodMapApp
                 _isActuallySpeaking = false;
                 _ttsCts = null;
                 _ttsSemaphore.Release();
+                Debug.WriteLine($"[TTS] Semaphore released (POI={session.PoiId}, SentenceIndex={session.SentenceIndex}/{session.Sentences.Length})");
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
                     if (mapView != null) await mapView.EvaluateJavaScriptAsync("if(window.onTtsFinished) window.onTtsFinished();");
@@ -287,8 +296,11 @@ namespace FoodMapApp
         {
             try
             {
-                using HttpClient client = new HttpClient();
-                var res = await client.GetAsync($"{AppConfig.FoodApiUrl}/{item.Poi.id}/guide?lang={item.Language}");
+                Debug.WriteLine($"[TTS] TriggerAutoAudio: POI={item.Poi.id} ({item.Poi.name})");
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                var res = await _httpClient.GetAsync($"{AppConfig.FoodApiUrl}/{item.Poi.id}/guide?lang={item.Language}");
+                sw.Stop();
+                Debug.WriteLine($"[TTS] GET /guide POI={item.Poi.id}, status={res.StatusCode}, latency={sw.ElapsedMilliseconds}ms");
                 string text = "";
                 if (res.IsSuccessStatusCode)
                 {
@@ -298,6 +310,7 @@ namespace FoodMapApp
                 else
                 {
                     text = $"{item.Poi.name}. {item.Poi.description}";
+                    Debug.WriteLine($"[TTS] ⚠ Guide API failed, dùng fallback text cho POI={item.Poi.id}");
                 }
 
                 if (!string.IsNullOrWhiteSpace(text))
@@ -306,6 +319,7 @@ namespace FoodMapApp
                     var sentences = normalizedText.Split(new[] { '.', '!', '?', ';', ',', '。', '！', '？' }, StringSplitOptions.RemoveEmptyEntries)
                                                   .Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
 
+                    Debug.WriteLine($"[TTS] POI={item.Poi.id}: text={text.Length} chars → {sentences.Length} câu");
                     FinalizeAndSendLog();
 
                     // Case 4: Đồng bộ TotalSentences cho AutoAudioService (tránh chia 0)

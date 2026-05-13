@@ -310,7 +310,7 @@ function removeDiacritics(text) {
 // Global hook for C# routing
 window.routeToPoi = async function(id) {
     try {
-        const detailsRes = await fetch(`${platformApiBase}/${id}?lang=${selectedLanguage}`);
+        const detailsRes = await fetch(`${platformApiBase}/${id}?lang=${selectedLanguage}&userId=${currentUserId}`);
         if(detailsRes.ok) {
             const data = await detailsRes.json();
             if (userMarker) {

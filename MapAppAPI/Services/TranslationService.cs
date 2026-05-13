@@ -11,7 +11,7 @@ namespace FoodMapAPI.Services
 
         public TranslationService(IMemoryCache cache)
         {
-            _httpClient = new HttpClient();
+            _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
             _cache = cache;
         }
 

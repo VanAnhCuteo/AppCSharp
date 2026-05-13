@@ -2,6 +2,10 @@ using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using FoodMapAPI.Models;
 using FoodMapAPI.Services;
+using Microsoft.Extensions.Caching.Memory;
+using System.IO;
+using System.Text;
+using System.Runtime.CompilerServices; // Cho StrongBox
 
 namespace FoodMapAPI.Controllers
 {
@@ -11,11 +15,25 @@ namespace FoodMapAPI.Controllers
     {
         private readonly IConfiguration _configuration;
         private readonly TranslationService _translator;
+        private readonly IMemoryCache _cache;
+        private readonly ILogger<FoodController> _logger;
+        private static bool _isLogCleared = false;
+        private static readonly object _logLock = new object();
+        // Bộ đếm request để theo dõi lượt truy cập
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> _requestCounter = new();
+        // Bộ đếm số người đang thực sự chờ xử lý (Active Waiters) dùng StrongBox để Interlocked
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, StrongBox<int>> _activeWaiters = new();
+        // Lưu latency thực tế khi Guide query DB lần đầu
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, long> _guideDbLatency = new();
+        // Hàng đợi quản lý các Task đang chạy để gộp request (Request Collapsing)
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Task<Guide?>> _guideTasks = new();
 
-        public FoodController(IConfiguration configuration, TranslationService translator)
+        public FoodController(IConfiguration configuration, TranslationService translator, IMemoryCache cache, ILogger<FoodController> logger)
         {
             _configuration = configuration;
             _translator = translator;
+            _cache = cache;
+            _logger = logger;
         }
 
         private string? GetFullUrl(string? relativePath)
@@ -28,9 +46,66 @@ namespace FoodMapAPI.Controllers
             return $"{baseUrl}{(relativePath.StartsWith("/") ? "" : "/")}{relativePath}";
         }
 
-        [HttpGet]
-        public async Task<List<Food>> GetFoods([FromQuery] string lang = "vi", [FromQuery] int? category_id = null)
+        private async Task LogToFileAsync(string tag, string message, int userId = 0)
         {
+            try
+            {
+                // Sử dụng ILogger để log chuẩn ASP.NET Core
+                if (tag == "Error") _logger.LogError(message);
+                else _logger.LogInformation($"[{tag}] {message}");
+
+                string logFilePath = Path.Combine(Directory.GetCurrentDirectory(), "text_audio_log.txt");
+                
+                if (!_isLogCleared)
+                {
+                    // Lock này vẫn cần để đảm bảo chỉ xóa 1 lần khi khởi chạy
+                    if (!_isLogCleared)
+                    {
+                        lock (_logLock)
+                        {
+                            if (!_isLogCleared)
+                            {
+                                if (System.IO.File.Exists(logFilePath))
+                                {
+                                    // Chuyển sang Task.Run hoặc dùng async để tránh block thread chính 
+                                    // Vì đây là block lock(sync), ta dùng WriteAllText cũng được nhưng tốt nhất nên clear trước async loop
+                                    System.IO.File.WriteAllText(logFilePath, $"--- Log Cleared at {DateTime.Now:yyyy-MM-dd HH:mm:ss} ---{Environment.NewLine}");
+                                }
+                                _isLogCleared = true;
+                            }
+                        }
+                    }
+                }
+
+                var logEntry = new StringBuilder();
+                logEntry.AppendLine("--------------------------------------------------");
+                logEntry.AppendLine($"Time    : {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                logEntry.AppendLine($"User ID : {(userId != 0 ? userId.ToString() : "N/A")}");
+                logEntry.AppendLine($"Tag     : {tag}");
+                logEntry.AppendLine($"Content : {message}");
+                logEntry.AppendLine("--------------------------------------------------");
+                
+                // Sử dụng Async I/O để không block thread
+                await System.IO.File.AppendAllTextAsync(logFilePath, logEntry.ToString());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical($"[CRITICAL] LogToFileAsync failed: {ex.Message}");
+            }
+        }
+
+        [HttpGet]
+        public async Task<List<Food>> GetFoods([FromQuery] string lang = "vi", [FromQuery] int? category_id = null, [FromQuery] int userId = 0)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            string cacheKey = $"foods_{lang}_{category_id ?? 0}";
+            int logUserId = userId != 0 ? userId : 1;
+            if (_cache.TryGetValue(cacheKey, out List<Food>? cachedFoods))
+            {
+                sw.Stop();
+                return cachedFoods ?? new List<Food>();
+            }
+
             List<Food> foods = new List<Food>();
             string connStr = _configuration.GetConnectionString("DefaultConnection");
 
@@ -97,7 +172,7 @@ namespace FoodMapAPI.Controllers
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine($"Error processing record: {ex.Message}");
+                                await LogToFileAsync("Error", $"Lỗi xử lý record Food: {ex.Message}", userId);
                             }
                         }
                     }
@@ -105,15 +180,29 @@ namespace FoodMapAPI.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"SQL Error in GetFoods: {ex.Message}");
+                await LogToFileAsync("Error", $"Lỗi GetFoods: {ex.Message}", userId);
             }
 
+            sw.Stop();
+            if (foods.Count > 0)
+            {
+                _cache.Set(cacheKey, foods, TimeSpan.FromMinutes(5));
+            }
             return foods;
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetFoodDetails(int id, [FromQuery] string lang = "vi")
+        public async Task<IActionResult> GetFoodDetails(int id, [FromQuery] string lang = "vi", [FromQuery] int userId = 0)
         {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            string cacheKey = $"food_detail_{id}_{lang}";
+            int logUserId = userId != 0 ? userId : 1;
+            if (_cache.TryGetValue(cacheKey, out FoodDetails? cachedDetails))
+            {
+                sw.Stop();
+                return Ok(cachedDetails);
+            }
+
             string connStr = _configuration.GetConnectionString("DefaultConnection");
             FoodDetails details = new FoodDetails();
             details.images = new List<string>();
@@ -189,16 +278,22 @@ namespace FoodMapAPI.Controllers
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error fetching images for POI {id}: {ex.Message}");
+                        await LogToFileAsync("Error", $"Lỗi lấy danh sách ảnh Food (ID={id}): {ex.Message}", userId);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"SQL Error in GetFoodDetails: {ex.Message}");
+                await LogToFileAsync("Error", $"Lỗi GetFoodDetails (ID={id}): {ex.Message}", userId);
             }
 
-            return Ok(details);
+            sw.Stop();
+            if (details.id > 0)
+            {
+                _cache.Set(cacheKey, details, TimeSpan.FromMinutes(5));
+                return Ok(details);
+            }
+            return NotFound();
         }
 
         [HttpGet("categories")]
@@ -230,6 +325,7 @@ namespace FoodMapAPI.Controllers
             }
             catch (Exception ex)
             {
+                await LogToFileAsync("Error", $"Lỗi GetCategories: {ex.Message}");
                 return BadRequest(ex.Message);
             }
             return Ok(categories);
@@ -240,7 +336,16 @@ namespace FoodMapAPI.Controllers
         [HttpPost("{id}/audio-log")]
         public async Task<IActionResult> LogAudio(int id, [FromBody] AudioLogRequest logReq)
         {
+            int userId = logReq?.user_id != 0 ? logReq.user_id : 1;
+            
             if (logReq == null || logReq.duration_seconds <= 0) return BadRequest("Invalid duration");
+
+            // ══ RATE LIMITING ══
+            string rateLimitKey = $"ratelimit_audiolog_{userId}_{id}";
+            if (_cache.TryGetValue(rateLimitKey, out _))
+            {
+                return StatusCode(429, "Too many requests. Please wait before logging again.");
+            }
 
             string connStr = _configuration.GetConnectionString("DefaultConnection");
             try
@@ -252,16 +357,21 @@ namespace FoodMapAPI.Controllers
                     using (MySqlCommand cmd = new MySqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@poi", id);
-                        cmd.Parameters.AddWithValue("@user", logReq.user_id > 0 ? logReq.user_id : 1);
+                        cmd.Parameters.AddWithValue("@user", userId);
                         cmd.Parameters.AddWithValue("@duration", logReq.duration_seconds);
                         await cmd.ExecuteNonQueryAsync();
                     }
                 }
+
+                // Set rate limit for this user+POI (30 seconds)
+                _cache.Set(rateLimitKey, true, TimeSpan.FromSeconds(30));
             }
             catch (Exception ex)
             {
+                await LogToFileAsync("Error", $"Lỗi LogAudio (POI={id}, User={userId}): {ex.Message}", userId);
                 return BadRequest(ex.Message);
             }
+
             return Ok(new { success = true });
         }
 
@@ -310,17 +420,67 @@ namespace FoodMapAPI.Controllers
         }
 
         [HttpGet("{id}/guide")]
-        public async Task<IActionResult> GetGuide(int id, [FromQuery] string lang = "vi")
+        public async Task<IActionResult> GetGuide(int id, [FromQuery] string lang = "vi", [FromQuery] int userId = 0)
         {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            int logUserId = userId != 0 ? userId : 1;
+            string cacheKey = $"guide_{id}_{lang}";
+
+            // 1. Kiểm tra RAM Cache trước (Cực nhanh)
+            if (_cache.TryGetValue(cacheKey, out Guide? cachedGuide))
+            {
+                sw.Stop();
+                int totalHits = _requestCounter.AddOrUpdate($"guide_poi_{id}", 1, (_, old) => old + 1);
+                await LogToFileAsync("AudioLog", $"[CACHE HIT] Lượt {totalHits} | POI={id} | User={logUserId} | RAM Cache phản hồi ({sw.ElapsedMilliseconds}ms)", logUserId);
+                // Bổ sung log Hoàn tất cho Cache Hit
+                await LogToFileAsync("QueueLog", $"[HOÀN TẤT] User={logUserId} nhận kết quả từ Cache. Latency tổng: {sw.ElapsedMilliseconds}ms", logUserId);
+                return Ok(cachedGuide);
+            }
+
+            // 2. Sử dụng Request Collapsing pattern (Lazy/Task-based)
+            var waiterCounter = _activeWaiters.GetOrAdd(id, _ => new StrongBox<int>(0));
+            int currentWaiters = Interlocked.Increment(ref waiterCounter.Value);
+            
+            await LogToFileAsync("QueueLog", $"[TRUY CẬP] User={logUserId} đang chờ xử lý POI={id}. Số người đang chờ: {currentWaiters}", logUserId);
+
+            try
+            {
+                var fetchTask = _guideTasks.GetOrAdd(cacheKey, async (key) => {
+                    return await FetchGuideFromDbInternal(id, lang, logUserId);
+                });
+
+                var guide = await fetchTask;
+
+                sw.Stop();
+                if (guide != null)
+                {
+                    await LogToFileAsync("QueueLog", $"[HOÀN TẤT] User={logUserId} nhận kết quả. Latency tổng: {sw.ElapsedMilliseconds}ms", logUserId);
+                    return Ok(guide);
+                }
+                return NotFound();
+            }
+            finally
+            {
+                // Chỉ xóa task khỏi dictionary khi người cuối cùng trong hàng đợi hiện tại đã nhận được kết quả
+                if (Interlocked.Decrement(ref waiterCounter.Value) <= 0)
+                {
+                    _guideTasks.TryRemove(cacheKey, out _);
+                }
+            }
+        }
+
+        private async Task<Guide?> FetchGuideFromDbInternal(int id, string lang, int logUserId)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            await LogToFileAsync("QueueLog", $"[XỬ LÝ CHÍNH] Đang truy vấn DB cho POI={id}...", logUserId);
+            
             string connStr = _configuration.GetConnectionString("DefaultConnection");
-            Guide guide = null;
+            Guide? guide = null;
             try
             {
                 using (MySqlConnection conn = new MySqlConnection(connStr))
                 {
                     await conn.OpenAsync();
-                    
-                    // Try to find the guide for the specific language first
                     string query = "SELECT * FROM poi_guides WHERE poi_id = @id AND language = @lang LIMIT 1";
                     using (MySqlCommand cmd = new MySqlCommand(query, conn))
                     {
@@ -337,12 +497,12 @@ namespace FoodMapAPI.Controllers
                                     title = reader["title"].ToString() ?? "",
                                     description = reader["description"].ToString() ?? "",
                                     language = reader["language"].ToString() ?? "",
+                                    userId = logUserId
                                 };
                             }
                         }
                     }
 
-                    // Fallback to Vietnamese if requested language not found
                     if (guide == null && lang != "vi")
                     {
                         using (MySqlCommand cmd = new MySqlCommand("SELECT * FROM poi_guides WHERE poi_id = @id AND language = 'vi' LIMIT 1", conn))
@@ -359,12 +519,12 @@ namespace FoodMapAPI.Controllers
                                         title = reader["title"].ToString() ?? "",
                                         description = reader["description"].ToString() ?? "",
                                         language = reader["language"].ToString() ?? "",
+                                        userId = logUserId
                                     };
                                 }
                             }
                         }
 
-                        // Translate the Vietnamese fallback
                         if (guide != null)
                         {
                             try
@@ -373,22 +533,30 @@ namespace FoodMapAPI.Controllers
                                 guide.description = await _translator.TranslateAsync(guide.description, lang);
                                 guide.language = lang;
                             }
-                            catch { }
+                            catch (Exception ex)
+                            {
+                                await LogToFileAsync("Error", $"Lỗi dịch Guide (POI={id}, Lang={lang}): {ex.Message}", logUserId);
+                            }
                         }
                     }
+                }
+                
+                sw.Stop();
+                if (guide != null)
+                {
+                    _guideDbLatency[id] = sw.ElapsedMilliseconds;
+                    // Nạp vào Cache thực tế
+                    _cache.Set($"guide_{id}_{lang}", guide, TimeSpan.FromMinutes(5));
+                    await LogToFileAsync("QueueLog", $"[DB DONE] Đã lấy dữ liệu từ DB ({sw.ElapsedMilliseconds}ms) và nạp vào Cache.", logUserId);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"SQL Error in GetGuide: {ex.Message}");
+                await LogToFileAsync("Error", $"Lỗi DB trong FetchGuide: {ex.Message}", logUserId);
             }
-
-            if (guide != null)
-            {
-                return Ok(guide);
-            }
-            return NotFound();
+            return guide;
         }
+
 
         [HttpGet("{id}/available-languages")]
         public async Task<IActionResult> GetAvailableLanguages(int id)
@@ -426,6 +594,7 @@ namespace FoodMapAPI.Controllers
             }
             catch (Exception ex)
             {
+                await LogToFileAsync("Error", $"Lỗi GetAvailableLanguages (POI={id}): {ex.Message}");
                 return BadRequest(ex.Message);
             }
             return Ok(languages);
@@ -471,6 +640,7 @@ namespace FoodMapAPI.Controllers
             }
             catch (Exception ex)
             {
+                await LogToFileAsync("Error", $"Lỗi GetAudioHistory (User={userId}): {ex.Message}", userId);
                 return BadRequest(ex.Message);
             }
             return Ok(history);
@@ -483,10 +653,18 @@ namespace FoodMapAPI.Controllers
                 return BadRequest("Invalid request");
 
             var results = new Dictionary<string, string>();
-            foreach (var item in request.Strings)
+            try
             {
-                // Key is the local ID/key, Value is the source Vietnamese text
-                results[item.Key] = await _translator.TranslateAsync(item.Value, request.TargetLang);
+                foreach (var item in request.Strings)
+                {
+                    // Key is the local ID/key, Value is the source Vietnamese text
+                    results[item.Key] = await _translator.TranslateAsync(item.Value, request.TargetLang);
+                }
+            }
+            catch (Exception ex)
+            {
+                await LogToFileAsync("Error", $"Lỗi TranslateUI: {ex.Message}");
+                return BadRequest(ex.Message);
             }
 
             return Ok(results);

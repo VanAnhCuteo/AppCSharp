@@ -41,7 +41,14 @@ namespace FoodMapApp.Services
 
         public void UpdateQueue(Location userLocation, List<FoodModel> allPois, string lang)
         {
-            if (IsCallActive) return;
+            if (IsCallActive)
+            {
+                Debug.WriteLine($"[AudioQueue] UpdateQueue SKIPPED – cuộc gọi đang active");
+                return;
+            }
+
+            int queueBefore = _queue.Count;
+            Debug.WriteLine($"[AudioQueue] ═══ UpdateQueue START ═══ QueueSize={queueBefore}, CurrentItem={CurrentItem?.Poi.id}, IsPaused={IsPaused}");
 
             // GPS Optimization Check (handled by caller, but we store location here)
             _lastLocation = userLocation;
@@ -88,6 +95,7 @@ namespace FoodMapApp.Services
                 }
 
                 _queue.Add(new AudioQueueItem { Poi = poi, Language = lang });
+                Debug.WriteLine($"[AudioQueue]   + Thêm POI {poi.id} ({poi.name}) vào queue");
             }
 
             // 4. Calculate scores and Sort
@@ -106,11 +114,13 @@ namespace FoodMapApp.Services
             
             _queue = sortedQueue.Concat(others).ToList();
 
+            Debug.WriteLine($"[AudioQueue] ═══ UpdateQueue END ═══ QueueSize={_queue.Count} (was {queueBefore}), Items=[{string.Join(", ", _queue.Select(q => q.Poi.id))}]");
             OnStateChanged?.Invoke(CurrentItem, _queue);
 
             // 5. Auto-start if nothing playing
             if (CurrentItem == null && _queue.Count > 0 && !IsPaused)
             {
+                Debug.WriteLine($"[AudioQueue] → Auto-start: không có gì đang phát, bắt đầu PlayNextAsync");
                 _ = PlayNextAsync();
             }
         }
@@ -131,10 +141,15 @@ namespace FoodMapApp.Services
 
         public async Task PlayNextAsync()
         {
-            if (_isPlayingNext) return;
+            if (_isPlayingNext)
+            {
+                Debug.WriteLine($"[AudioQueue] PlayNextAsync BLOCKED – đang có PlayNext khác chạy");
+                return;
+            }
             
             if (_queue.Count == 0 || IsCallActive) 
             {
+                Debug.WriteLine($"[AudioQueue] PlayNextAsync SKIPPED – Queue={_queue.Count}, IsCallActive={IsCallActive}");
                 CurrentItem = null;
                 OnStateChanged?.Invoke(null, _queue);
                 return;
@@ -154,12 +169,16 @@ namespace FoodMapApp.Services
 
                 CurrentItem = _queue[0];
                 IsPaused = false;
+                Debug.WriteLine($"[AudioQueue] ▶ PlayNext: POI {CurrentItem.Poi.id} ({CurrentItem.Poi.name}), Remaining={_queue.Count - 1}");
                 OnStateChanged?.Invoke(CurrentItem, _queue);
 
                 // Fetch Guide from API and trigger playback via MainPage
                 if (MainPage.Instance != null && CurrentItem != null)
                 {
+                    var sw = Stopwatch.StartNew();
                     await MainPage.Instance.TriggerAutoAudioAsync(CurrentItem);
+                    sw.Stop();
+                    Debug.WriteLine($"[AudioQueue] ▶ TriggerAutoAudio hoàn thành sau {sw.ElapsedMilliseconds}ms");
                 }
             }
             finally
@@ -170,6 +189,7 @@ namespace FoodMapApp.Services
 
         public void MarkAsHeard(int poiId)
         {
+            Debug.WriteLine($"[AudioQueue] ✓ MarkAsHeard: POI {poiId} – cooldown {CooldownMinutes} phút");
             _cooldowns[poiId] = DateTime.Now;
             int count = Preferences.Default.Get($"listen_count_{poiId}", 0);
             Preferences.Default.Set($"listen_count_{poiId}", count + 1);
@@ -247,6 +267,7 @@ namespace FoodMapApp.Services
 
         public void ClearQueue()
         {
+            Debug.WriteLine($"[AudioQueue] 🗑 ClearQueue – xóa {_queue.Count} items");
             _queue.Clear();
             CurrentItem = null;
             OnStateChanged?.Invoke(null, _queue);

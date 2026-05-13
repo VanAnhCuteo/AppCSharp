@@ -1,4 +1,4 @@
-﻿namespace FoodMapAPI.Models
+namespace FoodMapAPI.Models
 {
     public class Guide
     {
@@ -7,5 +7,6 @@
         public string title { get; set; }
         public string description { get; set; }
         public string language { get; set; }
+        public int userId { get; set; }
     }
 }
